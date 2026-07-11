@@ -1072,11 +1072,13 @@ function enemyTurn() {
         recordUnitMove(unit, step.x, step.y);
         unit.x = step.x;
         unit.y = step.y;
+        unit.moved = true;
+        if (unit.type === "artillery") unit.acted = true;
         addLog(`추축군 ${unitTypes[unit.type].label}가 전진했습니다.`);
         const afterMoveRaid = bestRaidTarget(unit, "player");
         const afterMoveTarget = nearestEnemy(unit, "player");
-        if (afterMoveRaid) raidBase(unit, afterMoveRaid);
-        else if (afterMoveTarget && canAttack(unit, afterMoveTarget)) attack(unit, afterMoveTarget);
+        if (!unit.acted && afterMoveRaid) raidBase(unit, afterMoveRaid);
+        else if (!unit.acted && afterMoveTarget && canAttack(unit, afterMoveTarget)) attack(unit, afterMoveTarget);
       }
     }
     captureBase(unit);
@@ -1442,6 +1444,7 @@ function movementCostForTile(x, y) {
 
 function canAttack(attacker, defender) {
   if (!attacker || !defender || attacker.owner === defender.owner) return false;
+  if (attacker.type === "artillery" && attacker.moved) return false;
   if (isTowedArtillery(attacker)) return false;
   if (supplyStatus(attacker).level === "isolated" && unitTypes[attacker.type].range > 1) return false;
   return distance(attacker, defender) <= unitTypes[attacker.type].range && !ridgeBlocksFire(attacker, defender);
@@ -1449,6 +1452,7 @@ function canAttack(attacker, defender) {
 
 function canRaidBase(attacker, base) {
   if (!attacker || !base || attacker.owner === base.owner) return false;
+  if (attacker.type === "artillery" && attacker.moved) return false;
   if (isTowedArtillery(attacker)) return false;
   if (supplyStatus(attacker).level === "isolated") return false;
   return distance(attacker, base) <= unitTypes[attacker.type].range && !ridgeBlocksFire(attacker, base);
