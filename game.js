@@ -234,6 +234,7 @@ function render() {
       cell.title = `${displayTileName(x, y)} (${x}, ${y})`;
       if (hasImprovement(x, y, "bridge")) cell.classList.add("bridge");
       if (hasImprovement(x, y, "rail")) cell.classList.add("rail");
+      if (hasImprovement(x, y, "depot")) cell.classList.add("depot");
       if (highlights.moves.has(posKey(x, y))) cell.classList.add("reachable");
       if (highlights.attacks.has(posKey(x, y))) cell.classList.add("attackable");
       if (highlights.raids.has(posKey(x, y))) cell.classList.add("raidable");
@@ -242,6 +243,8 @@ function render() {
 
       const base = getBaseAt(x, y);
       if (base) renderBase(cell, base);
+
+      renderImprovements(cell, x, y);
 
       const construction = getConstructionAt(x, y);
       if (construction) renderConstruction(cell, construction);
@@ -303,10 +306,24 @@ function renderBase(cell, base) {
 }
 
 function renderConstruction(cell, construction) {
+  const site = document.createElement("span");
+  site.className = `construction-site ${construction.type}`;
+  cell.appendChild(site);
+
   const badge = document.createElement("span");
-  badge.className = "construction-badge";
+  badge.className = `construction-badge ${construction.type}`;
   badge.textContent = `${constructionLabel(construction.type)} ${construction.remaining}`;
   cell.appendChild(badge);
+}
+
+function renderImprovements(cell, x, y) {
+  const improvements = ["bridge", "rail", "depot"].filter((type) => hasImprovement(x, y, type));
+  improvements.forEach((type) => {
+    const mark = document.createElement("span");
+    mark.className = `improvement ${type}`;
+    mark.setAttribute("aria-hidden", "true");
+    cell.appendChild(mark);
+  });
 }
 
 function renderUnitStack(cell, units) {
