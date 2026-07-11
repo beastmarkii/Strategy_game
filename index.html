@@ -52,11 +52,6 @@
           <button id="restart" type="button">새 작전</button>
         </div>
 
-        <details class="balance-editor" open>
-          <summary>게임 수치 에디터</summary>
-          <div id="balanceEditor"></div>
-        </details>
-
         <div class="commander-list" id="commanderList"></div>
         <div class="log" id="battleLog" aria-live="polite"></div>
       </section>
@@ -71,6 +66,13 @@
         </div>
         <div id="battlefield" class="battlefield"></div>
       </section>
+
+      <aside class="balance-editor" aria-label="게임 수치 에디터">
+        <details open>
+          <summary>게임 수치 에디터</summary>
+          <div id="balanceEditor"></div>
+        </details>
+      </aside>
     </main>
 
     <script src="game.js"></script>

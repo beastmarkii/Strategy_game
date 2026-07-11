@@ -64,15 +64,16 @@ button:disabled {
 
 .shell {
   display: grid;
-  grid-template-columns: minmax(300px, 390px) minmax(560px, 1fr);
+  grid-template-columns: minmax(300px, 360px) minmax(560px, 1fr) minmax(300px, 360px);
   gap: 20px;
-  width: min(1280px, calc(100vw - 32px));
+  width: min(1600px, calc(100vw - 32px));
   min-height: calc(100vh - 32px);
   margin: 16px auto;
 }
 
 .command-panel,
-.battlefield-wrap {
+.battlefield-wrap,
+.balance-editor {
   border: 1px solid rgb(232 217 184 / 26%);
   background:
     linear-gradient(180deg, rgb(255 255 255 / 18%), transparent 16%),
@@ -106,6 +107,14 @@ button:disabled {
 .command-panel > * {
   position: relative;
   z-index: 1;
+}
+
+.balance-editor {
+  align-self: start;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  border-radius: 10px;
+  padding: 18px;
 }
 
 .eyebrow {
@@ -224,11 +233,6 @@ h1 {
     linear-gradient(180deg, rgb(255 255 255 / 22%), transparent 42%),
     var(--accent);
   color: #fff;
-}
-
-.balance-editor {
-  border-top: 1px solid var(--line);
-  padding-top: 10px;
 }
 
 .balance-editor summary {
@@ -1395,6 +1399,11 @@ h1 {
   .battlefield-wrap {
     order: 1;
     padding: 10px;
+  }
+
+  .balance-editor {
+    order: 3;
+    max-height: none;
   }
 
   .battlefield {
