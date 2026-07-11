@@ -1046,6 +1046,13 @@ function enemyTurn() {
   enemies.forEach((unit) => {
     if (!state.units.includes(unit) || state.gameOver) return;
 
+    if (unit.type === "battalionHQ") {
+      enemyHQTurn(unit);
+      captureBase(unit);
+      checkVictory();
+      return;
+    }
+
     const raidableBase = bestRaidTarget(unit, "player");
     if (raidableBase) {
       raidBase(unit, raidableBase);
@@ -1498,6 +1505,77 @@ function bestStepToward(unit, target) {
     if (!best || score < best.score) best = { ...next, score };
   });
   return best;
+}
+
+function enemyHQTurn(hq) {
+  const step = bestSafeHQStep(hq);
+  if (step && (step.x !== hq.x || step.y !== hq.y)) {
+    recordUnitMove(hq, step.x, step.y);
+    hq.x = step.x;
+    hq.y = step.y;
+    hq.moved = true;
+    addLog("추축군 대대 사령부가 호위 부대 뒤로 신중하게 위치를 조정했습니다.");
+  }
+
+  const target = nearestEnemy(hq, "player");
+  if (target && canAttack(hq, target) && hqGuardCount(hq, hq.x, hq.y) > 0) {
+    attack(hq, target);
+  }
+}
+
+function bestSafeHQStep(hq) {
+  const candidates = [hq, ...neighbors(hq.x, hq.y).filter((spot) => canMoveTo(hq, spot.x, spot.y))];
+  const scored = candidates
+    .map((spot) => ({ ...spot, score: hqSafetyScore(hq, spot.x, spot.y) }))
+    .sort((a, b) => b.score - a.score);
+  const best = scored[0];
+  if (!best) return null;
+  const currentScore = hqSafetyScore(hq, hq.x, hq.y);
+  return best.score > currentScore + 0.25 ? best : null;
+}
+
+function hqSafetyScore(hq, x, y) {
+  const enemyDistances = state.units
+    .filter((unit) => unit.owner !== hq.owner)
+    .map((unit) => distance({ x, y }, unit));
+  const nearestThreat = enemyDistances.length ? Math.min(...enemyDistances) : 99;
+  const guards = hqGuardCount(hq, x, y);
+  const commandCoverage = state.units.filter((unit) =>
+    unit.owner === hq.owner &&
+    unit.id !== hq.id &&
+    distance({ x, y }, unit) <= unitTypes.battalionHQ.commandRange
+  ).length;
+  const supplyCoverage = state.units.filter((unit) =>
+    unit.owner === hq.owner &&
+    unit.id !== hq.id &&
+    distance({ x, y }, unit) <= hqSupplyRange
+  ).length;
+  const ownedBaseDistance = nearestOwnedBaseDistance(hq.owner, x, y);
+
+  let score = 0;
+  score += Math.min(nearestThreat, 5) * 4;
+  score += guards * 8;
+  score += commandCoverage * 3;
+  score += supplyCoverage;
+  score -= Number.isFinite(ownedBaseDistance) ? ownedBaseDistance * 1.4 : 12;
+  if (nearestThreat <= 1) score -= 60;
+  else if (nearestThreat <= 2) score -= 24;
+  if (guards === 0) score -= 18;
+  return score;
+}
+
+function hqGuardCount(hq, x, y) {
+  return state.units.filter((unit) =>
+    unit.owner === hq.owner &&
+    unit.type !== "battalionHQ" &&
+    distance({ x, y }, unit) <= 2
+  ).length;
+}
+
+function nearestOwnedBaseDistance(owner, x, y) {
+  const bases = state.bases.filter((base) => base.owner === owner);
+  if (!bases.length) return Infinity;
+  return Math.min(...bases.map((base) => distance({ x, y }, base)));
 }
 
 function nearestEnemy(unit, owner) {
