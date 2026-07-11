@@ -110,6 +110,120 @@ const terrain = {
   B: { name: "보급 거점", className: "base", cost: 1, defense: 1, elevation: 0, artilleryCover: 1 },
 };
 
+const localePacks = {
+  en: {
+    title: "1944 Tactical Command",
+    side: { player: "Allies", enemy: "Axis" },
+    units: {
+      infantry: "Rifle Squad",
+      armor: "Medium Tank",
+      artillery: "Field Artillery",
+      spArtillery: "Self-Propelled Gun",
+      engineer: "Engineers",
+      battalionHQ: "Battalion HQ",
+    },
+    terrain: {
+      P: "Open Ground",
+      C: "Coast",
+      F: "Forest",
+      H: "Ridge/High Ground",
+      W: "Sea/Water",
+      B: "Supply Base",
+    },
+    buttons: {
+      recruit: "Reinforce",
+      deploy: "Deploy",
+      build: "Build",
+      lay: "Lay",
+      bridge: "Bridge",
+      depot: "Supply Depot",
+      rail: "Railway",
+      tow: "Tow by Truck",
+      endTurn: "End Turn",
+      restart: "New Operation",
+    },
+    status: ["Day", "Initiative", "Supplies", "Next Supply"],
+    hint: "Click a unit to show available commands.",
+    select: "Select a unit",
+    editor: "Game Values Editor",
+  },
+  zh: {
+    title: "1944 前线司令部",
+    side: { player: "同盟国", enemy: "轴心国" },
+    units: {
+      infantry: "步枪班",
+      armor: "中型坦克",
+      artillery: "野战炮队",
+      spArtillery: "自行火炮",
+      engineer: "工兵队",
+      battalionHQ: "营部",
+    },
+    terrain: {
+      P: "开阔地",
+      C: "海岸",
+      F: "森林",
+      H: "高地/山脊",
+      W: "海面/水域",
+      B: "补给基地",
+    },
+    buttons: {
+      recruit: "增援",
+      deploy: "投入",
+      build: "建造",
+      lay: "铺设",
+      bridge: "桥梁",
+      depot: "补给仓库",
+      rail: "铁路",
+      tow: "卡车牵引",
+      endTurn: "结束回合",
+      restart: "新作战",
+    },
+    status: ["作战日", "主动权", "补给", "下回补给"],
+    hint: "点击部队显示可用命令。",
+    select: "选择部队",
+    editor: "游戏数值编辑器",
+  },
+  ja: {
+    title: "1944 前線司令部",
+    side: { player: "連合軍", enemy: "枢軸軍" },
+    units: {
+      infantry: "小銃分隊",
+      armor: "中戦車",
+      artillery: "野砲隊",
+      spArtillery: "自走砲",
+      engineer: "工兵隊",
+      battalionHQ: "大隊司令部",
+    },
+    terrain: {
+      P: "開けた地形",
+      C: "海岸",
+      F: "森林",
+      H: "高地/山稜",
+      W: "海/水域",
+      B: "補給拠点",
+    },
+    buttons: {
+      recruit: "増援",
+      deploy: "投入",
+      build: "建設",
+      lay: "敷設",
+      bridge: "橋",
+      depot: "補給倉庫",
+      rail: "鉄道",
+      tow: "トラック牽引",
+      endTurn: "作戦終了",
+      restart: "新作戦",
+    },
+    status: ["作戦日", "主導権", "補給", "次回補給"],
+    hint: "部隊をクリックすると使用可能な命令が表示されます。",
+    select: "部隊を選択",
+    editor: "ゲーム数値エディター",
+  },
+};
+
+const activeLocale = detectLocale();
+const activePack = localePacks[activeLocale];
+
 const commanders = [
   { id: "patton", side: "Allies", name: "George S. Patton", nation: "미국", rank: "대장", trait: "기갑 돌파", morale: 8, attack: 1, defense: 0, stackMorale: 4 },
   { id: "montgomery", side: "Allies", name: "Bernard Montgomery", nation: "영국", rank: "원수", trait: "신중한 준비", morale: 6, attack: 0, defense: 1, stackMorale: 6 },
@@ -158,7 +272,85 @@ document.querySelector("#toggleTow")?.addEventListener("click", toggleArtilleryT
 balanceEditorEl?.addEventListener("input", handleBalanceEditorInput);
 balanceEditorEl?.addEventListener("click", handleBalanceEditorClick);
 
+function detectLocale() {
+  const override = new URLSearchParams(window.location.search).get("lang");
+  const language = (override || navigator.language || navigator.userLanguage || "ko").toLowerCase();
+  if (language.startsWith("en")) return "en";
+  if (language.startsWith("zh")) return "zh";
+  if (language.startsWith("ja")) return "ja";
+  return "ko";
+}
+
+function applyLocale() {
+  if (!activePack) return;
+  document.documentElement.lang = activeLocale;
+  document.title = activePack.title;
+  document.querySelector("h1").textContent = activePack.title;
+  document.querySelector(".command-panel")?.setAttribute("aria-label", activePack.title);
+  document.querySelector(".battlefield-wrap")?.setAttribute("aria-label", "Battlefield");
+  document.querySelector(".balance-editor")?.setAttribute("aria-label", activePack.editor);
+  document.querySelector("summary").textContent = activePack.editor;
+
+  Object.entries(activePack.units).forEach(([type, label]) => {
+    if (unitTypes[type]) unitTypes[type].label = label;
+  });
+  Object.entries(activePack.terrain).forEach(([key, name]) => {
+    if (terrain[key]) terrain[key].name = name;
+  });
+
+  document.querySelectorAll(".status-grid span").forEach((node, index) => {
+    if (activePack.status[index]) node.textContent = activePack.status[index];
+  });
+  if (!state?.selectedId && !state?.inspectedId && !state?.inspectedTile) {
+    document.querySelector("#selectedCard").innerHTML = `<span class="muted">${activePack.select}</span>`;
+  }
+  document.querySelector("#actionHint").textContent = activePack.hint;
+
+  setButtonText("#recruitInfantry", `${unitTypes.infantry.label} ${activePack.buttons.recruit}`);
+  setButtonText("#recruitArmor", `${unitTypes.armor.label} ${activePack.buttons.deploy}`);
+  setButtonText("#recruitArtillery", `${unitTypes.artillery.label} ${activePack.buttons.deploy}`);
+  setButtonText("#recruitSpArtillery", `${unitTypes.spArtillery.label} ${activePack.buttons.deploy}`);
+  setButtonText("#recruitEngineer", `${unitTypes.engineer.label} ${activePack.buttons.deploy}`);
+  setButtonText("#recruitBattalionHQ", `${unitTypes.battalionHQ.label} ${activePack.buttons.deploy}`);
+  setButtonText("#buildBridge", `${activePack.buttons.bridge} ${activePack.buttons.build}`);
+  setButtonText("#buildDepot", `${activePack.buttons.depot} ${activePack.buttons.build}`);
+  setButtonText("#buildRail", `${activePack.buttons.rail} ${activePack.buttons.lay}`);
+  document.querySelector("#toggleTow").textContent = activePack.buttons.tow;
+  document.querySelector("#endTurn").textContent = activePack.buttons.endTurn;
+  document.querySelector("#restart").textContent = activePack.buttons.restart;
+
+  const legend = document.querySelector(".legend");
+  if (legend) {
+    legend.innerHTML = `
+      <span><i class="chip player"></i>${activePack.side.player}</span>
+      <span><i class="chip enemy"></i>${activePack.side.enemy}</span>
+      <span><i class="terrain water"></i>${terrain.W.name}</span>
+      <span><i class="terrain coast"></i>${terrain.C.name}</span>
+      <span><i class="terrain forest"></i>${terrain.F.name}</span>
+      <span><i class="terrain hill"></i>${terrain.H.name}</span>
+      <span><i class="terrain base"></i>${terrain.B.name}</span>
+    `;
+  }
+}
+
+function setButtonText(selector, text) {
+  const button = document.querySelector(selector);
+  const badge = button?.querySelector("span");
+  if (!button) return;
+  button.childNodes[0].textContent = `${text} `;
+  if (badge) button.appendChild(badge);
+}
+
+function localizeRenderedText() {
+  if (!activePack) return;
+  applyLocale();
+  const editorButtons = balanceEditorEl?.querySelectorAll("[data-editor-action]");
+  if (editorButtons?.[0]) editorButtons[0].textContent = activeLocale === "en" ? "Restore Defaults" : activeLocale === "zh" ? "恢复默认" : "初期値に戻す";
+  if (editorButtons?.[1]) editorButtons[1].textContent = activeLocale === "en" ? "Apply Values & Restart" : activeLocale === "zh" ? "应用数值并重开" : "数値を適用して新作戦";
+}
+
 function startGame() {
+  applyLocale();
   pendingUnitMoves = [];
   pendingCombatEvents = [];
   state = {
@@ -267,6 +459,7 @@ function render() {
   }
 
   updatePanel();
+  localizeRenderedText();
   playUnitMoveAnimations();
   playCombatAnimations();
 }
@@ -1739,15 +1932,19 @@ function posKey(x, y) {
 }
 
 function sideName(owner) {
+  if (activePack) return owner === "player" ? activePack.side.player : activePack.side.enemy;
   return owner === "player" ? "연합군" : "추축군";
 }
 
 function constructionName(type) {
+  if (activePack && type === "depot") return activePack.buttons.depot;
+  if (activePack && type === "bridge") return activePack.buttons.bridge;
+  if (activePack) return activePack.buttons.rail;
   return type === "depot" ? "보급창고" : "철도";
 }
 
 function constructionLabel(type) {
-  return type === "depot" ? "창" : "철";
+  return constructionName(type).slice(0, 1);
 }
 
 function formatNumber(value) {
