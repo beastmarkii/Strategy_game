@@ -25,13 +25,13 @@ const mapConfig = {
 };
 
 const terrainMap = [
-  "PPPHPPPPBP",
-  "PFFHPPPFFP",
-  "PPPWPWHPPP",
-  "BPPWPPWPPB",
-  "PPPHPPPPPP",
+  "WWWWWWWCBP",
+  "WWWWWWWWCP",
+  "WWWWWWWWCP",
+  "BCCCCCCCPB",
+  "PPPPPPPPPP",
   "PFFPPHFFPP",
-  "PPPPWPPHPP",
+  "PPPPPPPHPP",
   "PBPPPPHPPP",
 ];
 
@@ -95,9 +95,10 @@ const ruleEditorFields = [
 
 const terrain = {
   P: { name: "개활지", className: "plain", cost: 1, defense: 0, elevation: 0, artilleryCover: 0 },
+  C: { name: "해안", className: "coast", cost: 1, defense: 0, elevation: 0, artilleryCover: 0 },
   F: { name: "삼림", className: "forest", cost: 2, defense: 1, elevation: 0, artilleryCover: 1 },
   H: { name: "고지/산등성이", className: "hill", cost: 1, defense: 2, elevation: 2, artilleryCover: 2 },
-  W: { name: "하천", className: "water", cost: Infinity, defense: 0, elevation: -1, artilleryCover: 0 },
+  W: { name: "바다/수역", className: "water", cost: Infinity, defense: 0, elevation: -1, artilleryCover: 0 },
   B: { name: "보급 거점", className: "base", cost: 1, defense: 1, elevation: 0, artilleryCover: 1 },
 };
 
@@ -762,6 +763,8 @@ function renderTileCard(x, y) {
 }
 
 function terrainDescription(tile) {
+  if (tile.className === "coast") return "해안/상륙 가능 지형";
+  if (tile.className === "water") return "바다/수역";
   if (tile.className === "plain") return "평지";
   if (tile.className === "forest") return "숲";
   if (tile.className === "hill") return "고지/산등성이";
@@ -777,6 +780,7 @@ function formatElevation(elevation) {
 }
 
 function terrainTraitText(x, y) {
+  if (getTerrainKey(x, y) === "C") return "해안선 지형 / 이동 가능";
   if (getTerrainKey(x, y) === "H") return "원거리 포격 차단 / 전차, 자주포 진입 불가";
   if (getTerrainKey(x, y) === "W" && !hasImprovement(x, y, "bridge")) return "교량 없이는 통과 불가";
   if (getTerrainKey(x, y) === "F") return "방어 유리 / 포격 효과 감소";

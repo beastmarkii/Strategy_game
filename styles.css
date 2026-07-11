@@ -427,6 +427,14 @@ h1 {
   background: var(--forest);
 }
 
+.terrain.water {
+  background: var(--water);
+}
+
+.terrain.coast {
+  background: #d8c682;
+}
+
 .terrain.hill {
   background: var(--hill);
 }
@@ -557,6 +565,16 @@ h1 {
 }
 
 .battlefield.map-enabled .tile.plain:nth-child(odd) {
+  background: transparent !important;
+}
+
+.tile.coast {
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 24%), transparent 42%),
+    linear-gradient(155deg, var(--water) 0 28%, #d8c682 29% 100%);
+}
+
+.battlefield.map-enabled .tile.coast {
   background: transparent !important;
 }
 
