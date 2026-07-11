@@ -1,5 +1,5 @@
-const width = 10;
-const height = 8;
+const width = 20;
+const height = 16;
 let wartimeProductionFactor = 0.5;
 let raidEfficiencyFactor = 0.7;
 let maxStackSize = 3;
@@ -25,14 +25,22 @@ const mapConfig = {
 };
 
 const terrainMap = [
-  "WWWWWWWCBP",
-  "WWWWWWWWCP",
-  "WWWWWWWWCP",
-  "BCCCCCCCPB",
-  "PPPPPPPPPP",
-  "PFFPPHFFPP",
-  "PPPPPPPHPP",
-  "PBPPPPHPPP",
+  "WWWWWWWWWWWWWWCCBBPP",
+  "WWWWWWWWWWWWWWCCBBPP",
+  "WWWWWWWWWWWWWWWWCCPP",
+  "WWWWWWWWWWWWWWWWCCPP",
+  "WWWWWWWWWWWWWWWWCCPP",
+  "WWWWWWWWWWWWWWWWCCPP",
+  "BBCCCCCCCCCCCCCCPPBB",
+  "BBCCCCCCCCCCCCCCPPBB",
+  "PPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPPPP",
+  "PPFFFFPPPPHHFFFFPPPP",
+  "PPFFFFPPPPHHFFFFPPPP",
+  "PPPPPPPPPPPPPPHHPPPP",
+  "PPPPPPPPPPPPPPHHPPPP",
+  "PPBBPPPPPPPPHHPPPPPP",
+  "PPBBPPPPPPPPHHPPPPPP",
 ];
 
 const unitTypes = {
@@ -167,23 +175,23 @@ function startGame() {
       enemy: commanders.find((commander) => commander.id === "rommel"),
     },
     bases: [
-      createBase(8, 0, "enemy", 6),
-      createBase(0, 3, "player", 6),
-      createBase(9, 3, "enemy", 5),
-      createBase(1, 7, "player", 5),
+      createBase(16, 0, "enemy", 6),
+      createBase(0, 6, "player", 6),
+      createBase(18, 6, "enemy", 5),
+      createBase(2, 14, "player", 5),
     ],
     improvements: [],
     constructions: [],
     units: [
-      createUnit("player", "infantry", 1, 6),
-      createUnit("player", "armor", 2, 7),
-      createUnit("player", "artillery", 0, 4),
-      createUnit("player", "engineer", 1, 7),
-      createUnit("player", "battalionHQ", 0, 3),
-      createUnit("enemy", "infantry", 8, 1),
-      createUnit("enemy", "armor", 7, 0),
-      createUnit("enemy", "artillery", 9, 4),
-      createUnit("enemy", "battalionHQ", 9, 3),
+      createUnit("player", "infantry", 2, 12),
+      createUnit("player", "armor", 4, 14),
+      createUnit("player", "artillery", 0, 8),
+      createUnit("player", "engineer", 2, 14),
+      createUnit("player", "battalionHQ", 0, 6),
+      createUnit("enemy", "infantry", 16, 2),
+      createUnit("enemy", "armor", 14, 0),
+      createUnit("enemy", "artillery", 18, 8),
+      createUnit("enemy", "battalionHQ", 18, 6),
     ],
     log: [],
   };
