@@ -138,6 +138,7 @@ document.querySelector("#endTurn").addEventListener("click", endPlayerTurn);
 document.querySelector("#restart").addEventListener("click", startGame);
 document.querySelector("#recruitInfantry").addEventListener("click", () => recruit("infantry"));
 document.querySelector("#recruitArmor").addEventListener("click", () => recruit("armor"));
+document.querySelector("#recruitArtillery")?.addEventListener("click", () => recruit("artillery"));
 document.querySelector("#recruitSpArtillery")?.addEventListener("click", () => recruit("spArtillery"));
 document.querySelector("#recruitEngineer").addEventListener("click", () => recruit("engineer"));
 document.querySelector("#recruitBattalionHQ")?.addEventListener("click", () => recruit("battalionHQ"));
@@ -619,6 +620,7 @@ function updatePanel() {
   updateActionPanel();
   document.querySelector("#recruitInfantry").disabled = !selectedBattalionHQ() || state.resources < unitTypes.infantry.cost || state.gameOver;
   document.querySelector("#recruitArmor").disabled = !selectedBattalionHQ() || state.resources < unitTypes.armor.cost || state.gameOver;
+  document.querySelector("#recruitArtillery").disabled = !selectedBattalionHQ() || state.resources < unitTypes.artillery.cost || state.gameOver;
   document.querySelector("#recruitSpArtillery").disabled = !selectedBattalionHQ() || state.resources < unitTypes.spArtillery.cost || state.gameOver;
   document.querySelector("#recruitEngineer").disabled = !selectedBattalionHQ() || state.resources < unitTypes.engineer.cost || state.gameOver;
   const hqButton = document.querySelector("#recruitBattalionHQ");
@@ -649,6 +651,7 @@ function syncRecruitButtonCosts() {
   const buttons = [
     ["#recruitInfantry", "infantry"],
     ["#recruitArmor", "armor"],
+    ["#recruitArtillery", "artillery"],
     ["#recruitSpArtillery", "spArtillery"],
     ["#recruitEngineer", "engineer"],
   ];
@@ -665,7 +668,7 @@ function updateActionPanel() {
   const isEngineer = isOwnReady && selected.type === "engineer" && !selected.acted;
   const isArtillery = isOwnReady && selected.type === "artillery" && !selected.acted;
   const groups = {
-    hq: ["#recruitInfantry", "#recruitArmor", "#recruitSpArtillery", "#recruitEngineer", "#recruitBattalionHQ"],
+    hq: ["#recruitInfantry", "#recruitArmor", "#recruitArtillery", "#recruitSpArtillery", "#recruitEngineer", "#recruitBattalionHQ"],
     engineer: ["#buildBridge", "#buildDepot", "#buildRail"],
     artillery: ["#toggleTow"],
   };
