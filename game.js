@@ -25,31 +25,50 @@ const mapConfig = {
 };
 
 const terrainMap = [
-  "WWWWWWWWWWWWWWCCBBPP",
-  "WWWWWWWWWWWWWWCCBBPP",
-  "WWWWWWWWWWWWWWWWCCPP",
-  "WWWWWWWWWWWWWWWWCCPP",
-  "WWWWWWWWWWWWWWWWCCPP",
-  "WWWWWWWWWWWWWWWWCCPP",
-  "BBCCCCCCCCCCCCCCPPBB",
-  "BBCCCCCCCCCCCCCCPPBB",
   "PPPPPPPPPPPPPPPPPPPP",
   "PPPPPPPPPPPPPPPPPPPP",
-  "PPFFFFPPPPHHFFFFPPPP",
-  "PPFFFFPPPPHHFFFFPPPP",
-  "PPPPPPPPPPPPPPHHPPPP",
-  "PPPPPPPPPPPPPPHHPPPP",
-  "PPBBPPPPPPPPHHPPPPPP",
-  "PPBBPPPPPPPPHHPPPPPP",
+  "PPPPPPPPPPPPPPPPPPPP",
+  "PPPPCCPPPPPPPPPPPPPP",
+  "PPPPPCCCCPPPPPPCPPPP",
+  "CCCCCCCCCCCCCCCCCCCC",
+  "PCCCCCCCCCCCCCCCCCCP",
+  "PPPPPPPPPPPPPBCCPPPP",
+  "PPPPPPPPPPPPPPPBPPPP",
+  "PPPPPPHHHPPPPHPPPPPP",
+  "PPPPPPBHHHPPPHPPBPPP",
+  "CCCCCCCCCCCCCCCCCCCC",
+  "PPPPPPPPPHHPPPPPHHHB",
+  "PPPPPPPPPPBPPPPPHHPP",
+  "PPPPPPPPPPPPPPPPHHPP",
+  "PPPPPPPPPPPPPPPPPPPP",
+];
+
+const hillDefenseMap = [
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "....................",
+  "......SEE....N......",
+  ".......SEE...N......",
+  "....................",
+  ".........SS.....NNNE",
+  "................NN..",
+  "................NN..",
+  "....................",
 ];
 
 const unitTypes = {
-  infantry: { label: "소총분대", mark: "보", hp: 10, move: 3, range: 1, attack: 4, cost: 3, supplyUse: 1 },
-  armor: { label: "중형전차", mark: "전", hp: 14, move: 4, range: 1, attack: 6, cost: 5, supplyUse: 2 },
-  artillery: { label: "야포대", mark: "포", hp: 8, move: 1, towedMove: 4, range: 3, attack: 5, cost: 6, supplyUse: 2 },
-  spArtillery: { label: "자주포", mark: "자", hp: 10, move: 4, range: 3, attack: 5, cost: 300, supplyUse: 4 },
-  engineer: { label: "공병대", mark: "공", hp: 12, move: 4, range: 1, attack: 3, cost: 4, supplyUse: 1 },
-  battalionHQ: { label: "대대 사령부", mark: "지", hp: 9, move: 1, range: 1, attack: 1, cost: 6, supplyUse: 1, moraleAura: 10, commandRange: 2, supplyRange: hqSupplyRange, recoveryRange: hqRecoveryRange },
+  infantry: { label: "소총분대", mark: "보", domain: "land", hp: 10, move: 3, range: 1, attack: 4, cost: 3, supplyUse: 1 },
+  armor: { label: "중형전차", mark: "전", domain: "land", hp: 14, move: 4, range: 1, attack: 6, cost: 5, supplyUse: 2 },
+  artillery: { label: "야포대", mark: "포", domain: "land", hp: 8, move: 1, towedMove: 4, range: 3, attack: 5, cost: 6, supplyUse: 2 },
+  spArtillery: { label: "자주포", mark: "자", domain: "land", hp: 10, move: 4, range: 3, attack: 5, cost: 300, supplyUse: 4 },
+  engineer: { label: "공병대", mark: "공", domain: "land", hp: 12, move: 4, range: 1, attack: 3, cost: 4, supplyUse: 1 },
+  battalionHQ: { label: "대대 사령부", mark: "지", domain: "land", hp: 9, move: 1, range: 1, attack: 1, cost: 6, supplyUse: 1, moraleAura: 10, commandRange: 2, supplyRange: hqSupplyRange, recoveryRange: hqRecoveryRange },
 };
 
 const defaultBalance = {
@@ -70,6 +89,14 @@ const defaultBalance = {
     enemyBattalionHQ: episodeLimits.enemyBattalionHQ,
   },
   units: JSON.parse(JSON.stringify(unitTypes)),
+};
+
+const DEFAULT_BALANCE_STORAGE_KEY = "ww2TacticalCommand.defaultBalance";
+
+const constructionCosts = {
+  depot: 1,
+  bridge: 2,
+  rail: 1,
 };
 
 const unitEditorFields = [
@@ -103,10 +130,10 @@ const ruleEditorFields = [
 
 const terrain = {
   P: { name: "개활지", className: "plain", cost: 1, defense: 0, elevation: 0, artilleryCover: 0 },
-  C: { name: "해안", className: "coast", cost: 1, defense: 0, elevation: 0, artilleryCover: 0 },
+  C: { name: "강변/접근로", className: "coast", cost: 1, defense: 0, elevation: 0, artilleryCover: 0 },
   F: { name: "삼림", className: "forest", cost: 2, defense: 1, elevation: 0, artilleryCover: 1 },
   H: { name: "고지/산등성이", className: "hill", cost: 1, defense: 2, elevation: 2, artilleryCover: 2 },
-  W: { name: "바다/수역", className: "water", cost: Infinity, defense: 0, elevation: -1, artilleryCover: 0 },
+  W: { name: "하천/강", className: "water", cost: Infinity, defense: 0, elevation: -1, artilleryCover: 0 },
   B: { name: "보급 거점", className: "base", cost: 1, defense: 1, elevation: 0, artilleryCover: 1 },
 };
 
@@ -124,10 +151,10 @@ const localePacks = {
     },
     terrain: {
       P: "Open Ground",
-      C: "Coast",
+      C: "Riverbank/Approach",
       F: "Forest",
       H: "Ridge/High Ground",
-      W: "Sea/Water",
+      W: "River",
       B: "Supply Base",
     },
     buttons: {
@@ -163,7 +190,7 @@ const localePacks = {
       C: "海岸",
       F: "森林",
       H: "高地/山脊",
-      W: "海面/水域",
+      W: "河川",
       B: "补给基地",
     },
     buttons: {
@@ -199,7 +226,7 @@ const localePacks = {
       C: "海岸",
       F: "森林",
       H: "高地/山稜",
-      W: "海/水域",
+      W: "河川",
       B: "補給拠点",
     },
     buttons: {
@@ -252,6 +279,11 @@ const turnLabelEl = document.querySelector("#turnLabel");
 const phaseLabelEl = document.querySelector("#phaseLabel");
 const resourceLabelEl = document.querySelector("#resourceLabel");
 const baseLabelEl = document.querySelector("#baseLabel");
+const hudTurnLabelEl = document.querySelector("#hudTurnLabel");
+const hudPhaseLabelEl = document.querySelector("#hudPhaseLabel");
+const hudResourceLabelEl = document.querySelector("#hudResourceLabel");
+const hudBaseLabelEl = document.querySelector("#hudBaseLabel");
+const hudAlertLabelEl = document.querySelector("#hudAlertLabel");
 const balanceEditorEl = document.querySelector("#balanceEditor");
 const bannerEl = document.createElement("div");
 bannerEl.className = "banner";
@@ -269,6 +301,9 @@ document.querySelector("#buildBridge").addEventListener("click", () => engineerB
 document.querySelector("#buildDepot").addEventListener("click", () => engineerBuild("depot"));
 document.querySelector("#buildRail").addEventListener("click", () => engineerBuild("rail"));
 document.querySelector("#toggleTow")?.addEventListener("click", toggleArtilleryTow);
+document.querySelector("#toggleCommandPanel")?.addEventListener("click", toggleCommandPanel);
+document.querySelector("#focusCommandPanel")?.addEventListener("click", openCommandPanel);
+document.querySelector("#toggleEditorPanel")?.addEventListener("click", toggleEditorPanel);
 balanceEditorEl?.addEventListener("input", handleBalanceEditorInput);
 balanceEditorEl?.addEventListener("click", handleBalanceEditorClick);
 
@@ -324,9 +359,8 @@ function applyLocale() {
     legend.innerHTML = `
       <span><i class="chip player"></i>${activePack.side.player}</span>
       <span><i class="chip enemy"></i>${activePack.side.enemy}</span>
-      <span><i class="terrain water"></i>${terrain.W.name}</span>
+      <span><i class="terrain plain"></i>${terrain.P.name}</span>
       <span><i class="terrain coast"></i>${terrain.C.name}</span>
-      <span><i class="terrain forest"></i>${terrain.F.name}</span>
       <span><i class="terrain hill"></i>${terrain.H.name}</span>
       <span><i class="terrain base"></i>${terrain.B.name}</span>
     `;
@@ -344,9 +378,12 @@ function setButtonText(selector, text) {
 function localizeRenderedText() {
   if (!activePack) return;
   applyLocale();
-  const editorButtons = balanceEditorEl?.querySelectorAll("[data-editor-action]");
-  if (editorButtons?.[0]) editorButtons[0].textContent = activeLocale === "en" ? "Restore Defaults" : activeLocale === "zh" ? "恢复默认" : "初期値に戻す";
-  if (editorButtons?.[1]) editorButtons[1].textContent = activeLocale === "en" ? "Apply Values & Restart" : activeLocale === "zh" ? "应用数值并重开" : "数値を適用して新作戦";
+  const resetButton = balanceEditorEl?.querySelector('[data-editor-action="reset"]');
+  const saveButton = balanceEditorEl?.querySelector('[data-editor-action="save-defaults"]');
+  const restartButton = balanceEditorEl?.querySelector('[data-editor-action="restart"]');
+  if (resetButton) resetButton.textContent = activeLocale === "en" ? "Restore Defaults" : activeLocale === "zh" ? "恢复默认" : "初期値に戻す";
+  if (saveButton) saveButton.textContent = activeLocale === "en" ? "Save as Initial Defaults" : activeLocale === "zh" ? "保存为初始值" : "初期値として保存";
+  if (restartButton) restartButton.textContent = activeLocale === "en" ? "Apply Values & Restart" : activeLocale === "zh" ? "应用数值并重开" : "数値を適用して新作戦";
 }
 
 function startGame() {
@@ -367,10 +404,10 @@ function startGame() {
       enemy: commanders.find((commander) => commander.id === "rommel"),
     },
     bases: [
-      createBase(16, 0, "enemy", 6),
-      createBase(0, 6, "player", 6),
-      createBase(18, 6, "enemy", 5),
-      createBase(2, 14, "player", 5),
+      createBase(13, 7, "enemy", 6),
+      createBase(15, 8, "enemy", 5),
+      createBase(6, 10, "player", 6),
+      createBase(10, 13, "player", 5),
     ],
     improvements: [],
     constructions: [],
@@ -380,8 +417,8 @@ function startGame() {
       createUnit("player", "artillery", 0, 8),
       createUnit("player", "engineer", 2, 14),
       createUnit("player", "battalionHQ", 0, 6),
-      createUnit("enemy", "infantry", 16, 2),
-      createUnit("enemy", "armor", 14, 0),
+      createUnit("enemy", "infantry", 17, 3),
+      createUnit("enemy", "armor", 18, 2),
       createUnit("enemy", "artillery", 18, 8),
       createUnit("enemy", "battalionHQ", 18, 6),
     ],
@@ -434,6 +471,11 @@ function render() {
       cell.dataset.x = x;
       cell.dataset.y = y;
       cell.title = `${displayTileName(x, y)} (${x}, ${y})`;
+      const hillDirection = hillDefenseDirection(x, y);
+      if (hillDirection) {
+        cell.classList.add("ridge-shield", `ridge-${hillDirection}`);
+        cell.title += ` / 방어방향 ${ridgeDirectionLabel(hillDirection)}`;
+      }
       if (hasImprovement(x, y, "bridge")) cell.classList.add("bridge");
       if (hasImprovement(x, y, "rail")) cell.classList.add("rail");
       if (hasImprovement(x, y, "depot")) cell.classList.add("depot");
@@ -452,7 +494,10 @@ function render() {
       if (construction) renderConstruction(cell, construction);
 
       const units = getUnitsAt(x, y);
-      if (units.length) renderUnitStack(cell, units);
+      if (units.length) {
+        cell.classList.add("occupied");
+        renderUnitStack(cell, units);
+      }
 
       boardEl.appendChild(cell);
     }
@@ -532,8 +577,9 @@ function renderImprovements(cell, x, y) {
 function renderUnitStack(cell, units) {
   const unit = units[0];
   const supply = supplyStatus(unit);
+  const constructing = Boolean(activeConstructionForBuilder(unit));
   const unitEl = document.createElement("div");
-  unitEl.className = `unit ${unit.owner} ${unit.type} supply-${supply.level} ${unit.towed ? "towed" : ""} ${unit.acted ? "waited" : ""}`;
+  unitEl.className = `unit ${unit.owner} ${unit.type} supply-${supply.level} ${unit.towed ? "towed" : ""} ${unit.acted ? "waited" : ""} ${constructing ? "constructing" : ""}`;
   unitEl.dataset.unitId = unit.id;
   unitEl.setAttribute("aria-label", `${sideName(unit.owner)} ${unitTypes[unit.type].label} / ${supply.label}`);
   unitEl.title = `${sideName(unit.owner)} ${unitTypes[unit.type].label} / ${supply.label}`;
@@ -658,6 +704,7 @@ function renderBalanceEditor() {
   if (!balanceEditorEl) return;
   balanceEditorEl.innerHTML = `
     <div class="editor-actions">
+      <button type="button" data-editor-action="save-defaults">현재 수치를 초기값으로 저장</button>
       <button type="button" data-editor-action="reset">초기값 복원</button>
       <button type="button" data-editor-action="restart">수치 적용 후 새 작전</button>
     </div>
@@ -737,6 +784,11 @@ function handleBalanceEditorClick(event) {
     renderBalanceEditor();
     render();
   }
+  if (button.dataset.editorAction === "save-defaults") {
+    saveCurrentAsDefaultBalance();
+    renderBalanceEditor();
+    render();
+  }
   if (button.dataset.editorAction === "restart") startGame();
 }
 
@@ -768,6 +820,48 @@ function restoreDefaultBalance() {
   state?.units.forEach((unit) => {
     unit.hp = Math.min(unit.hp, unitTypes[unit.type].hp);
   });
+}
+
+function saveCurrentAsDefaultBalance() {
+  const snapshot = balanceSnapshot();
+  defaultBalance.units = JSON.parse(JSON.stringify(snapshot.units));
+  defaultBalance.rules = { ...snapshot.rules };
+  localStorage.setItem(DEFAULT_BALANCE_STORAGE_KEY, JSON.stringify(snapshot));
+  addLog("현재 유닛/규칙 수치를 초기값으로 저장했습니다.");
+}
+
+function loadSavedDefaultBalance() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DEFAULT_BALANCE_STORAGE_KEY));
+    if (!saved?.units || !saved?.rules) return;
+    defaultBalance.units = JSON.parse(JSON.stringify(saved.units));
+    defaultBalance.rules = { ...saved.rules };
+    restoreDefaultBalance();
+  } catch (error) {
+    console.warn("Failed to load saved balance defaults", error);
+  }
+}
+
+function balanceSnapshot() {
+  return {
+    units: JSON.parse(JSON.stringify(unitTypes)),
+    rules: {
+      wartimeProductionFactor,
+      raidEfficiencyFactor,
+      maxStackSize,
+      supplyRange,
+      strainedSupplyRange,
+      strainedSupplyMoralePenalty,
+      isolatedSupplyMoralePenalty,
+      isolatedAttritionDamage,
+      hqSupplyRange,
+      hqRecoveryRange,
+      hqOutOfRangeGraceTurns,
+      hqOutOfRangeMoralePenalty,
+      playerBattalionHQ: episodeLimits.playerBattalionHQ,
+      enemyBattalionHQ: episodeLimits.enemyBattalionHQ,
+    },
+  };
 }
 
 function ruleValue(key) {
@@ -814,11 +908,13 @@ function updatePanel() {
   phaseLabelEl.textContent = state.phase === "player" ? "연합군" : "추축군";
   resourceLabelEl.textContent = formatNumber(state.resources);
   baseLabelEl.textContent = formatNumber(projectedIncome("player"));
+  updateOperationHud();
   renderSelectedCard();
   renderCommanderList();
 
   logEl.innerHTML = state.log.map((item) => `<p>${item}</p>`).join("");
   syncRecruitButtonCosts();
+  syncConstructionButtonCosts();
   updateActionPanel();
   document.querySelector("#recruitInfantry").disabled = !selectedBattalionHQ() || state.resources < unitTypes.infantry.cost || state.gameOver;
   document.querySelector("#recruitArmor").disabled = !selectedBattalionHQ() || state.resources < unitTypes.armor.cost || state.gameOver;
@@ -849,6 +945,53 @@ function updatePanel() {
   }
 }
 
+function updateOperationHud() {
+  const phaseName = state.phase === "player" ? sideName("player") : sideName("enemy");
+  if (hudTurnLabelEl) hudTurnLabelEl.textContent = state.turn;
+  if (hudPhaseLabelEl) hudPhaseLabelEl.textContent = phaseName;
+  if (hudResourceLabelEl) hudResourceLabelEl.textContent = formatNumber(state.resources);
+  if (hudBaseLabelEl) hudBaseLabelEl.textContent = formatNumber(projectedIncome("player"));
+  if (hudAlertLabelEl) hudAlertLabelEl.textContent = operationAlertText();
+}
+
+function operationAlertText() {
+  const playerUnits = state.units.filter((unit) => unit.owner === "player");
+  const isolated = playerUnits.filter((unit) => supplyStatus(unit).level === "isolated").length;
+  const strained = playerUnits.filter((unit) => supplyStatus(unit).level === "strained").length;
+  const constructing = state.constructions.filter((construction) => construction.owner === "player").length;
+  const parts = [];
+  if (isolated) parts.push(`고립 ${isolated}`);
+  if (strained) parts.push(`보급 불안 ${strained}`);
+  if (constructing) parts.push(`건설 중 ${constructing}`);
+  return parts.length ? parts.join(" · ") : "전장 이상 없음";
+}
+
+function toggleCommandPanel() {
+  const collapsed = document.body.classList.toggle("command-collapsed");
+  const button = document.querySelector("#toggleCommandPanel");
+  if (button) {
+    button.setAttribute("aria-expanded", String(!collapsed));
+    button.textContent = collapsed ? "열기" : "정보";
+  }
+}
+
+function openCommandPanel() {
+  document.body.classList.remove("command-collapsed");
+  const button = document.querySelector("#toggleCommandPanel");
+  if (button) {
+    button.setAttribute("aria-expanded", "true");
+    button.textContent = "정보";
+  }
+}
+
+function toggleEditorPanel() {
+  const open = document.body.classList.toggle("editor-open");
+  const button = document.querySelector("#toggleEditorPanel");
+  const panel = document.querySelector("#editorPanel");
+  if (button) button.setAttribute("aria-expanded", String(open));
+  if (panel) panel.setAttribute("aria-hidden", String(!open));
+}
+
 function syncRecruitButtonCosts() {
   const buttons = [
     ["#recruitInfantry", "infantry"],
@@ -871,6 +1014,7 @@ function updateActionPanel() {
   const isArtillery = isOwnReady && selected.type === "artillery" && !selected.acted;
   const groups = {
     hq: ["#recruitInfantry", "#recruitArmor", "#recruitArtillery", "#recruitSpArtillery", "#recruitEngineer", "#recruitBattalionHQ"],
+    hqMenus: ["#armyCommandMenu", "#navyCommandMenu", "#airCommandMenu", "#aiCommandMenu"],
     engineer: ["#buildBridge", "#buildDepot", "#buildRail"],
     artillery: ["#toggleTow"],
   };
@@ -880,6 +1024,7 @@ function updateActionPanel() {
     if (element) element.hidden = true;
   });
 
+  groups.hqMenus.forEach((selector) => setActionVisible(selector, isHQ));
   if (isHQ) groups.hq.forEach((selector) => setActionVisible(selector, true));
   if (isEngineer) groups.engineer.forEach((selector) => setActionVisible(selector, true));
   if (isArtillery) groups.artillery.forEach((selector) => setActionVisible(selector, true));
@@ -899,6 +1044,42 @@ function setActionVisible(selector, visible) {
   if (element) element.hidden = !visible;
 }
 
+function syncConstructionButtonCosts() {
+  const buttons = [
+    ["#buildBridge", "bridge"],
+    ["#buildDepot", "depot"],
+    ["#buildRail", "rail"],
+  ];
+  buttons.forEach(([selector, type]) => {
+    const badge = document.querySelector(`${selector} span`);
+    if (badge) badge.textContent = `${constructionCosts[type]} · ${constructionDuration(type)}일`;
+  });
+}
+
+function unitImageForType(type) {
+  const files = {
+    infantry: "infantry.png",
+    armor: "armor.png",
+    artillery: "artillery.png",
+    spArtillery: "sp-artillery.png",
+    engineer: "engineer.png",
+  };
+  return files[type] ? `assets/units/${files[type]}` : "";
+}
+
+function renderUnitCardVisual(unit, spec) {
+  const image = unitImageForType(unit.type);
+  const visual = image
+    ? `<span class="unit-card-image" style="background-image: url('${image}')"></span>`
+    : `<span class="unit-card-image icon-only"><span class="unit-icon ${unit.type}"></span></span>`;
+  return `
+    <div class="unit-card-visual">
+      ${visual}
+      <h2>${sideName(unit.owner)} ${spec.label}</h2>
+    </div>
+  `;
+}
+
 function renderSelectedCard() {
   const unit = selectedUnit() ?? inspectedUnit();
   if (!unit && state.inspectedTile) {
@@ -911,11 +1092,16 @@ function renderSelectedCard() {
   }
 
   const spec = unitTypes[unit.type];
+  const tile = tileAt(unit.x, unit.y);
   const stack = getUnitsAt(unit.x, unit.y).filter((other) => other.owner === unit.owner && other.type === unit.type);
   const supply = supplyStatus(unit);
   selectedCardEl.innerHTML = `
-    <h2>${sideName(unit.owner)} ${spec.label}</h2>
+    ${renderUnitCardVisual(unit, spec)}
     <div class="unit-stats">
+      <span>위치 <strong>${displayTileName(unit.x, unit.y)}</strong></span>
+      <span>지형 <strong>${terrainDescription(tile)}</strong></span>
+      <span>방어 보정 <strong>+${tile.defense}</strong></span>
+      <span>지형 특성 <strong>${terrainTraitText(unit.x, unit.y)}</strong></span>
       <span>전투력 <strong>${unit.hp}/${spec.hp}</strong></span>
       <span>기동력 <strong>${effectiveMove(unit)}</strong></span>
       <span>사거리 <strong>${spec.range}</strong></span>
@@ -939,6 +1125,7 @@ function renderTileCard(x, y) {
   const tile = tileAt(x, y);
   const base = getBaseAt(x, y);
   const construction = getConstructionAt(x, y);
+  const hillDirection = hillDefenseDirection(x, y);
   const improvements = [
     hasImprovement(x, y, "bridge") ? "임시 교량" : null,
     hasImprovement(x, y, "rail") ? "철도" : null,
@@ -953,6 +1140,7 @@ function renderTileCard(x, y) {
       <span>방어 보정 <strong>+${tile.defense}</strong></span>
       <span>고도 <strong>${formatElevation(tile.elevation)}</strong></span>
       <span>포격 엄폐 <strong>${tile.artilleryCover ? `-${tile.artilleryCover}` : "없음"}</strong></span>
+      ${hillDirection ? `<span>방어방향 <strong>${ridgeDirectionLabel(hillDirection)}</strong></span>` : ""}
       <span>특성 <strong>${terrainTraitText(x, y)}</strong></span>
       <span>개량 <strong>${improvements.length ? improvements.join(", ") : "없음"}</strong></span>
       ${base ? `<span>소유 <strong>${sideName(base.owner)}</strong></span>` : ""}
@@ -964,8 +1152,8 @@ function renderTileCard(x, y) {
 }
 
 function terrainDescription(tile) {
-  if (tile.className === "coast") return "해안/상륙 가능 지형";
-  if (tile.className === "water") return "바다/수역";
+  if (tile.className === "coast") return "강변/접근로";
+  if (tile.className === "water") return "하천/강";
   if (tile.className === "plain") return "평지";
   if (tile.className === "forest") return "숲";
   if (tile.className === "hill") return "고지/산등성이";
@@ -981,9 +1169,9 @@ function formatElevation(elevation) {
 }
 
 function terrainTraitText(x, y) {
-  if (getTerrainKey(x, y) === "C") return "해안선 지형 / 이동 가능";
+  if (getTerrainKey(x, y) === "C") return "강변 또는 주요 접근로 / 이동 가능";
   if (getTerrainKey(x, y) === "H") return "원거리 포격 차단 / 전차, 자주포 진입 불가";
-  if (getTerrainKey(x, y) === "W" && !hasImprovement(x, y, "bridge")) return "교량 없이는 통과 불가";
+  if (getTerrainKey(x, y) === "W" && !hasImprovement(x, y, "bridge")) return "하천: 교량 없이는 통과 불가";
   if (getTerrainKey(x, y) === "F") return "방어 유리 / 포격 효과 감소";
   return "일반";
 }
@@ -1001,7 +1189,7 @@ function renderCommanderList() {
               src="${commanderPhoto(commander)}"
               alt="${commander.name} portrait"
               loading="lazy"
-              onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'commander-photo fallback', textContent: '${commanderInitials(commander)}' }))"
+              onerror="replaceCommanderPhoto(this, '${commanderInitials(commander)}', '${commander.side}')"
             />
             <p>
               <strong>${commander.name}</strong>
@@ -1016,7 +1204,7 @@ function renderCommanderList() {
 
 function commanderPhoto(commander) {
   const photos = {
-    patton: "https://commons.wikimedia.org/wiki/Special:FilePath/General%20George%20Patton.jpg",
+    patton: "assets/commanders/patton.png",
     rommel: "https://commons.wikimedia.org/wiki/Special:FilePath/Bundesarchiv%20Bild%20146-1973-012-43%2C%20Erwin%20Rommel.jpg",
     montgomery: "https://commons.wikimedia.org/wiki/Special:FilePath/Bernard%20Montgomery%201945.jpg",
     eisenhower: "https://commons.wikimedia.org/wiki/Special:FilePath/Dwight%20D.%20Eisenhower%2C%20official%20photo%20portrait%2C%20May%2029%2C%201959.jpg",
@@ -1032,6 +1220,17 @@ function commanderInitials(commander) {
     .slice(0, 2)
     .map((part) => part[0])
     .join("");
+}
+
+function replaceCommanderPhoto(image, initials, side) {
+  const fallback = document.createElement("span");
+  fallback.className = `commander-photo fallback ${side === "Axis" ? "axis" : "allies"}`;
+  fallback.setAttribute("aria-label", image.alt || `${initials} portrait fallback`);
+  fallback.innerHTML = `
+    <span class="commander-silhouette" aria-hidden="true"></span>
+    <span class="commander-initials">${initials}</span>
+  `;
+  image.replaceWith(fallback);
 }
 
 function handleTileClick(x, y) {
@@ -1094,6 +1293,7 @@ function handleTileClick(x, y) {
   }
 
   if (canMoveTo(selected, x, y)) {
+    if (!confirmConstructionMove(selected)) return;
     recordUnitMove(selected, x, y);
     selected.x = x;
     selected.y = y;
@@ -1125,7 +1325,7 @@ function getHighlights() {
   const attacks = new Set();
   const raids = new Set();
   if (!unit || state.phase !== "player") return { moves, attacks, raids };
-  const canStillMove = !unit.acted && !unit.moved;
+  const canStillMove = !unit.acted && !unit.moved && !activeConstructionForBuilder(unit);
   const canStillAttack = !unit.acted;
 
   for (let y = 0; y < height; y += 1) {
@@ -1182,14 +1382,21 @@ function toggleArtilleryTow() {
 function engineerBuild(type) {
   const engineer = selectedEngineer();
   if (!engineer) return;
+  const cost = constructionCosts[type] ?? 0;
+  if (state.resources < cost) {
+    addLog(`${constructionName(type)} 공사에는 보급품 ${cost}이 필요합니다.`);
+    render();
+    return;
+  }
 
   if (type === "bridge") {
-    const water = neighbors(engineer.x, engineer.y).find((spot) => getTerrainKey(spot.x, spot.y) === "W" && !hasImprovement(spot.x, spot.y, "bridge"));
+    const water = neighbors(engineer.x, engineer.y).find((spot) => isBridgeableWater(spot.x, spot.y) && !hasImprovement(spot.x, spot.y, "bridge"));
     if (!water) {
       addLog("공병대 주변에 다리를 놓을 하천이 없습니다.");
       render();
       return;
     }
+    state.resources -= cost;
     state.improvements.push({ type: "bridge", owner: engineer.owner, x: water.x, y: water.y });
     engineer.acted = true;
     state.selectedId = null;
@@ -1199,8 +1406,9 @@ function engineerBuild(type) {
   }
 
   if (!canStartConstruction(engineer, type)) return;
-  const duration = type === "depot" ? 3 : 2;
-  state.constructions.push({ type, owner: engineer.owner, x: engineer.x, y: engineer.y, remaining: duration });
+  const duration = constructionDuration(type);
+  state.resources -= cost;
+  state.constructions.push({ type, owner: engineer.owner, builderId: engineer.id, x: engineer.x, y: engineer.y, remaining: duration });
   engineer.acted = true;
   state.selectedId = null;
   addLog(`공병대가 (${engineer.x}, ${engineer.y})에서 ${constructionName(type)} 공사를 시작했습니다. ${duration}일이 필요합니다.`);
@@ -1209,16 +1417,44 @@ function engineerBuild(type) {
 
 function canBuildBridge(engineer) {
   if (state.phase !== "player" || state.gameOver || engineer.acted || engineer.type !== "engineer") return false;
-  return neighbors(engineer.x, engineer.y).some((spot) => getTerrainKey(spot.x, spot.y) === "W" && !hasImprovement(spot.x, spot.y, "bridge"));
+  if (state.resources < constructionCosts.bridge) return false;
+  return neighbors(engineer.x, engineer.y).some((spot) => isBridgeableWater(spot.x, spot.y) && !hasImprovement(spot.x, spot.y, "bridge"));
 }
 
 function canStartConstruction(engineer, type) {
   if (state.phase !== "player" || state.gameOver || engineer.acted || engineer.type !== "engineer") return false;
+  if (state.resources < (constructionCosts[type] ?? 0)) return false;
   if (getTerrainKey(engineer.x, engineer.y) === "W") return false;
   if (getConstructionAt(engineer.x, engineer.y)) return false;
   if (type === "depot") return !getBaseAt(engineer.x, engineer.y) && !hasImprovement(engineer.x, engineer.y, "depot");
   if (type === "rail") return !hasImprovement(engineer.x, engineer.y, "rail");
   return false;
+}
+
+function constructionDuration(type) {
+  if (type === "bridge") return 1;
+  if (type === "depot") return 3;
+  if (type === "rail") return 2;
+  return 1;
+}
+
+function activeConstructionForBuilder(unit) {
+  if (!unit?.id) return null;
+  return state.constructions.find((construction) => construction.builderId === unit.id);
+}
+
+function confirmConstructionMove(unit) {
+  const construction = activeConstructionForBuilder(unit);
+  if (!construction) return true;
+  const proceed = window.confirm("이동하면 건설이 취소 됩니다. 이동합니까?");
+  if (!proceed) return false;
+  cancelConstruction(construction);
+  return true;
+}
+
+function cancelConstruction(construction) {
+  state.constructions = state.constructions.filter((item) => item !== construction);
+  addLog(`${constructionName(construction.type)} 공사가 취소되었습니다.`);
 }
 
 function endPlayerTurn() {
@@ -1446,7 +1682,7 @@ function updateBattalionSupplyPressure(owner) {
   state.units
     .filter((unit) => unit.owner === owner)
     .forEach((unit) => {
-      if (unit.type === "battalionHQ" || inBattalionSupplyRange(unit)) {
+      if (unit.type === "battalionHQ" || inBattalionSupplyRange(unit) || protectedByFriendlySupplyBase(unit)) {
         unit.hqOutTurns = 0;
       } else {
         unit.hqOutTurns = (unit.hqOutTurns ?? 0) + 1;
@@ -1509,6 +1745,7 @@ function projectedIncome(owner) {
 }
 
 function supplyStatus(unit) {
+  return normalizedSupplyStatus(unit);
   const hqs = battalionHQs(unit.owner);
   if (!hqs.length) return { level: "isolated", label: "사령부 전멸", cost: Infinity, hqDistance: Infinity };
 
@@ -1519,6 +1756,42 @@ function supplyStatus(unit) {
   if (cost <= supplyRange) return { level: "strained", label: "사령부권 밖", cost, hqDistance };
   if (cost <= strainedSupplyRange) return { level: "strained", label: "보급 불안", cost, hqDistance };
   return { level: "isolated", label: "고립", cost, hqDistance };
+}
+
+function normalizedSupplyStatus(unit) {
+  const hqDistanceNow = nearestBattalionHQDistance(unit);
+  const enemyFaces = adjacentEnemyFaceCount(unit);
+  if (enemyFaces >= 3) {
+    return { level: "isolated", label: `고립 ${enemyFaces}/4`, cost: supplyLineCost(unit), hqDistance: hqDistanceNow };
+  }
+
+  const hqsNow = battalionHQs(unit.owner);
+  if (!hqsNow.length) return { level: "strained", label: "사령부 전멸", cost: Infinity, hqDistance: hqDistanceNow };
+  if (hqDistanceNow <= hqSupplyRange) return { level: "full", label: "대대 보급", cost: hqDistanceNow, hqDistance: hqDistanceNow };
+
+  const costNow = supplyLineCost(unit);
+  if (!Number.isFinite(costNow)) return { level: "strained", label: "보급선 단절", cost: costNow, hqDistance: hqDistanceNow };
+  if (costNow <= supplyRange) return { level: "full", label: "정상 보급", cost: costNow, hqDistance: hqDistanceNow };
+  if (costNow <= strainedSupplyRange) return { level: "strained", label: "보급 불안", cost: costNow, hqDistance: hqDistanceNow };
+  return { level: "strained", label: "보급선 장거리", cost: costNow, hqDistance: hqDistanceNow };
+
+  const hqs = battalionHQs(unit.owner);
+  if (!hqs.length) return { level: "isolated", label: "사령부 전멸", cost: Infinity, hqDistance: Infinity };
+
+  const hqDistance = nearestBattalionHQDistance(unit);
+  if (hqDistance <= hqSupplyRange) return { level: "full", label: "대대 보급", cost: hqDistance, hqDistance };
+
+  const cost = supplyLineCost(unit);
+  if (!Number.isFinite(cost)) return { level: "isolated", label: "고립", cost, hqDistance };
+  if (cost <= supplyRange) return { level: "full", label: "정상 보급", cost, hqDistance };
+  if (cost <= strainedSupplyRange) return { level: "strained", label: "보급 불안", cost, hqDistance };
+  return { level: "strained", label: "보급선 장거리", cost, hqDistance };
+}
+
+function adjacentEnemyFaceCount(unit) {
+  return neighbors(unit.x, unit.y).filter((spot) =>
+    state.units.some((other) => other.owner !== unit.owner && other.x === spot.x && other.y === spot.y)
+  ).length;
 }
 
 function supplyLineCost(unit) {
@@ -1581,6 +1854,7 @@ function inBattalionSupplyRange(unit) {
 function canMoveTo(unit, x, y) {
   if (!inBounds(x, y)) return false;
   if (unit.acted || unit.moved) return false;
+  if (activeConstructionForBuilder(unit)) return false;
   return canOccupy(unit, x, y) && movementCost(unit.x, unit.y, x, y, unit) <= effectiveMove(unit);
 }
 
@@ -1607,14 +1881,24 @@ function artilleryVulnerability(unit) {
 function canOccupy(unit, x, y) {
   if (!canEnterTerrain(unit, x, y)) return false;
   const occupants = getUnitsAt(x, y);
-  if (!occupants.length) return movementCostForTile(x, y) < Infinity;
+  if (!occupants.length) return traversalCostForUnit(unit, x, y) < Infinity;
   return occupants.every((other) => other.owner === unit.owner && other.type === unit.type) && occupants.length < maxStackSize;
 }
 
 function canEnterTerrain(unit, x, y) {
   if (!inBounds(x, y)) return false;
+  if (!canUnitDomainEnter(unit, x, y)) return false;
   if (getTerrainKey(x, y) === "H" && (unit.type === "armor" || unit.type === "spArtillery")) return false;
-  return movementCostForTile(x, y) < Infinity;
+  return traversalCostForUnit(unit, x, y) < Infinity;
+}
+
+function canUnitDomainEnter(unit, x, y) {
+  const domain = unitTypes[unit?.type]?.domain ?? "land";
+  const terrainKey = getTerrainKey(x, y);
+  if (domain === "land") return terrainKey !== "W";
+  if (domain === "naval") return terrainKey === "W";
+  if (domain === "air") return true;
+  return terrainKey !== "W";
 }
 
 function movementCost(startX, startY, targetX, targetY, unit) {
@@ -1627,7 +1911,7 @@ function movementCost(startX, startY, targetX, targetY, unit) {
     if (current.x === targetX && current.y === targetY) return current.cost;
 
     neighbors(current.x, current.y).forEach((next) => {
-      const tileCost = movementCostForTile(next.x, next.y);
+      const tileCost = traversalCostForUnit(unit, next.x, next.y);
       const blockers = getUnitsAt(next.x, next.y);
       if (!canEnterTerrain(unit, next.x, next.y) || !Number.isFinite(tileCost) || blockers.some((other) => other.owner !== unit.owner)) return;
       const newCost = current.cost + tileCost;
@@ -1642,9 +1926,28 @@ function movementCost(startX, startY, targetX, targetY, unit) {
 }
 
 function movementCostForTile(x, y) {
-  let cost = getTerrainKey(x, y) === "W" && hasImprovement(x, y, "bridge") ? 1 : tileAt(x, y).cost;
+  let cost = getTerrainKey(x, y) === "W" && hasBridgeableCrossing(x, y) ? 1 : tileAt(x, y).cost;
   if (hasImprovement(x, y, "rail") && Number.isFinite(cost)) cost = Math.min(cost, 0.5);
   return cost;
+}
+
+function traversalCostForUnit(unit, x, y) {
+  const domain = unitTypes[unit?.type]?.domain ?? "land";
+  const terrainKey = getTerrainKey(x, y);
+  if (domain === "naval") return terrainKey === "W" ? 1 : Infinity;
+  if (domain === "air") return 1;
+  return terrainKey === "W" ? Infinity : movementCostForTile(x, y);
+}
+
+function hasBridgeableCrossing(x, y) {
+  return hasImprovement(x, y, "bridge") && isBridgeableWater(x, y);
+}
+
+function isBridgeableWater(x, y) {
+  if (getTerrainKey(x, y) !== "W") return false;
+  const horizontalBanks = inBounds(x - 1, y) && inBounds(x + 1, y) && getTerrainKey(x - 1, y) !== "W" && getTerrainKey(x + 1, y) !== "W";
+  const verticalBanks = inBounds(x, y - 1) && inBounds(x, y + 1) && getTerrainKey(x, y - 1) !== "W" && getTerrainKey(x, y + 1) !== "W";
+  return horizontalBanks || verticalBanks;
 }
 
 function canAttack(attacker, defender) {
@@ -1798,7 +2101,7 @@ function findSpawn(owner, type) {
   const probe = { owner, type };
   for (const base of ownedBases) {
     const candidates = [base, ...neighbors(base.x, base.y)];
-    const open = candidates.find((spot) => canOccupy(probe, spot.x, spot.y) && Number.isFinite(movementCostForTile(spot.x, spot.y)));
+    const open = candidates.find((spot) => canOccupy(probe, spot.x, spot.y) && Number.isFinite(traversalCostForUnit(probe, spot.x, spot.y)));
     if (open) return open;
   }
   return null;
@@ -1831,14 +2134,22 @@ function hqMoraleBonus(unit) {
 function supplyMoralePenalty(unit) {
   const level = supplyStatus(unit).level;
   if (level === "isolated") return isolatedSupplyMoralePenalty;
+  if (protectedByFriendlySupplyBase(unit)) return 0;
   if (level === "strained") return strainedSupplyMoralePenalty;
   return 0;
 }
 
 function hqOutOfRangeMoraleLoss(unit) {
   if (!unit || unit.type === "battalionHQ") return 0;
+  if (protectedByFriendlySupplyBase(unit)) return 0;
   const exposedTurns = Math.max(0, (unit.hqOutTurns ?? 0) - hqOutOfRangeGraceTurns);
   return exposedTurns * hqOutOfRangeMoralePenalty;
+}
+
+function protectedByFriendlySupplyBase(unit) {
+  if (!unit) return false;
+  const nearOwnedBase = state.bases.some((base) => base.owner === unit.owner && distance(unit, base) <= 1);
+  return nearOwnedBase && supplyLineCost(unit) <= supplyRange;
 }
 
 function supplyDefensePenalty(unit) {
@@ -1862,7 +2173,7 @@ function inspectedUnit() {
 
 function selectedEngineer() {
   const unit = selectedUnit();
-  return unit?.owner === "player" && unit.type === "engineer" && !unit.acted ? unit : null;
+  return unit?.owner === "player" && unit.type === "engineer" && !unit.acted && !activeConstructionForBuilder(unit) ? unit : null;
 }
 
 function selectedBattalionHQ() {
@@ -1908,6 +2219,20 @@ function displayTileName(x, y) {
   if (getTerrainKey(x, y) === "W" && hasImprovement(x, y, "bridge")) return "임시 교량";
   if (hasImprovement(x, y, "rail")) return `${tileAt(x, y).name} / 철도`;
   return tileAt(x, y).name;
+}
+
+function hillDefenseDirection(x, y) {
+  if (getTerrainKey(x, y) !== "H") return "";
+  return hillDefenseMap[y]?.[x]?.toLowerCase() === "." ? "" : hillDefenseMap[y]?.[x]?.toLowerCase() ?? "";
+}
+
+function ridgeDirectionLabel(direction) {
+  return {
+    n: "북쪽",
+    e: "동쪽",
+    s: "남쪽",
+    w: "서쪽",
+  }[direction] ?? "지정 없음";
 }
 
 function neighbors(x, y) {
@@ -1956,4 +2281,5 @@ function addLog(message) {
   state.log = state.log.slice(0, 12);
 }
 
+loadSavedDefaultBalance();
 startGame();
