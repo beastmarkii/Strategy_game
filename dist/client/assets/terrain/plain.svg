@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <defs>
+    <filter id="n">
+      <feTurbulence type="fractalNoise" baseFrequency=".12" numOctaves="3" seed="17"/>
+      <feColorMatrix type="saturate" values=".35"/>
+      <feBlend in="SourceGraphic" mode="multiply"/>
+    </filter>
+  </defs>
+  <rect width="96" height="96" fill="#b6ad7d"/>
+  <path d="M-8 18 C16 7 30 30 54 18 S87 16 105 4" fill="none" stroke="#d4c48c" stroke-width="10" opacity=".35"/>
+  <path d="M-5 70 C22 58 41 82 67 66 S91 58 105 72" fill="none" stroke="#8d865f" stroke-width="12" opacity=".28"/>
+  <path d="M12 34 L30 29 M48 56 L71 50 M18 79 L37 75 M62 18 L82 14" stroke="#716b4d" stroke-width="2" opacity=".45"/>
+  <rect width="96" height="96" fill="#c7bd94" opacity=".52" filter="url(#n)"/>
+</svg>
