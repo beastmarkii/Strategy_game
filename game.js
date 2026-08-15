@@ -3152,9 +3152,10 @@ function replenishNearBattalionHQ(owner) {
 
   const recovered = state.units.filter((unit) =>
     unit.owner === owner &&
-    unit.type !== "battalionHQ" &&
     unit.hp < unitTypes[unit.type].hp &&
-    hqs.some((hq) => distance(unit, hq) <= hqRecoveryRange)
+    // 자기 자신은 뺀다 — 자기까지의 거리는 0이라 사령부가 매 턴 스스로 회복해 버린다.
+    // 다만 사령부가 둘이면 서로 보충한다. 보급 판정과 같은 규칙이어야 한다.
+    hqs.some((hq) => hq.id !== unit.id && distance(unit, hq) <= hqRecoveryRange)
   );
 
   recovered.forEach((unit) => {
@@ -3449,8 +3450,12 @@ function effectiveHQSupplyRange(ownerOrUnit) {
 
 // 보급은 2층이다. 1층 = 대대 HQ(전진 보급소), 2층 = 거점 보급망(BFS).
 // 둘 중 하나라도 닿으면 정상. 둘 다 잃었을 때만 "두절"이 되고, 두절만이 부대를 죽인다.
-// 대대 HQ 자신은 1층을 못 쓴다(자기까지의 거리는 늘 0이므로) — 거점 보급망으로만 판정한다.
-// 그래야 보급망에서 끊긴 사령부가 실제로 위험해지고, "고립 사령부 구조" 상황이 성립한다.
+//
+// 사령부 자신은 거리로 판정하지 않는다. 전진 보급소가 존재하는 이유가 "거점에서
+// 멀어도 보급을 중계한다"인데, 그 거리를 사령부 자신에게 그대로 물리면 제 역할을
+// 하러 나갈 때마다 스스로 "보급 불안"이 떴다 — 보급의 원천이 보급을 못 받는 꼴이다.
+// 사령부는 보급선이 이어져 있는가만 본다. 끊기면(BFS 미도달) 그때는 두절이다.
+// 거리가 아니라 차단으로만 위험해지므로 "고립 사령부 구조" 상황은 그대로 성립한다.
 function normalizedSupplyStatus(unit) {
   const hqDistanceNow = nearestBattalionHQDistance(unit);
   const enemyFaces = adjacentEnemyFaceCount(unit);
@@ -3458,8 +3463,7 @@ function normalizedSupplyStatus(unit) {
     return { level: "isolated", via: "none", label: `고립 ${enemyFaces}/4`, cost: supplyLineCost(unit), hqDistance: hqDistanceNow };
   }
 
-  const isHQ = unit.type === "battalionHQ";
-  if (!isHQ && hqDistanceNow <= effectiveHQSupplyRange(unit)) {
+  if (hqDistanceNow <= effectiveHQSupplyRange(unit)) {
     return { level: "full", via: "hq", label: "대대 보급", cost: hqDistanceNow, hqDistance: hqDistanceNow };
   }
 
@@ -3467,6 +3471,9 @@ function normalizedSupplyStatus(unit) {
   if (!Number.isFinite(costNow)) {
     const label = battalionHQs(unit.owner).length ? "보급선 두절" : "사령부 전멸";
     return { level: "cut", via: "none", label, cost: costNow, hqDistance: hqDistanceNow };
+  }
+  if (unit.type === "battalionHQ") {
+    return { level: "full", via: "base", label: "전진 보급", cost: costNow, hqDistance: hqDistanceNow };
   }
   if (costNow <= effectiveSupplyRange(unit)) return { level: "full", via: "base", label: "정상 보급", cost: costNow, hqDistance: hqDistanceNow };
   if (costNow <= effectiveStrainedSupplyRange(unit)) return { level: "strained", via: "base", label: "보급 불안", cost: costNow, hqDistance: hqDistanceNow };
@@ -3575,8 +3582,13 @@ function remainingBattalionHQ(owner) {
   return Math.max(0, battalionHQLimit(owner) - battalionHQs(owner).length);
 }
 
+// 자기 자신은 세지 않는다. 사령부까지의 거리를 자기 자신으로 재면 늘 0이라
+// 모든 사령부가 무조건 보급 정상이 되고, 포위된 사령부조차 위험해지지 않는다.
+// 예전에는 그걸 막으려고 supplyStatus 안에서 "HQ면 1층을 통째로 못 쓴다"고
+// 잘라냈는데, 그 바람에 사령부 둘이 나란히 서 있어도 서로를 보급하지 못했다.
+// 제외해야 할 것은 1층 전체가 아니라 자기 자신 하나였다.
 function nearestBattalionHQDistance(unit) {
-  const hqs = battalionHQs(unit.owner);
+  const hqs = battalionHQs(unit.owner).filter((hq) => hq.id !== unit.id);
   if (!hqs.length) return Infinity;
   return Math.min(...hqs.map((hq) => distance(unit, hq)));
 }
