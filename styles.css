@@ -704,16 +704,21 @@ h1 {
   background: #efe1a5;
 }
 
+/* 격자 수는 시나리오가 정한다. JS가 --map-cols / --map-rows를 실어준다.
+   여기 적힌 20x16은 스크립트가 뜨기 전까지만 쓰이는 기본값이다. */
 .battlefield {
+  --map-cols: 20;
+  --map-rows: 16;
+
   position: relative;
   display: grid;
-  grid-template-columns: repeat(20, minmax(20px, 1fr));
-  grid-template-rows: repeat(16, minmax(20px, 1fr));
+  grid-template-columns: repeat(var(--map-cols), minmax(20px, 1fr));
+  grid-template-rows: repeat(var(--map-rows), minmax(20px, 1fr));
   gap: 0;
   width: var(--map-layout-width);
   max-width: none;
   max-height: none;
-  aspect-ratio: 20 / 16;
+  aspect-ratio: var(--map-cols) / var(--map-rows);
   border: 6px solid #3e3f2f;
   border-radius: 7px;
   background:
@@ -773,7 +778,7 @@ h1 {
     linear-gradient(rgb(255 255 255 / 12%) 0 1px, transparent 1px),
     linear-gradient(90deg, rgb(30 38 28 / 8%) 0 1px, transparent 1px),
     linear-gradient(rgb(30 38 28 / 7%) 0 1px, transparent 1px);
-  background-size: 5% 6.25%;
+  background-size: calc(100% / var(--map-cols)) calc(100% / var(--map-rows));
   content: "";
   pointer-events: none;
 }
@@ -1112,6 +1117,22 @@ h1 {
   animation: constructionBadgeBob 900ms ease-in-out infinite;
 }
 
+/* 대대 사령부의 전진 보급 반경. 사령부의 주 임무가 보급인데 지도에 아무 표시가
+   없으면 그 기능이 없는 것처럼 보인다. 안쪽 고리(hq-recovery)는 매 턴 체력이
+   1씩 차는 범위, 바깥 고리(hq-supply)는 거점 보급망이 끊겨도 정상으로 쳐주는 범위.
+   이동/공격 강조보다 먼저 선언해, 강조가 있을 때는 그쪽이 덮어쓰게 둔다. */
+.tile.hq-supply {
+  box-shadow:
+    inset 0 0 0 1px rgb(122 199 255 / 20%),
+    inset 0 0 14px rgb(122 199 255 / 10%);
+}
+
+.tile.hq-recovery {
+  box-shadow:
+    inset 0 0 0 2px rgb(122 199 255 / 46%),
+    inset 0 0 16px rgb(122 199 255 / 24%);
+}
+
 .tile.reachable {
   z-index: 4;
   outline: 0;
@@ -1233,6 +1254,127 @@ h1 {
   border-style: dashed;
   box-shadow:
     0 0 10px rgb(241 177 61 / 42%);
+}
+
+/* 반격 예고. 선택한 부대가 이 적을 칠 때 되돌아오는 피해가 있으면 표시한다.
+   counter-lethal은 "치면 내 부대가 죽는다" — 툴팁을 열기 전에 눈으로 먼저 잡히게. */
+.unit.counter-risk {
+  outline: 2px dashed rgb(241 177 61 / 85%);
+  outline-offset: 2px;
+}
+
+.unit.counter-lethal {
+  outline: 2px solid rgb(215 48 39 / 95%);
+  outline-offset: 2px;
+  box-shadow: 0 0 14px rgb(215 48 39 / 60%);
+}
+
+/* 두절: 불안(노랑 점선)과 고립(빨강 점선) 사이의 단계.
+   주황 + 느린 맥박으로 "지금 죽고 있는 중"을 표시한다. */
+.unit.supply-cut {
+  border-color: rgb(230 110 40 / 94%);
+  border-style: dashed;
+  filter: saturate(0.88) brightness(0.9);
+  box-shadow:
+    0 0 12px rgb(230 110 40 / 55%);
+  animation: supply-cut-pulse 1.8s ease-in-out infinite;
+}
+
+.unit.supply-cut .unit-icon {
+  opacity: 0.86;
+}
+
+@keyframes supply-cut-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgb(230 110 40 / 35%);
+  }
+
+  50% {
+    box-shadow: 0 0 16px rgb(230 110 40 / 75%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unit.supply-cut {
+    animation: none;
+  }
+}
+
+/* 돌파 목표 타일. 어느 쪽이 먹어야 하는 자리인지 색으로 갈라놓고,
+   장악이 시작되면 테두리가 실선으로 굳어서 "지금 진행 중"이 한눈에 보이게 한다. */
+.objective-flag {
+  position: absolute;
+  z-index: 3;
+  inset: 8%;
+  border: 2px dashed rgb(255 255 255 / 70%);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.objective-player .objective-flag {
+  border-color: rgb(75 166 93 / 88%);
+  background: repeating-linear-gradient(45deg, rgb(75 166 93 / 18%) 0 6px, transparent 6px 14px);
+}
+
+.objective-enemy .objective-flag {
+  border-color: rgb(215 48 39 / 88%);
+  background: repeating-linear-gradient(-45deg, rgb(215 48 39 / 18%) 0 6px, transparent 6px 14px);
+}
+
+.tile.objective-held .objective-flag {
+  border-style: solid;
+  border-width: 3px;
+  animation: objective-hold-pulse 1.6s ease-in-out infinite;
+}
+
+.objective-badge {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  z-index: 4;
+  min-width: 26px;
+  padding: 0 3px;
+  border: 1px solid rgb(255 255 255 / 42%);
+  border-radius: 5px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.objective-badge.player {
+  background: rgb(41 92 52 / 90%);
+}
+
+.objective-badge.enemy {
+  background: rgb(130 30 25 / 90%);
+}
+
+@keyframes objective-hold-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 6px rgb(255 255 255 / 28%);
+  }
+
+  50% {
+    box-shadow: 0 0 16px rgb(255 255 255 / 62%);
+  }
+}
+
+/* 미션이 이름을 부른 부대(구조 대상 등). 잃으면 작전이 끝나는 말이라 눈에 띄어야 한다. */
+.unit.mission-unit {
+  outline: 2px solid rgb(246 205 90 / 92%);
+  outline-offset: 1px;
+  box-shadow: 0 0 10px rgb(246 205 90 / 55%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.objective-held .objective-flag {
+    animation: none;
+  }
 }
 
 .unit.supply-isolated {
@@ -2104,6 +2246,68 @@ h1 {
   box-shadow: 0 2px 4px rgb(0 0 0 / 34%);
 }
 
+/* 보급 상태 배지. 부대 아이콘이 translateZ(14px)로 앞에 떠 있어서 .unit에 그린
+   점선 테두리를 통째로 가린다 — 그래서 z-index가 아니라 translateZ로 깊이를 이겨야
+   한다(preserve-3d 안에서는 z-index보다 3D 위치가 먼저다). 자리는 아이콘 바깥
+   왼쪽 아래: 오른쪽 위는 체력, 왼쪽 위는 중첩 수가 이미 쓰고 있다. */
+.supply-flag {
+  position: absolute;
+  bottom: -7px;
+  left: -7px;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid rgb(255 255 255 / 74%);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: none;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 42%);
+  /* 전장판이 rotateX(58deg)로 누워 있어서 배지가 세로로 절반쯤(cos58° ≈ 0.53) 눌린다.
+     체력 배지는 숫자라 눌려도 읽히지만 한 글자짜리 이 배지는 뭉개진다. 3D로 되돌리려
+     해도 이 시점에는 이미 평면화돼서 rotateX는 더 눕히기만 한다 — 눌린 만큼
+     세로로 되늘리는 게 유일하게 먹히는 방법이다(1/cos58° ≈ 1.89). */
+  transform: translateZ(30px) scaleY(1.89);
+}
+
+.supply-flag.strained {
+  background: rgb(241 177 61 / 96%);
+  color: #2a1f06;
+}
+
+.supply-flag.cut {
+  background: rgb(230 110 40 / 97%);
+  color: #fff;
+  animation: supply-flag-pulse 1.6s ease-in-out infinite;
+}
+
+.supply-flag.isolated {
+  background: rgb(215 48 39 / 97%);
+  color: #fff;
+}
+
+/* 맥박은 두절 단계에만. 이 단계부터 매 턴 체력이 깎이기 시작한다. */
+@keyframes supply-flag-pulse {
+  0%,
+  100% {
+    transform: translateZ(30px) scaleY(1.89) scale(1);
+  }
+
+  50% {
+    transform: translateZ(30px) scaleY(1.89) scale(1.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .supply-flag.cut {
+    animation: none;
+  }
+}
+
 .stack-count {
   position: absolute;
   left: -7px;
@@ -2324,6 +2528,96 @@ h1 {
   margin-top: 18px;
 }
 
+/* 작전 선택. 카드 하나가 지도 하나다 — 크기·기한·기한 만료 시 승자까지 고르기 전에 보여준다. */
+.scenario-section {
+  margin-bottom: 18px;
+}
+
+.scenario-choice-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.scenario-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid rgb(74 65 45 / 24%);
+  border-radius: 7px;
+  background: rgb(255 248 230 / 64%);
+  padding: 10px;
+  cursor: pointer;
+}
+
+.scenario-choice input {
+  margin-top: 3px;
+  accent-color: #2f5f39;
+}
+
+.scenario-choice:has(input:checked) {
+  border-color: rgb(47 95 57 / 72%);
+  background: rgb(230 238 213 / 78%);
+  box-shadow: inset 0 0 0 1px rgb(47 95 57 / 24%);
+}
+
+.scenario-choice-body {
+  min-width: 0;
+}
+
+.scenario-choice-body strong,
+.scenario-choice-body span {
+  display: block;
+}
+
+.scenario-choice-body strong {
+  color: #1f2419;
+  font-size: 14px;
+}
+
+.scenario-choice-body span {
+  color: #6b604f;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.scenario-choice-meta {
+  color: #4a6b4f !important;
+  font-weight: 900;
+}
+
+.scenario-choice-goal {
+  margin-top: 4px;
+  color: #7a4a2a !important;
+  font-weight: 800;
+}
+
+/* 미션 이름과 목표는 매 턴 보이는 자리에 있어야 한다. 로그에 묻히면 없는 것과 같다. */
+.mission-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  border: 1px solid rgb(72 64 45 / 22%);
+  border-radius: 7px;
+  background: rgb(246 235 210 / 58%);
+  padding: 7px 11px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 45%);
+}
+
+.mission-bar strong {
+  color: #1f2419;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.mission-bar span {
+  color: #5d5341;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 @media (max-width: 860px) {
   .shell {
     grid-template-columns: 1fr;
@@ -2364,7 +2658,8 @@ h1 {
   }
 
   .operation-setup-grid,
-  .commander-choice-list {
+  .commander-choice-list,
+  .scenario-choice-list {
     grid-template-columns: 1fr;
   }
 
@@ -2374,8 +2669,8 @@ h1 {
   }
 
   .battlefield {
-    grid-template-columns: repeat(20, minmax(14px, 1fr));
-    grid-template-rows: repeat(16, minmax(14px, 1fr));
+    grid-template-columns: repeat(var(--map-cols), minmax(14px, 1fr));
+    grid-template-rows: repeat(var(--map-rows), minmax(14px, 1fr));
     gap: 3px;
     transform: rotateX(36deg) rotateZ(-0.6deg) scale(var(--map-visual-scale));
   }
@@ -2387,6 +2682,22 @@ h1 {
   .unit {
     border-radius: 6px;
     font-size: 13px;
+  }
+
+  /* 좁은 화면에서는 판이 36deg만 눕는다. 되늘리는 양도 같이 줄인다(1/cos36° ≈ 1.24). */
+  .supply-flag {
+    transform: translateZ(30px) scaleY(1.24);
+  }
+
+  @keyframes supply-flag-pulse {
+    0%,
+    100% {
+      transform: translateZ(30px) scaleY(1.24) scale(1);
+    }
+
+    50% {
+      transform: translateZ(30px) scaleY(1.24) scale(1.2);
+    }
   }
 
   .hp {

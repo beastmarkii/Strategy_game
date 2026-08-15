@@ -46,7 +46,7 @@
               <button id="recruitInfantry" type="button">소총분대 증원 <span>3</span></button>
               <button id="recruitArmor" type="button">중형전차 투입 <span>5</span></button>
               <button id="recruitArtillery" type="button">야포대 투입 <span>6</span></button>
-              <button id="recruitSpArtillery" type="button">자주포 투입 <span>300</span></button>
+              <button id="recruitSpArtillery" type="button">자주포 투입 <span>7</span></button>
               <button id="recruitEngineer" type="button">공병대 투입 <span>4</span></button>
               <button id="recruitBattalionHQ" type="button">대대 사령부 투입 <span>6</span></button>
             </div>
@@ -76,6 +76,7 @@
           <button id="buildDepot" type="button">보급창고 건설 <span>3일</span></button>
           <button id="buildRail" type="button">철도 부설 <span>2일</span></button>
           <button id="toggleTow" type="button">트럭 견인</button>
+          <button id="endDeploy" type="button" class="primary" hidden>배치 완료</button>
           <button id="endTurn" type="button" class="primary">턴 종료</button>
           <button id="restart" type="button">새 작전</button>
         </div>
@@ -85,6 +86,10 @@
       </section>
 
       <section class="battlefield-wrap" aria-label="전장">
+        <div class="mission-bar" id="missionBar" aria-live="polite">
+          <strong id="missionNameLabel">총력전</strong>
+          <span id="missionBriefLabel"></span>
+        </div>
         <div class="operation-hud" aria-label="작전 상황">
           <div class="hud-stat">
             <span>작전일</span>
@@ -134,6 +139,11 @@
           <h2 id="operationDialogTitle">새 작전 설정</h2>
         </div>
 
+        <section class="scenario-section">
+          <h3>작전 선택</h3>
+          <div id="operationScenarioChoices" class="scenario-choice-list" role="radiogroup" aria-label="작전 선택"></div>
+        </section>
+
         <div class="operation-setup-grid">
           <section>
             <h3>진영 선택</h3>
@@ -155,6 +165,21 @@
           </section>
         </div>
 
+        <section class="scenario-section">
+          <h3>초기 배치</h3>
+          <div class="side-choice" role="radiogroup" aria-label="초기 배치 방식">
+            <label>
+              <input type="radio" name="operationDeploy" value="auto" checked />
+              <span>참모부 자동 배치</span>
+            </label>
+            <label>
+              <input type="radio" name="operationDeploy" value="manual" />
+              <span>직접 배치</span>
+            </label>
+          </div>
+          <p class="muted">자동 배치는 장군의 보급 역량에 맞춰 부대 간격을 좁힙니다. 직접 배치는 작전 개시 전 배치 단계를 엽니다.</p>
+        </section>
+
         <div class="operation-dialog-actions">
           <button id="cancelOperationSetup" type="button">취소</button>
           <button id="confirmOperationSetup" type="button" class="primary">작전 시작</button>
@@ -162,6 +187,7 @@
       </div>
     </div>
 
+    <script src="scenarios.js"></script>
     <script src="game.js"></script>
   </body>
 </html>

@@ -1,5 +1,6 @@
-const width = 20;
-const height = 16;
+// 판 크기와 지형은 시나리오가 정한다(scenarios.js). applyScenario()가 채운다.
+let width = 20;
+let height = 16;
 let wartimeProductionFactor = 0.5;
 let raidEfficiencyFactor = 0.7;
 let maxStackSize = 3;
@@ -8,15 +9,76 @@ let strainedSupplyRange = 9;
 let strainedSupplyMoralePenalty = 15;
 let isolatedSupplyMoralePenalty = 35;
 let isolatedAttritionDamage = 1;
+let cutSupplyMoralePenalty = 25;
+let collapseGraceTurns = 4;
+let collapseMaxDamage = 4;
 let hqSupplyRange = 3;
 let hqRecoveryRange = 1;
 let hqOutOfRangeGraceTurns = 1;
 let hqOutOfRangeMoralePenalty = 10;
+let counterattackFactor = 0.5;
+let operationTurnLimit = 30;
+let objectiveHoldTurns = 2;
+// 플레이어만 보급창고로 생산을 늘리면 후반에 물량이 일방적으로 기운다.
+// 적도 공병대를 굴려 경제를 키운다. 0으로 두면 예전처럼 고정 생산이 된다.
+// 목표는 고정값이 아니라 하한이다 — 실제 목표는 플레이어가 지은 만큼 따라 올라간다.
+let enemyDepotGoal = 2;
+let enemyEngineerLimit = 3;
+// 적 전투 정원의 하한. 예전에는 여섯 기가 상한이자 전부였다. 그래서 플레이어가
+// 창고로 몸집을 불려도 적은 여섯 기에 묶였고, 후반이 갈수록 쉬워졌다. 이제
+// 이 값은 바닥일 뿐이고, 실제 정원은 플레이어 전투부대 수를 따라 올라간다.
+let enemyForceFloor = 6;
+// 이만큼 쌓이면 적은 격턴 제한을 풀고 매 턴 부른다. 격턴은 자원이 빠듯할 때의
+// 절약책이지, 창고가 늘어난 뒤에도 지킬 규칙이 아니다.
+let enemyRecruitSurplus = 24;
+// 창고 공사는 3일이 걸리고 그동안 공병대는 움직이지 못한다. 이 거리 안에 적이
+// 있으면 안전한 자리가 아니다 — AI는 아예 짓지 않고, 플레이어에게는 경고만 한다.
+let depotSafeDistance = 4;
+// 사령부 엄호 규칙 켜기(1)/끄기(0). 자세한 설명은 isScreenedHQ에.
+let hqScreening = 1;
+// 수비 미션의 적이 초소에 붙박이면 플레이어는 사거리 밖에서 안전하게 갉아먹는다.
+// 이 반경 안으로 들어온 상대에게는 적이 나가서 맞선다. 0에 가까울수록 붙박이,
+// 크게 잡을수록 초소를 비우고 쫓아나간다.
+let enemyDefenseRadius = 4;
+// 배치 조정 반경. 시나리오 좌표는 "기준선"이지 못 박은 자리가 아니다.
+// 자동 배치는 이 반경 안에서만 부대를 옮겨 보급을 맞추고, 수동 배치도 이 반경
+// 안에서만 허용된다 — 즉 이 숫자 하나가 "시나리오 의도에서 얼마나 벗어나도 되는가"다.
+// 0으로 두면 시나리오 좌표에 그대로 고정된다.
+let deployRange = 4;
+// 예비대 비율(%). 참모부는 매 턴 병력의 이만큼을 축선에 붙이지 않고 뒤에 남긴다.
+// 예비가 없는 군대는 한 번 밀리면 그걸로 끝이고, 전군이 한 줄로 밀려드는
+// "다 같이 한 칸 전진"의 원인이기도 하다. 0으로 두면 전병력 즉시 투입.
+let enemyReserveShare = 25;
+// 주공 집중도(%). 축선에 붙일 병력 중 주공이 가져가는 몫.
+// 100이면 다른 축선을 비우고 한 곳에 몰빵, 50이면 균등 분산에 가깝다.
+// 전략이란 결국 "어디에 얼마를 걸 것인가"이고, 그 숫자가 이것이다.
+let enemyMainEffortShare = 60;
+// 우회 폭(칸). 목표가 하나뿐인 미션이 대부분인데, 목표가 하나라고 전군이 한 줄로
+// 걸어가면 좁은 길목 하나만 막혀도 작전이 끝난다. 목표는 하나여도 접근로는 여럿이어야
+// 한다. 이 값만큼 좌우로 벌려 우회 축선을 만든다. 0이면 정면 한 길로만 간다.
+let enemyFlankSpread = 3;
+// 야포 견인 거리(칸). 전선이 이보다 멀면 포를 트럭에 걸고 달리고, 이 안으로
+// 들어오면 전개한다. 전환에 한 턴이 통째로 드니 어중간한 자리에서 왔다갔다 하면
+// 그 포는 작전 내내 한 발도 못 쏜다. 0으로 두면 견인을 아예 쓰지 않는다.
+let enemyTowDistance = 6;
+// 보병 엄호 반경(칸). 아군 포병에게 적이 이만큼 접근하면 가장 가까운 보병 하나가
+// 축선을 놓고 포병 앞에 선다. 포병은 반격을 못 견디는 병종이라, 엄호 없는 포는
+// 사거리 이점이 아니라 그냥 헌납이다. 0으로 두면 보병은 엄호하지 않는다.
+let enemyScreenRange = 3;
+// 사령부 추종 거리(칸). 사령부는 주력의 무게중심에서 이만큼 뒤에 자리를 잡는다.
+// 보급의 중심이 후방 거점에 눌러앉으면 전군이 제 발로 보급 밖으로 걸어 나가고,
+// 그렇다고 앞장서면 반격 한 방에 진영 전체가 무너진다. 이 숫자가 그 사이의 거리다.
+// 0으로 두면 사령부가 주력과 같이 붙어 다닌다.
+let hqTrailDistance = 2;
+// 전방 방어 거리(칸). 수비의 자리는 지킬 칸 위가 아니라 그 앞이다. 지켜야 할 칸을
+// 밟고 서 있으면 적이 도달한 시점에 그 칸은 이미 전장이 되어 있다. 위협 방향으로
+// 이만큼 나가 맞이한다. 0으로 두면 목표 위에 그대로 눌러앉는다.
+let enemyForwardDefense = 2;
 const episodeLimits = {
   playerBattalionHQ: 1,
   enemyBattalionHQ: 1,
 };
-const mapConfig = {
+let mapConfig = {
   enabled: true,
   centerLat: 49.18,
   centerLon: -0.36,
@@ -24,51 +86,44 @@ const mapConfig = {
   radius: 2,
 };
 
-const terrainMap = [
-  "PPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPPPP",
-  "PPPPCCPPPPPPPPPPPPPP",
-  "PPPPPCCCCPPPPPPCPPPP",
-  "CCCCCCCCCCCCCCCCCCCC",
-  "PCCCCCCCCCCCCCCCCCCP",
-  "PPPPPPPPPPPPPBCCPPPP",
-  "PPPPPPPPPPPPPPPBPPPP",
-  "PPPPPPHHHPPPPHPPPPPP",
-  "PPPPPPBHHHPPPHPPBPPP",
-  "CCCCCCCCCCCCCCCCCCCC",
-  "PPPPPPPPPHHPPPPPHHHB",
-  "PPPPPPPPPPBPPPPPHHPP",
-  "PPPPPPPPPPPPPPPPHHPP",
-  "PPPPPPPPPPPPPPPPPPPP",
-];
+let terrainMap = findScenario(defaultScenarioId).terrain;
+let hillDefenseMap = findScenario(defaultScenarioId).hillDefense;
+let activeScenario = findScenario(defaultScenarioId);
 
-const hillDefenseMap = [
-  "....................",
-  "....................",
-  "....................",
-  "....................",
-  "....................",
-  "....................",
-  "....................",
-  "....................",
-  "....................",
-  "......SEE....N......",
-  ".......SEE...N......",
-  "....................",
-  ".........SS.....NNNE",
-  "................NN..",
-  "................NN..",
-  "....................",
-];
+// 시나리오는 지형·배치·목표만 바꾼다. 규칙은 여기(game.js) 그대로다.
+// 판 크기는 terrain 배열이 정하므로 시나리오마다 지도 크기가 달라도 된다.
+function applyScenario(scenario) {
+  activeScenario = scenario;
+  terrainMap = scenario.terrain;
+  hillDefenseMap = scenario.hillDefense;
+  width = scenario.terrain[0].length;
+  height = scenario.terrain.length;
+  mapConfig = { ...mapConfig, ...(scenario.map ?? {}) };
+  // CSS가 20x16을 박아두고 있으면 다른 크기 지도가 찌그러진다. 격자는 JS가 알려준다.
+  boardEl?.style.setProperty("--map-cols", String(width));
+  boardEl?.style.setProperty("--map-rows", String(height));
+}
 
 const unitTypes = {
   infantry: { label: "소총분대", mark: "보", domain: "land", hp: 10, move: 3, range: 1, attack: 4, cost: 3, supplyUse: 1 },
   armor: { label: "중형전차", mark: "전", domain: "land", hp: 14, move: 4, range: 1, attack: 6, cost: 5, supplyUse: 2 },
   artillery: { label: "야포대", mark: "포", domain: "land", hp: 8, move: 1, towedMove: 4, range: 3, attack: 5, cost: 6, supplyUse: 2 },
-  spArtillery: { label: "자주포", mark: "자", domain: "land", hp: 10, move: 4, range: 3, attack: 5, cost: 300, supplyUse: 4 },
-  engineer: { label: "공병대", mark: "공", domain: "land", hp: 12, move: 4, range: 1, attack: 3, cost: 4, supplyUse: 1 },
-  battalionHQ: { label: "대대 사령부", mark: "지", domain: "land", hp: 9, move: 1, range: 1, attack: 1, cost: 6, supplyUse: 1, moraleAura: 10, commandRange: 2, supplyRange: hqSupplyRange, recoveryRange: hqRecoveryRange },
+  // 값 300은 잠금장치였다. 아트도 3개국어 이름도 지형 제약도 다 들어와 있는데
+  // 아무도 살 수 없어 사장돼 있었다. 야포(6)보다 비싼 대신 견인 없이 쏘고 달린다.
+  // 대가는 값이 아니라 보급이다 — 소모 4/턴은 창고 없이 굴릴 수 없는 숫자이고,
+  // 고지에도 못 오른다. 강하되 보급선을 요구하는 부대, 이 게임의 주제 그대로다.
+  // 값 9는 과했다(체력+공격 대비 값이 전 병종 최하위였다). 야포와의 차이는
+  // 이동의 자유이지 화력이 아니므로, 값은 야포에 붙이고 대가는 보급에 남긴다.
+  spArtillery: { label: "자주포", mark: "자", domain: "land", hp: 10, move: 4, range: 3, attack: 5, cost: 7, supplyUse: 4 },
+  // 공병대는 튼튼한 전투원이 아니라 빨리 가서 짓는 일꾼이다. 체력 12는 보병보다
+  // 두텁고 이동 4는 보병보다 빨라서, 값 1 차이로 보병 자리를 통째로 빼앗고 있었다.
+  // 이동 4는 남긴다 — 공사 자리까지 가는 게 이 부대의 일이다.
+  engineer: { label: "공병대", mark: "공", domain: "land", hp: 10, move: 4, range: 1, attack: 2, cost: 4, supplyUse: 1 },
+  // 방어 3은 사령부가 스스로 버티라고 준 값이다. 이동 1에 공격 1이라 도망도 반격도
+  // 못 하는데, 지금까지는 개활지에서 전차 두 대면 정리됐다. 사령부가 죽으면 보급이
+  // 통째로 끊기므로 그 한 번의 돌파가 전선 전체를 무너뜨렸다. 이제 보병은 세 번,
+  // 전차는 두 번 붙어야 한다 — 잡을 수는 있되, 지나가는 길에 덤으로 잡히지는 않는다.
+  battalionHQ: { label: "대대 사령부", mark: "지", domain: "land", hp: 9, move: 1, range: 1, attack: 1, cost: 6, supplyUse: 1, defense: 3, moraleAura: 10, commandRange: 2, supplyRange: hqSupplyRange, recoveryRange: hqRecoveryRange },
 };
 
 const factionUnitProfiles = {
@@ -77,16 +132,16 @@ const factionUnitProfiles = {
     armor: { label: "M4 셔먼 중형전차", shortLabel: "M4 셔먼", image: "armor-allies.png" },
     artillery: { label: "M2A1 105mm 야포대", shortLabel: "M2A1 야포", image: "artillery-allies.png" },
     spArtillery: { label: "M7 프리스트 자주포", shortLabel: "M7 프리스트", image: "sp-artillery-allies.png" },
-    engineer: { label: "연합군 전투공병대", shortLabel: "전투공병대", image: "engineer-allies.png" },
-    battalionHQ: { label: "연합군 대대 사령부", shortLabel: "연합군 HQ", image: "hq-allies.png" },
+    engineer: { label: "전투공병대", shortLabel: "전투공병대", image: "engineer-allies.png" },
+    battalionHQ: { label: "대대 사령부", shortLabel: "대대 HQ", image: "hq-allies.png" },
   },
   axis: {
     infantry: { label: "Kar98k 소총분대", shortLabel: "Kar98k 분대", image: "infantry-axis.png" },
     armor: { label: "Panzer IV 중형전차", shortLabel: "Panzer IV", image: "armor-axis.png" },
     artillery: { label: "leFH 18 105mm 야포대", shortLabel: "leFH 18 야포", image: "artillery-axis.png" },
     spArtillery: { label: "Wespe 자주포", shortLabel: "Wespe 자주포", image: "sp-artillery-axis.png" },
-    engineer: { label: "독일 공병대", shortLabel: "독일 공병대", image: "engineer-axis.png" },
-    battalionHQ: { label: "추축군 대대 사령부", shortLabel: "추축군 HQ", image: "hq-axis.png" },
+    engineer: { label: "Pionier 공병대", shortLabel: "Pionier", image: "engineer-axis.png" },
+    battalionHQ: { label: "대대 사령부", shortLabel: "대대 HQ", image: "hq-axis.png" },
   },
 };
 
@@ -100,10 +155,31 @@ const defaultBalance = {
     strainedSupplyMoralePenalty,
     isolatedSupplyMoralePenalty,
     isolatedAttritionDamage,
+    cutSupplyMoralePenalty,
+    collapseGraceTurns,
+    collapseMaxDamage,
     hqSupplyRange,
     hqRecoveryRange,
     hqOutOfRangeGraceTurns,
     hqOutOfRangeMoralePenalty,
+    counterattackFactor,
+    operationTurnLimit,
+    objectiveHoldTurns,
+    enemyDepotGoal,
+    enemyEngineerLimit,
+    enemyForceFloor,
+    enemyRecruitSurplus,
+    enemyDefenseRadius,
+    deployRange,
+    enemyReserveShare,
+    enemyMainEffortShare,
+    enemyFlankSpread,
+    enemyTowDistance,
+    enemyScreenRange,
+    hqTrailDistance,
+    enemyForwardDefense,
+    depotSafeDistance,
+    hqScreening,
     playerBattalionHQ: episodeLimits.playerBattalionHQ,
     enemyBattalionHQ: episodeLimits.enemyBattalionHQ,
   },
@@ -123,6 +199,8 @@ const unitEditorFields = [
   ["move", "기동", 0, 12, 1],
   ["range", "사거리", 1, 8, 1],
   ["attack", "공격", 0, 30, 1],
+  // 지형 방어 보정과 같은 단위로 더해진다. 값이 없는 병종에는 아예 칸이 안 생긴다.
+  ["defense", "방어", 0, 20, 1],
   ["cost", "비용", 0, 999, 1],
   ["supplyUse", "소모", 0, 20, 1],
   ["towedMove", "견인", 0, 12, 1],
@@ -139,12 +217,33 @@ const ruleEditorFields = [
   ["strainedSupplyMoralePenalty", "보급 불안 사기 감소", 0, 80, 5],
   ["isolatedSupplyMoralePenalty", "고립 사기 감소", 0, 100, 5],
   ["isolatedAttritionDamage", "고립 턴 피해", 0, 10, 1],
+  ["cutSupplyMoralePenalty", "보급 두절 사기 감소", 0, 90, 5],
+  ["collapseGraceTurns", "두절 후 붕괴 유예 턴", 0, 20, 1],
+  ["collapseMaxDamage", "붕괴 턴당 최대 피해", 1, 10, 1],
   ["hqSupplyRange", "대대 HQ 보급 범위", 0, 12, 1],
   ["hqRecoveryRange", "대대 HQ 보충 범위", 0, 6, 1],
   ["hqOutOfRangeGraceTurns", "HQ 밖 유예 턴", 0, 10, 1],
   ["hqOutOfRangeMoralePenalty", "HQ 밖 턴당 사기 감소", 0, 50, 1],
+  ["counterattackFactor", "반격 위력 배율", 0, 1.5, 0.05],
+  ["operationTurnLimit", "작전 기한 턴 (0=무제한)", 0, 99, 1],
+  ["objectiveHoldTurns", "목표 장악 유지 턴", 1, 10, 1],
+  ["enemyDepotGoal", "적 보급창고 최소 목표 (0=안 지음)", 0, 12, 1],
+  ["enemyEngineerLimit", "적 공병대 한도", 0, 6, 1],
+  ["enemyForceFloor", "적 전투 정원 하한", 1, 24, 1],
+  ["enemyRecruitSurplus", "적 증원 가속 보급품", 0, 200, 2],
+  ["enemyDefenseRadius", "적 방어 출격 반경", 0, 10, 1],
+  ["deployRange", "배치 조정 반경", 0, 10, 1],
+  ["enemyReserveShare", "적 예비대 비율 (%)", 0, 60, 5],
+  ["enemyMainEffortShare", "적 주공 집중도 (%)", 30, 100, 5],
+  ["enemyFlankSpread", "적 우회 폭", 0, 8, 1],
+  ["enemyTowDistance", "적 야포 견인 거리", 0, 14, 1],
+  ["enemyScreenRange", "적 보병 엄호 반경", 0, 8, 1],
+  ["hqTrailDistance", "사령부 추종 거리", 0, 8, 1],
+  ["enemyForwardDefense", "적 전방 방어 거리", 0, 6, 1],
+  ["depotSafeDistance", "보급창고 안전 거리", 1, 12, 1],
+  ["hqScreening", "사령부 엄호 (0=끔)", 0, 1, 1],
   ["playerBattalionHQ", "연합군 HQ 한도", 0, 9, 1],
-  ["enemyBattalionHQ", "추축군 HQ 한도", 0, 9, 1],
+  ["enemyBattalionHQ", "적군 HQ 한도", 0, 9, 1],
 ];
 
 const terrain = {
@@ -310,12 +409,16 @@ const hudAlertLabelEl = document.querySelector("#hudAlertLabel");
 const balanceEditorEl = document.querySelector("#balanceEditor");
 const operationModalEl = document.querySelector("#newOperationModal");
 const operationCommanderChoicesEl = document.querySelector("#operationCommanderChoices");
+const operationScenarioChoicesEl = document.querySelector("#operationScenarioChoices");
+const missionNameLabelEl = document.querySelector("#missionNameLabel");
+const missionBriefLabelEl = document.querySelector("#missionBriefLabel");
 const bannerEl = document.createElement("div");
 bannerEl.className = "banner";
 document.body.appendChild(bannerEl);
 let mapZoom = 1;
 
 document.querySelector("#endTurn").addEventListener("click", endPlayerTurn);
+document.querySelector("#endDeploy")?.addEventListener("click", finishDeployment);
 document.querySelector("#restart").addEventListener("click", openNewOperationSetup);
 document.querySelector("#recruitInfantry").addEventListener("click", () => recruit("infantry"));
 document.querySelector("#recruitArmor").addEventListener("click", () => recruit("armor"));
@@ -618,8 +721,41 @@ function localizeRenderedText() {
 }
 
 function openNewOperationSetup() {
+  renderOperationScenarioChoices();
   renderOperationCommanderChoices(selectedOperationSide());
   if (operationModalEl) operationModalEl.hidden = false;
+}
+
+function selectedOperationScenarioId() {
+  return operationModalEl?.querySelector('input[name="operationScenario"]:checked')?.value ?? state?.scenarioId ?? defaultScenarioId;
+}
+
+function renderOperationScenarioChoices() {
+  if (!operationScenarioChoicesEl) return;
+  const selectedId = selectedOperationScenarioId();
+  operationScenarioChoicesEl.innerHTML = scenarios
+    .map((scenario) => {
+      const size = `${scenario.terrain[0].length}×${scenario.terrain.length}`;
+      const deadline = scenario.turnLimit ? `${scenario.turnLimit}턴` : "기한 없음";
+      return `
+      <label class="scenario-choice">
+        <input type="radio" name="operationScenario" value="${scenario.id}" ${scenario.id === selectedId ? "checked" : ""} />
+        <span class="scenario-choice-body">
+          <strong>${scenario.name}</strong>
+          <span class="scenario-choice-meta">${size} · ${deadline} · ${scenarioOutcomeLabel(scenario)}</span>
+          <span>${scenario.summary}</span>
+          <span class="scenario-choice-goal">${scenario.objectiveBrief}</span>
+        </span>
+      </label>
+    `;
+    })
+    .join("");
+}
+
+// 기한이 끝났을 때 누가 이기는지가 곧 미션의 성격이다. 고르기 전에 그걸 보여준다.
+function scenarioOutcomeLabel(scenario) {
+  if (!scenario.timeoutWinner) return "기한 만료 시 무승부";
+  return scenario.timeoutWinner === "west" ? "기한 만료 시 연합군 승리" : "기한 만료 시 추축군 승리";
 }
 
 function closeNewOperationSetup() {
@@ -628,6 +764,10 @@ function closeNewOperationSetup() {
 
 function selectedOperationSide() {
   return operationModalEl?.querySelector('input[name="operationSide"]:checked')?.value ?? "allies";
+}
+
+function selectedOperationDeployMode() {
+  return operationModalEl?.querySelector('input[name="operationDeploy"]:checked')?.value ?? "auto";
 }
 
 function commanderSideName(side) {
@@ -692,8 +832,10 @@ function confirmNewOperationSetup() {
   const chosenSide = selectedOperationSide();
   const commanderId = operationCommanderChoicesEl?.querySelector('input[name="operationCommander"]:checked')?.value;
   startGame({
+    scenarioId: selectedOperationScenarioId(),
     playerSide: chosenSide,
     playerCommanderId: commanderId,
+    deployMode: selectedOperationDeployMode(),
   });
   closeNewOperationSetup();
 }
@@ -702,13 +844,28 @@ function startGame(config = {}) {
   applyLocale();
   pendingUnitMoves = [];
   pendingCombatEvents = [];
+  // 적 참모부의 계획은 이제 어제 것을 참고한다. 새 작전에서까지 지난 작전의
+  // 배정을 물려받으면, 부대 번호가 겹치는 만큼 엉뚱한 임무로 시작한다.
+  enemyPlan = new Map();
   const playerSide = config.playerSide ?? state?.playerSide ?? "allies";
   const aiSide = playerSide === "axis" ? "allies" : "axis";
   const playerCommander = commanders.find((commander) => commander.id === config.playerCommanderId && commander.side === commanderSideName(playerSide)) ?? defaultCommanderForSide(playerSide);
   const aiCommander = defaultCommanderForSide(aiSide);
-  const deployment = initialDeploymentForSide(playerSide);
+  const scenario = findScenario(config.scenarioId ?? state?.scenarioId ?? defaultScenarioId);
+  const scenarioChanged = state?.scenarioId !== scenario.id;
+  applyScenario(scenario);
+  // 시나리오의 기한은 "시작값"이다. 작전을 바꿔 고를 때만 실어준다.
+  // 같은 작전을 다시 시작하는 건 대개 "에디터에서 만진 숫자로 다시 해보자"는 뜻이라,
+  // 그때 시나리오 기본값으로 되돌려버리면 방금 만진 값이 증발한다.
+  if (scenarioChanged && Number.isFinite(scenario.turnLimit)) operationTurnLimit = scenario.turnLimit;
+  const deployment = deploymentForScenario(scenario, playerSide);
   state = {
     playerSide,
+    scenarioId: scenario.id,
+    // 배치 방식은 작전 설정에서 고른다. 새 작전 창을 거치지 않고 다시 시작하면
+    // 직전 작전에서 쓰던 방식을 이어간다 — 수동 배치를 좋아하는 사람이 매번 다시
+    // 고르게 만들 이유가 없다.
+    deployMode: config.deployMode ?? state?.deployMode ?? "auto",
     turn: 1,
     phase: "player",
     resources: 8,
@@ -725,54 +882,209 @@ function startGame(config = {}) {
     improvements: [],
     constructions: [],
     units: deployment.units,
+    mission: {
+      id: scenario.id,
+      name: scenario.name,
+      summary: scenario.summary,
+      objectiveBrief: scenario.objectiveBrief,
+      // 시나리오는 승자를 진영(west/east)으로 적는다. 플레이어가 어느 쪽을 잡았는지에 따라
+      // 여기서 플레이어 기준으로 뒤집는다. 진영을 바꿔 골라도 미션이 뒤집히지 않게 하는 지점이다.
+      timeoutOutcome: timeoutOutcomeFor(scenario.timeoutWinner, playerSide),
+      objectives: deployment.objectives,
+    },
     log: [],
   };
+  // 배치 구역은 반드시 정돈 전에 잡는다. 정돈된 자리를 기준 삼으면 같은 작전을
+  // 다시 시작할 때마다 구역이 조금씩 밀려나서, 두 번째 판이 첫 판과 달라진다.
+  state.deployZones = { player: buildDeployZone("player"), enemy: buildDeployZone("enemy") };
+  // 적은 언제나 자동이다. 플레이어가 수동을 골랐으면 시나리오 좌표 그대로 넘겨주고
+  // 배치 단계를 연다 — 자동이 미리 손봐두면 "내가 짠 배치"가 아니게 된다.
+  const tidied = state.deployMode === "manual" ? 0 : tidyAutoDeployment("player", state.deployZones.player);
+  tidyAutoDeployment("enemy", state.deployZones.enemy);
+  if (state.deployMode === "manual") state.phase = "deploy";
   bannerEl.classList.remove("show");
+  // 숨기는 것만으로는 지난 작전의 승패 문구가 DOM에 남는다. 새 작전은 백지에서 시작한다.
+  bannerEl.textContent = "";
   addLog(`${sideName("player")} 작전 개시. 지휘관은 ${state.commanders.player.name}입니다.`);
+  addLog(`작전 「${scenario.name}」 — ${scenario.summary}`);
+  addLog(missionBriefText());
   addLog(`${sideName("enemy")} 방어선 지휘관은 ${state.commanders.enemy.name}입니다.`);
   addLog("공병대가 전선에 배치되었습니다. 다리는 하루 안에 놓지만, 보급창고와 철도는 며칠의 공사가 필요합니다.");
   addLog("공병대는 보병보다 빠르고 튼튼하지만 직접 전투력은 소총분대의 약 80% 수준입니다.");
+  if (state.deployMode === "manual") {
+    addLog(`배치 단계입니다. 부대를 골라 강조된 칸으로 옮긴 뒤 「배치 완료」를 누르십시오. (조정 반경 ${deployRange}칸)`);
+  } else if (tidied) {
+    addLog(`참모부가 ${state.commanders.player.name} 장군의 보급 역량에 맞춰 ${tidied}개 부대의 배치를 조정했습니다.`);
+  }
   renderBalanceEditor();
   render();
 }
 
-function initialDeploymentForSide(playerSide) {
-  const west = {
-    bases: [
-      { x: 6, y: 10, production: 6 },
-      { x: 10, y: 13, production: 5 },
-    ],
-    units: [
-      ["infantry", 2, 12],
-      ["armor", 4, 14],
-      ["artillery", 0, 8],
-      ["engineer", 2, 14],
-      ["battalionHQ", 0, 6],
-    ],
-  };
-  const east = {
-    bases: [
-      { x: 13, y: 7, production: 6 },
-      { x: 15, y: 8, production: 5 },
-    ],
-    units: [
-      ["infantry", 17, 3],
-      ["armor", 18, 2],
-      ["artillery", 18, 8],
-      ["battalionHQ", 18, 6],
-    ],
-  };
-  const playerDeployment = playerSide === "axis" ? east : west;
-  const enemyDeployment = playerSide === "axis" ? west : east;
+// 연합군을 고르면 west, 추축군을 고르면 east를 잡는다. 지도는 그대로고 서는 자리만 바뀐다.
+function scenarioSideKey(playerSide) {
+  return playerSide === "axis" ? "east" : "west";
+}
+
+function timeoutOutcomeFor(timeoutWinner, playerSide) {
+  if (!timeoutWinner) return "draw";
+  return timeoutWinner === scenarioSideKey(playerSide) ? "playerWin" : "playerLose";
+}
+
+function deploymentForScenario(scenario, playerSide) {
+  const playerKey = scenarioSideKey(playerSide);
+  const enemyKey = playerKey === "west" ? "east" : "west";
+  const playerDeployment = scenario[playerKey];
+  const enemyDeployment = scenario[enemyKey];
   return {
     bases: [
       ...playerDeployment.bases.map((base) => createBase(base.x, base.y, "player", base.production)),
       ...enemyDeployment.bases.map((base) => createBase(base.x, base.y, "enemy", base.production)),
     ],
     units: [
-      ...playerDeployment.units.map(([type, x, y]) => createUnit("player", type, x, y)),
-      ...enemyDeployment.units.map(([type, x, y]) => createUnit("enemy", type, x, y)),
+      ...playerDeployment.units.map((entry) => createScenarioUnit("player", entry)),
+      ...enemyDeployment.units.map((entry) => createScenarioUnit("enemy", entry)),
     ],
+    objectives: [
+      ...(playerDeployment.objectives ?? []).map((entry) => createObjective("player", entry)),
+      ...(enemyDeployment.objectives ?? []).map((entry) => createObjective("enemy", entry)),
+    ],
+  };
+}
+
+// ── 배치 ──────────────────────────────────────────────────────────────────
+// 시나리오가 적은 좌표는 "기준선"이지 못 박은 자리가 아니다. 실제로 설 자리는
+// 지휘관에 따라 달라져야 한다 — 보급 -2인 슈투덴트가 보급 +3인 아이젠하워와
+// 똑같은 자리에 서면 그건 지휘관 선택이 아니라 첫 턴부터 안고 시작하는 벌칙이다.
+// 그래서 배치는 두 가지를 한다:
+//   1) 같은 칸에 두 부대를 세우지 않는다.
+//   2) 보급이 닿지 않는 부대는 당겨 붙인다 — 보급이 약한 지휘관일수록 촘촘해진다.
+
+// 배치 규칙은 이동 규칙보다 한 칸 더 엄격하다. 게임 중에는 같은 종류끼리 겹칠 수
+// 있지만(canOccupy), 시작부터 겹쳐 세우면 중첩 사기 감점을 그대로 안고 출발한다.
+// 그 손해는 플레이어가 고른 것이 아니라 배치가 떠넘긴 것이므로 아예 막는다.
+function canDeployAt(unit, x, y) {
+  if (!canEnterTerrain(unit, x, y)) return false;
+  return !state.units.some((other) => other.id !== unit.id && other.x === x && other.y === y);
+}
+
+// 배치 시점의 보급 판정. normalizedSupplyStatus와 같은 규칙을 쓰되, 부대를 실제로
+// 옮겨보지 않고 "그 자리에 서면 보급이 닿는가"만 묻는다.
+// 사령부는 자기 자신을 보급원으로 못 쓰므로 거점 보급망만 본다.
+function deploySupplyOk(unit, x, y) {
+  if (unit.type !== "battalionHQ") {
+    const hqs = state.units.filter((other) => other.owner === unit.owner && other.type === "battalionHQ");
+    if (hqs.some((hq) => distance({ x, y }, hq) <= effectiveHQSupplyRange(unit.owner))) return true;
+  }
+  return supplyLineCost({ owner: unit.owner, x, y }) <= effectiveSupplyRange(unit);
+}
+
+// 배치 구역. 시나리오가 그 진영에 준 시작 좌표와 거점에서 deployRange 안.
+// 자동 배치가 부대를 옮길 수 있는 범위이자, 수동 배치에서 플레이어가 세울 수 있는
+// 범위다 — 둘이 같은 숫자를 쓰는 건 의도한 것이다. 자동이 갈 수 있는 곳이면
+// 사람도 갈 수 있어야 공평하고, 지도 반대편으로 순간이동하는 것도 같이 막힌다.
+// 반드시 정돈 전 좌표로 잡아야 한다. 정돈된 자리를 기준 삼으면 다시 시작할 때마다
+// 구역이 조금씩 밀려난다.
+function buildDeployZone(owner) {
+  const zone = new Set();
+  const anchors = [
+    ...state.units.filter((unit) => unit.owner === owner).map((unit) => ({ x: unit.x, y: unit.y })),
+    ...state.bases.filter((base) => base.owner === owner),
+  ];
+  anchors.forEach((anchor) => {
+    for (let dy = -deployRange; dy <= deployRange; dy += 1) {
+      for (let dx = -deployRange; dx <= deployRange; dx += 1) {
+        if (inBounds(anchor.x + dx, anchor.y + dy)) zone.add(posKey(anchor.x + dx, anchor.y + dy));
+      }
+    }
+  });
+  return zone;
+}
+
+// 사령부가 먼저 자리를 잡아야 한다. 나머지 부대의 보급 판정이 사령부 위치에 걸려
+// 있으므로, 기준점이 정해지기 전에 예하 부대를 옮기면 엉뚱한 자리로 간다.
+// 공병대는 마지막이다 — 전투 부대가 좋은 자리를 먼저 가져가는 게 맞다.
+function deployOrder(unit) {
+  if (unit.type === "battalionHQ") return 0;
+  if (unit.type === "engineer") return 2;
+  return 1;
+}
+
+function tidyAutoDeployment(owner, zone) {
+  const mine = state.units.filter((unit) => unit.owner === owner).sort((a, b) => deployOrder(a) - deployOrder(b));
+  let moved = 0;
+  mine.forEach((unit) => {
+    const spot = bestDeploySpot(unit, zone);
+    if (unit.x === spot.x && unit.y === spot.y) return;
+    unit.x = spot.x;
+    unit.y = spot.y;
+    moved += 1;
+  });
+  return moved;
+}
+
+// 자리 고르기의 우선순위:
+//   1. 원래 자리가 비어 있고 보급도 닿으면 그대로 — 시나리오 의도가 이긴다.
+//   2. 가까운 순으로 보급이 닿는 빈 칸.
+//   3. 그런 칸이 없으면 다시 원래 자리 — 어차피 아무 데도 보급이 안 닿는데
+//      옆칸으로 밀어봐야 시나리오만 흐트러진다.
+//   4. 원래 자리마저 막혔으면 보급망에 연결은 된 빈 칸, 그마저 없으면 아무 빈 칸.
+// 4번에서 "연결됨"을 따로 보는 건 강 건너 고립된 칸으로 밀려나지 않게 하려는 것이다.
+function bestDeploySpot(unit, zone) {
+  const home = { x: unit.x, y: unit.y };
+  // 태그가 붙은 부대는 손대지 않는다. 시나리오가 태그를 단 건 목표가 그 부대를
+  // 가리키기 때문이고, 「고립 사령부 구조」에서는 그 부대가 놓인 상황 자체가 미션이다.
+  // 보급이 안 닿는 게 사고가 아니라 설계인 자리 — 참모부가 고칠 자리가 아니다.
+  if (unit.tag) return home;
+  const homeFree = canDeployAt(unit, home.x, home.y);
+  if (homeFree && deploySupplyOk(unit, home.x, home.y)) return home;
+  let connected = null;
+  let anyFree = null;
+  const seen = new Set([posKey(home.x, home.y)]);
+  let frontier = [home];
+  for (let step = 0; step < deployRange && frontier.length; step += 1) {
+    const next = [];
+    for (const point of frontier) {
+      for (const spot of neighbors(point.x, point.y)) {
+        const key = posKey(spot.x, spot.y);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (!zone.has(key)) continue;
+        next.push(spot);
+        if (!canDeployAt(unit, spot.x, spot.y)) continue;
+        if (deploySupplyOk(unit, spot.x, spot.y)) return spot;
+        if (!connected && Number.isFinite(supplyLineCost({ owner: unit.owner, x: spot.x, y: spot.y }))) connected = spot;
+        if (!anyFree) anyFree = spot;
+      }
+    }
+    frontier = next;
+  }
+  if (homeFree) return home;
+  return connected ?? anyFree ?? home;
+}
+
+// 시나리오는 ["infantry", 2, 12] 처럼 짧게 적어도 되고,
+// 태그가 필요하면 { type, x, y, tag } 로 적어도 된다. 태그는 목표가 특정 유닛을 가리킬 때 쓴다.
+function createScenarioUnit(owner, entry) {
+  const spec = Array.isArray(entry) ? { type: entry[0], x: entry[1], y: entry[2], tag: entry[3] } : entry;
+  const unit = createUnit(owner, spec.type, spec.x, spec.y);
+  if (spec.tag) unit.tag = spec.tag;
+  return unit;
+}
+
+// 목표는 시나리오가 주는 데이터고, 유지 턴 수는 에디터가 주는 숫자다.
+// holdTurns를 비워두면 에디터 값을 따라간다 — 시나리오가 덮어쓸 수 있는 자리로 남겨둔다.
+function createObjective(owner, spec) {
+  return {
+    owner,
+    kind: spec.kind ?? "seize",
+    x: spec.x,
+    y: spec.y,
+    label: spec.label ?? "작전 목표",
+    byTag: spec.byTag ?? null,
+    tag: spec.tag ?? null,
+    targetType: spec.targetType ?? null,
+    held: 0,
+    holdTurns: spec.holdTurns ?? null,
   };
 }
 
@@ -824,6 +1136,13 @@ function render() {
       if (hasImprovement(x, y, "bridge")) cell.classList.add("bridge");
       if (hasImprovement(x, y, "rail")) cell.classList.add("rail");
       if (hasImprovement(x, y, "depot")) cell.classList.add("depot");
+      // 대대 사령부의 주 역할은 보급이다. 그런데 그 범위가 지도에 안 보이면
+      // 플레이어는 기능 자체가 없는 줄 안다. 전진 보급 반경을 늘 그려둔다.
+      const battalionReach = battalionSupplyReach("player", x, y);
+      if (battalionReach) {
+        cell.classList.add(`hq-${battalionReach}`);
+        cell.title += battalionReach === "recovery" ? " / 대대 보충 범위" : " / 대대 보급 범위";
+      }
       if (highlights.moves.has(posKey(x, y))) cell.classList.add("reachable");
       if (highlights.attacks.has(posKey(x, y))) cell.classList.add("attackable");
       if (highlights.raids.has(posKey(x, y))) cell.classList.add("raidable");
@@ -832,6 +1151,9 @@ function render() {
 
       const base = getBaseAt(x, y);
       if (base) renderBase(cell, base);
+
+      const objective = objectiveAt(x, y);
+      if (objective) renderObjective(cell, objective);
 
       renderImprovements(cell, x, y);
 
@@ -898,6 +1220,24 @@ function renderBase(cell, base) {
   cell.appendChild(supply);
 }
 
+function renderObjective(cell, objective) {
+  const need = objectiveHoldRequirement(objective);
+  cell.classList.add("objective", `objective-${objective.owner}`);
+  if (objective.held > 0) cell.classList.add("objective-held");
+  const only = objective.byTag ? " · 지정 부대만 인정" : "";
+  cell.title += ` / ${sideName(objective.owner)} ${objective.label} · 유지 ${objective.held}/${need}턴${only}`;
+
+  const flag = document.createElement("span");
+  flag.className = `objective-flag ${objective.owner}`;
+  flag.setAttribute("aria-hidden", "true");
+  cell.appendChild(flag);
+
+  const badge = document.createElement("span");
+  badge.className = `objective-badge ${objective.owner}`;
+  badge.textContent = objective.held > 0 ? `${objective.held}/${need}` : "목표";
+  cell.appendChild(badge);
+}
+
 function renderConstruction(cell, construction) {
   const site = document.createElement("span");
   site.className = `construction-site ${construction.type}`;
@@ -927,8 +1267,16 @@ function renderUnitStack(cell, units) {
   const sideClass = sideKeyForUnit(unit);
   unitEl.className = `unit ${unit.owner} ${sideClass} ${unit.type} supply-${supply.level} ${unit.towed ? "towed" : ""} ${unit.acted ? "waited" : ""} ${constructing ? "constructing" : ""}`;
   unitEl.dataset.unitId = unit.id;
-  unitEl.setAttribute("aria-label", `${sideName(unit.owner)} ${unitLabel(unit)} / ${supply.label}`);
-  unitEl.title = `${sideName(unit.owner)} ${unitLabel(unit)} / ${supply.label}`;
+  // 미션이 특정 부대를 지목했으면(구조 대상 등) 그 부대는 한눈에 구분돼야 한다.
+  const missionRole = missionRoleFor(unit);
+  if (missionRole) unitEl.classList.add("mission-unit");
+  const baseLabel = `${sideUnitLabel(unit)} / ${supply.label}${missionRole ? ` / ${missionRole}` : ""}`;
+  const forecast = attackForecast(selectedUnit(), unit);
+  const forecastText = forecast ? formatAttackForecast(forecast) : "";
+  unitEl.setAttribute("aria-label", forecast ? `${baseLabel} / ${forecastText}` : baseLabel);
+  unitEl.title = forecast ? `${baseLabel}\n${forecastText}` : baseLabel;
+  if (forecast?.counterKills) unitEl.classList.add("counter-lethal");
+  else if (forecast?.counter) unitEl.classList.add("counter-risk");
   const icon = document.createElement("span");
   icon.className = `unit-icon ${unit.type} ${unit.owner} ${sideClass}`;
   unitEl.appendChild(icon);
@@ -936,6 +1284,17 @@ function renderUnitStack(cell, units) {
   hp.className = "hp";
   hp.textContent = unit.hp;
   unitEl.appendChild(hp);
+  // 보급 상태 배지. 상태에 따른 점선 테두리는 .unit에 그려지는데, 부대 아이콘이
+  // translateZ로 앞에 떠 있어서 그 테두리를 덮어버린다 — 즉 규칙은 살아 있어도
+  // 화면에서는 안 보인다. 보급이 이 게임의 중심 자원인데 그 상태를 눈으로 못 읽으면
+  // 플레이어는 부대가 죽고 나서야 안다. 그래서 아이콘 바깥 모서리에 따로 세운다.
+  if (supply.level !== "full") {
+    const flag = document.createElement("span");
+    flag.className = `supply-flag ${supply.level}`;
+    flag.textContent = supplyFlagMark(supply.level);
+    flag.setAttribute("aria-hidden", "true");
+    unitEl.appendChild(flag);
+  }
   if (units.length > 1) {
     const stack = document.createElement("span");
     stack.className = "stack-count";
@@ -943,6 +1302,15 @@ function renderUnitStack(cell, units) {
     unitEl.appendChild(stack);
   }
   cell.appendChild(unitEl);
+}
+
+// 배지 글자는 한 칸이다. 타일이 작아지면 두 글자는 읽히지 않는다.
+// 자세한 상태 문구는 이미 툴팁(unitEl.title)과 부대 카드에 있으니,
+// 여기서는 "지금 어느 단계인가"만 구분되면 된다.
+function supplyFlagMark(level) {
+  if (level === "isolated") return "포";
+  if (level === "cut") return "끊";
+  return "불";
 }
 
 function recordUnitMove(unit, toX, toY) {
@@ -1246,10 +1614,31 @@ function balanceSnapshot() {
       strainedSupplyMoralePenalty,
       isolatedSupplyMoralePenalty,
       isolatedAttritionDamage,
+      cutSupplyMoralePenalty,
+      collapseGraceTurns,
+      collapseMaxDamage,
       hqSupplyRange,
       hqRecoveryRange,
       hqOutOfRangeGraceTurns,
       hqOutOfRangeMoralePenalty,
+      counterattackFactor,
+      operationTurnLimit,
+      objectiveHoldTurns,
+      enemyDepotGoal,
+      enemyEngineerLimit,
+      enemyForceFloor,
+      enemyRecruitSurplus,
+      enemyDefenseRadius,
+      deployRange,
+      enemyReserveShare,
+      enemyMainEffortShare,
+      enemyFlankSpread,
+      enemyTowDistance,
+      enemyScreenRange,
+      hqTrailDistance,
+      enemyForwardDefense,
+      depotSafeDistance,
+      hqScreening,
       playerBattalionHQ: episodeLimits.playerBattalionHQ,
       enemyBattalionHQ: episodeLimits.enemyBattalionHQ,
     },
@@ -1266,10 +1655,31 @@ function ruleValue(key) {
     strainedSupplyMoralePenalty,
     isolatedSupplyMoralePenalty,
     isolatedAttritionDamage,
+    cutSupplyMoralePenalty,
+    collapseGraceTurns,
+    collapseMaxDamage,
     hqSupplyRange,
     hqRecoveryRange,
     hqOutOfRangeGraceTurns,
     hqOutOfRangeMoralePenalty,
+    counterattackFactor,
+    operationTurnLimit,
+    objectiveHoldTurns,
+    enemyDepotGoal,
+    enemyEngineerLimit,
+    enemyForceFloor,
+    enemyRecruitSurplus,
+    enemyDefenseRadius,
+    deployRange,
+    enemyReserveShare,
+    enemyMainEffortShare,
+    enemyFlankSpread,
+    enemyTowDistance,
+    enemyScreenRange,
+    hqTrailDistance,
+    enemyForwardDefense,
+    depotSafeDistance,
+    hqScreening,
     playerBattalionHQ: episodeLimits.playerBattalionHQ,
     enemyBattalionHQ: episodeLimits.enemyBattalionHQ,
   };
@@ -1285,19 +1695,47 @@ function setRuleValue(key, value) {
   if (key === "strainedSupplyMoralePenalty") strainedSupplyMoralePenalty = value;
   if (key === "isolatedSupplyMoralePenalty") isolatedSupplyMoralePenalty = value;
   if (key === "isolatedAttritionDamage") isolatedAttritionDamage = value;
+  if (key === "cutSupplyMoralePenalty") cutSupplyMoralePenalty = value;
+  if (key === "collapseGraceTurns") collapseGraceTurns = value;
+  if (key === "collapseMaxDamage") collapseMaxDamage = value;
   if (key === "hqSupplyRange") hqSupplyRange = value;
   if (key === "hqRecoveryRange") hqRecoveryRange = value;
   if (key === "hqOutOfRangeGraceTurns") hqOutOfRangeGraceTurns = value;
   if (key === "hqOutOfRangeMoralePenalty") hqOutOfRangeMoralePenalty = value;
+  if (key === "counterattackFactor") counterattackFactor = value;
+  if (key === "operationTurnLimit") operationTurnLimit = value;
+  if (key === "objectiveHoldTurns") objectiveHoldTurns = value;
+  if (key === "enemyDepotGoal") enemyDepotGoal = value;
+  if (key === "enemyEngineerLimit") enemyEngineerLimit = value;
+  if (key === "enemyForceFloor") enemyForceFloor = value;
+  if (key === "enemyRecruitSurplus") enemyRecruitSurplus = value;
+  if (key === "enemyDefenseRadius") enemyDefenseRadius = value;
+  if (key === "deployRange") deployRange = value;
+  if (key === "enemyReserveShare") enemyReserveShare = value;
+  if (key === "enemyMainEffortShare") enemyMainEffortShare = value;
+  if (key === "enemyFlankSpread") enemyFlankSpread = value;
+  if (key === "enemyTowDistance") enemyTowDistance = value;
+  if (key === "enemyScreenRange") enemyScreenRange = value;
+  if (key === "hqTrailDistance") hqTrailDistance = value;
+  if (key === "enemyForwardDefense") enemyForwardDefense = value;
+  if (key === "depotSafeDistance") depotSafeDistance = value;
+  if (key === "hqScreening") hqScreening = value;
   if (key === "playerBattalionHQ") episodeLimits.playerBattalionHQ = value;
   if (key === "enemyBattalionHQ") episodeLimits.enemyBattalionHQ = value;
   unitTypes.battalionHQ.supplyRange = hqSupplyRange;
   unitTypes.battalionHQ.recoveryRange = hqRecoveryRange;
 }
 
+function turnDisplay() {
+  const limit = missionTurnLimit();
+  if (!Number.isFinite(limit)) return String(state.turn);
+  // 기한이 끝나면 턴은 limit+1까지 올라가 있다. 화면에 "4 / 3"을 띄우지는 않는다.
+  return `${Math.min(state.turn, limit)} / ${limit}`;
+}
+
 function updatePanel() {
-  turnLabelEl.textContent = state.turn;
-  phaseLabelEl.textContent = sideName(state.phase);
+  turnLabelEl.textContent = turnDisplay();
+  phaseLabelEl.textContent = phaseDisplayName();
   resourceLabelEl.textContent = formatNumber(state.resources);
   baseLabelEl.textContent = formatNumber(projectedIncome("player"));
   updateOperationHud();
@@ -1322,7 +1760,14 @@ function updatePanel() {
       state.gameOver ||
       remainingBattalionHQ("player") <= 0;
   }
-  document.querySelector("#endTurn").disabled = state.phase !== "player" || state.gameOver;
+  // 배치 단계에는 턴 종료가 아니라 배치 완료를 누르게 한다. 두 버튼을 동시에
+  // 띄우면 "턴 종료"부터 눌러 배치를 건너뛰는 사고가 난다.
+  const deploying = state.phase === "deploy" && !state.gameOver;
+  const endTurnBtn = document.querySelector("#endTurn");
+  endTurnBtn.hidden = deploying;
+  endTurnBtn.disabled = state.phase !== "player" || state.gameOver;
+  const endDeployBtn = document.querySelector("#endDeploy");
+  if (endDeployBtn) endDeployBtn.hidden = !deploying;
 
   const engineer = selectedEngineer();
   document.querySelector("#buildBridge").disabled = !engineer || !canBuildBridge(engineer);
@@ -1338,21 +1783,37 @@ function updatePanel() {
 }
 
 function updateOperationHud() {
-  const phaseName = state.phase === "player" ? sideName("player") : sideName("enemy");
-  if (hudTurnLabelEl) hudTurnLabelEl.textContent = state.turn;
+  const phaseName = phaseDisplayName();
+  if (hudTurnLabelEl) hudTurnLabelEl.textContent = turnDisplay();
   if (hudPhaseLabelEl) hudPhaseLabelEl.textContent = phaseName;
   if (hudResourceLabelEl) hudResourceLabelEl.textContent = formatNumber(state.resources);
   if (hudBaseLabelEl) hudBaseLabelEl.textContent = formatNumber(projectedIncome("player"));
   if (hudAlertLabelEl) hudAlertLabelEl.textContent = operationAlertText();
+  if (missionNameLabelEl) missionNameLabelEl.textContent = state.mission?.name ?? "작전";
+  // 브리핑은 한 번 뜨고 로그에 묻힌다. 목표는 매 턴 보이는 자리에 있어야 한다.
+  if (missionBriefLabelEl) missionBriefLabelEl.textContent = missionBriefText();
 }
 
 function operationAlertText() {
   const playerUnits = state.units.filter((unit) => unit.owner === "player");
   const isolated = playerUnits.filter((unit) => supplyStatus(unit).level === "isolated").length;
+  const cut = playerUnits.filter((unit) => supplyStatus(unit).level === "cut");
   const strained = playerUnits.filter((unit) => supplyStatus(unit).level === "strained").length;
+  const collapsing = cut.filter((unit) => collapseDamageFor(unit) > 0).length;
   const constructing = state.constructions.filter((construction) => construction.owner === "player").length;
   const parts = [];
+  // 기한과 목표는 다른 어떤 경보보다 앞에 온다. 남은 턴이 곧 남은 선택지다.
+  const deadline = turnsRemaining();
+  if (Number.isFinite(deadline) && deadline <= 5) parts.push(`작전 기한 ${deadline}턴`);
+  objectivesFor("player")
+    .filter((objective) => objective.held > 0)
+    .forEach((objective) => parts.push(`목표 확보 ${objective.held}/${objectiveHoldRequirement(objective)}`));
+  objectivesFor("enemy")
+    .filter((objective) => objective.held > 0)
+    .forEach((objective) => parts.push(`후방 피탈 ${objective.held}/${objectiveHoldRequirement(objective)}`));
   if (isolated) parts.push(`고립 ${isolated}`);
+  if (collapsing) parts.push(`붕괴 ${collapsing}`);
+  if (cut.length - collapsing > 0) parts.push(`보급 두절 ${cut.length - collapsing}`);
   if (strained) parts.push(`보급 불안 ${strained}`);
   if (constructing) parts.push(`건설 중 ${constructing}`);
   return parts.length ? parts.join(" · ") : "전장 이상 없음";
@@ -1423,6 +1884,12 @@ function updateActionPanel() {
 
   const hint = document.querySelector("#actionHint");
   if (!hint) return;
+  if (state.phase === "deploy") {
+    hint.textContent = selected
+      ? `${unitLabel(selected)} — 강조된 칸을 클릭해 자리를 옮기십시오.`
+      : `배치 단계입니다. 부대를 클릭한 뒤 배치할 칸을 클릭하십시오. (조정 반경 ${deployRange}칸)`;
+    return;
+  }
   if (!selected) hint.textContent = "부대를 클릭하면 가능한 기능이 표시됩니다.";
   else if (selected.owner !== "player") hint.textContent = "적 부대는 정보만 확인할 수 있습니다.";
   else if (isHQ) hint.textContent = "대대사령부 기능: 증원과 투입을 지휘합니다.";
@@ -1460,6 +1927,17 @@ function unitLabel(ownerOrUnit, type, options = {}) {
   return profile.label ?? unitTypes[typeof ownerOrUnit === "object" ? ownerOrUnit.type : type]?.label ?? "";
 }
 
+// 진영명은 한 번만 붙인다. 부대 이름 자체에 진영이 들어 있는 것들이 있어서
+// (연합군 대대 사령부, 추축군 대대 사령부 …) 앞에 또 붙이면
+// "연합군 연합군 대대 사령부"가 된다. 이름 텍스트는 언어팩마다 다르므로
+// 라벨을 고치는 대신 붙이는 자리에서 걸러야 어느 언어에서도 맞는다.
+function sideUnitLabel(ownerOrUnit, type, options) {
+  const owner = typeof ownerOrUnit === "object" ? ownerOrUnit.owner : ownerOrUnit;
+  const side = sideName(owner);
+  const label = unitLabel(ownerOrUnit, type, options);
+  return label.startsWith(side) ? label : `${side} ${label}`;
+}
+
 function unitImageFor(ownerOrUnit, type) {
   const profile = unitProfile(ownerOrUnit, type);
   if (profile.image) return `assets/units/${profile.image}`;
@@ -1482,7 +1960,7 @@ function renderUnitCardVisual(unit, spec) {
   return `
     <div class="unit-card-visual">
       ${visual}
-      <h2>${sideName(unit.owner)} ${unitLabel(unit)}</h2>
+      <h2>${sideUnitLabel(unit)}</h2>
     </div>
   `;
 }
@@ -1512,6 +1990,7 @@ function renderSelectedCard() {
       <span>전투력 <strong>${unit.hp}/${spec.hp}</strong></span>
       <span>기동력 <strong>${effectiveMove(unit)}</strong></span>
       <span>사거리 <strong>${spec.range}</strong></span>
+      ${spec.defense ? `<span>부대 방어 <strong>+${spec.defense}</strong></span>` : ""}
       <span>사기 <strong>${effectiveMorale(unit)}%</strong></span>
       <span>중첩 <strong>${stack.length}/${maxStackSize}</strong></span>
       <span>지휘관 <strong>${commanderFor(unit.owner).name.split(" ").at(-1)}</strong></span>
@@ -1522,9 +2001,11 @@ function renderSelectedCard() {
       <span>보급 <strong>${supply.label}</strong></span>
       <span>보급선 <strong>${formatSupplyDistance(supply)}</strong></span>
       <span>소모 <strong>${spec.supplyUse}/턴</strong></span>
-      ${unit.type !== "battalionHQ" ? `<span>HQ 밖 <strong>${unit.hqOutTurns ?? 0}턴</strong></span>` : ""}
-      ${hqOutOfRangeMoraleLoss(unit) ? `<span>HQ 사기 손실 <strong>-${hqOutOfRangeMoraleLoss(unit)}%</strong></span>` : ""}
+      ${(unit.hqOutTurns ?? 0) ? `<span>두절 지속 <strong>${unit.hqOutTurns}턴</strong></span>` : ""}
+      ${hqOutOfRangeMoraleLoss(unit) ? `<span>두절 사기 손실 <strong>-${hqOutOfRangeMoraleLoss(unit)}%</strong></span>` : ""}
+      ${supply.level === "cut" ? `<span>다음 턴 붕괴 피해 <strong>${collapseDamageFor({ hqOutTurns: (unit.hqOutTurns ?? 0) + 1 })}</strong></span>` : ""}
       ${unit.type === "battalionHQ" ? `<span>지휘 범위 <strong>${spec.commandRange}</strong></span>` : ""}
+      ${unit.type === "battalionHQ" && hqScreening ? `<span>엄호 <strong>${isScreenedHQ(unit) ? "받는 중 (직접 피격 불가)" : "없음 (직접 피격 가능)"}</strong></span>` : ""}
       ${hqMoraleBonus(unit) ? `<span>사령부 보너스 <strong>+${hqMoraleBonus(unit)}%</strong></span>` : ""}
     </div>
   `;
@@ -1541,6 +2022,7 @@ function renderTileCard(x, y) {
     hasImprovement(x, y, "depot") ? "보급창고" : null,
   ].filter(Boolean);
   const moveCost = movementCostForTile(x, y);
+  const objective = objectiveAt(x, y);
   selectedCardEl.innerHTML = `
     <h2>${displayTileName(x, y)} (${x}, ${y})</h2>
     <div class="unit-stats">
@@ -1556,6 +2038,9 @@ function renderTileCard(x, y) {
       ${base ? `<span>생산 <strong>${formatNumber(baseProduction(base))}</strong></span>` : ""}
       ${base ? `<span>효율 <strong>${Math.round(base.efficiency * 100)}%</strong></span>` : ""}
       ${construction ? `<span>공사 <strong>${constructionName(construction.type)} ${construction.remaining}턴</strong></span>` : ""}
+      ${objective ? `<span>작전 목표 <strong>${sideName(objective.owner)} ${objective.label}</strong></span>` : ""}
+      ${objective ? `<span>${objective.kind === "supply" ? "개통" : "장악"} 유지 <strong>${objective.held}/${objectiveHoldRequirement(objective)}턴</strong></span>` : ""}
+      ${objective?.kind === "supply" ? `<span>보급선 <strong>${objectiveSupplyText(objective)}</strong></span>` : ""}
     </div>
   `;
 }
@@ -1652,8 +2137,13 @@ function replaceCommanderPhoto(image, initials, side) {
 }
 
 function handleTileClick(x, y) {
-  if (state.gameOver || state.phase !== "player") return;
+  if (state.gameOver) return;
   ensureAudio();
+  if (state.phase === "deploy") {
+    handleDeployClick(x, y);
+    return;
+  }
+  if (state.phase !== "player") return;
 
   const clickedUnit = getSelectableUnitAt(x, y, "player");
   const clickedEnemy = getTargetUnitAt(x, y, "enemy");
@@ -1734,6 +2224,55 @@ function handleTileClick(x, y) {
   inspectTile(x, y);
 }
 
+// 배치 단계의 클릭은 이동 규칙이 아니라 배치 규칙을 쓴다. 이동력도 지형 비용도
+// 아직 의미가 없다 — 전투가 시작되기 전이니까. 배치 구역 안의 빈 칸이면 그만이다.
+// 조작은 평소와 같다: 부대를 누르고, 갈 칸을 누른다. 새 조작을 가르치지 않는다.
+function handleDeployClick(x, y) {
+  const mine = getSelectableUnitAt(x, y, "player");
+  if (mine) {
+    playUnitSound(mine, "select");
+    state.selectedId = mine.id;
+    state.inspectedId = null;
+    state.inspectedTile = null;
+    render();
+    return;
+  }
+
+  const selected = selectedUnit();
+  if (selected && canDeployHere(selected, x, y)) {
+    selected.x = x;
+    selected.y = y;
+    state.inspectedId = null;
+    state.inspectedTile = null;
+    render();
+    return;
+  }
+
+  inspectTile(x, y);
+}
+
+// 수동 배치도 자동 배치와 같은 반경 안에서만 허용한다. 사람에게만 지도 반대편까지
+// 열어주면 시나리오가 짜놓은 전선 자체가 무의미해진다.
+function canDeployHere(unit, x, y) {
+  if (!state.deployZones?.player?.has(posKey(x, y))) return false;
+  if (getBaseAt(x, y)?.owner === "enemy") return false;
+  if (state.units.some((other) => other.owner === "enemy" && other.x === x && other.y === y)) return false;
+  return canDeployAt(unit, x, y);
+}
+
+// 배치를 끝내야 1일차가 시작된다. 끝내기 전에 보급이 닿지 않는 부대가 있으면
+// 막지는 않되 반드시 알려준다 — 그렇게 두는 것도 하나의 선택이지만,
+// 모르고 그렇게 되는 건 선택이 아니다.
+function finishDeployment() {
+  if (state.gameOver || state.phase !== "deploy") return;
+  state.phase = "player";
+  state.selectedId = null;
+  const stranded = state.units.filter((unit) => unit.owner === "player" && normalizedSupplyStatus(unit).level !== "full");
+  addLog("배치를 마쳤습니다. 작전을 개시합니다.");
+  if (stranded.length) addLog(`경고: ${stranded.length}개 부대가 보급 범위 밖에서 작전을 시작합니다.`);
+  render();
+}
+
 function inspectTile(x, y) {
   playTerrainSound(x, y);
   state.selectedId = null;
@@ -1747,6 +2286,18 @@ function getHighlights() {
   const moves = new Set();
   const attacks = new Set();
   const raids = new Set();
+  // 배치 단계에서는 "갈 수 있는 칸"이 곧 "세울 수 있는 칸"이다. 이동과 같은 표시를
+  // 그대로 쓴다 — 단계마다 다른 색을 새로 가르칠 이유가 없다.
+  if (state.phase === "deploy") {
+    if (unit) {
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          if (canDeployHere(unit, x, y)) moves.add(posKey(x, y));
+        }
+      }
+    }
+    return { moves, attacks, raids };
+  }
   if (!unit || state.phase !== "player") return { moves, attacks, raids };
   const canStillMove = !unit.acted && !unit.moved && !activeConstructionForBuilder(unit);
   const canStillAttack = !unit.acted;
@@ -1835,6 +2386,11 @@ function engineerBuild(type) {
   engineer.acted = true;
   state.selectedId = null;
   addLog(`공병대가 (${engineer.x}, ${engineer.y})에서 ${constructionName(type)} 공사를 시작했습니다. ${duration}일이 필요합니다.`);
+  // 적 AI는 안전하지 않은 자리를 아예 고르지 않지만, 플레이어는 막지 않고 경고만 한다.
+  // 위험을 알면서 최전선에 창고를 미는 것도 하나의 수다 — 다만 모르고 하면 안 된다.
+  if (type === "depot" && !isSafeDepotSite(engineer.owner, engineer.x, engineer.y)) {
+    addLog("경고: 이 자리는 안전하지 않습니다. 공사 중 공병대는 이동할 수 없어 창고와 공병대를 함께 잃을 수 있습니다.");
+  }
   render();
 }
 
@@ -1844,14 +2400,20 @@ function canBuildBridge(engineer) {
   return neighbors(engineer.x, engineer.y).some((spot) => isBridgeableWater(spot.x, spot.y) && !hasImprovement(spot.x, spot.y, "bridge"));
 }
 
+// "이 칸에 이걸 지을 수 있는가"는 진영과 무관한 규칙이다. 적 AI도 같은 자를 써야
+// 플레이어가 본 것과 다른 규칙으로 적이 짓는 일이 생기지 않는다.
+function canBuildHere(x, y, type) {
+  if (getTerrainKey(x, y) === "W") return false;
+  if (getConstructionAt(x, y)) return false;
+  if (type === "depot") return !getBaseAt(x, y) && !hasImprovement(x, y, "depot");
+  if (type === "rail") return !hasImprovement(x, y, "rail");
+  return false;
+}
+
 function canStartConstruction(engineer, type) {
   if (state.phase !== "player" || state.gameOver || engineer.acted || engineer.type !== "engineer") return false;
   if (state.resources < (constructionCosts[type] ?? 0)) return false;
-  if (getTerrainKey(engineer.x, engineer.y) === "W") return false;
-  if (getConstructionAt(engineer.x, engineer.y)) return false;
-  if (type === "depot") return !getBaseAt(engineer.x, engineer.y) && !hasImprovement(engineer.x, engineer.y, "depot");
-  if (type === "rail") return !hasImprovement(engineer.x, engineer.y, "rail");
-  return false;
+  return canBuildHere(engineer.x, engineer.y, type);
 }
 
 function constructionDuration(type) {
@@ -1884,6 +2446,7 @@ function endPlayerTurn() {
   if (state.gameOver || state.phase !== "player") return;
   updateBattalionSupplyPressure("player");
   applySupplyAttrition("player");
+  advanceObjectiveHold("player");
   checkVictory();
   if (state.gameOver) {
     render();
@@ -1898,7 +2461,7 @@ function endPlayerTurn() {
     }
   });
   replenishNearBattalionHQ("enemy");
-  addLog("추축군이 반격 작전을 시작합니다.");
+  addLog(`${sideName("enemy")}이 반격 작전을 시작합니다.`);
   render();
   window.setTimeout(enemyTurn, 420);
 }
@@ -1906,8 +2469,26 @@ function endPlayerTurn() {
 function enemyTurn() {
   if (state.gameOver) return;
 
+  // 적 공사도 시간이 흘러야 완성된다. 이 한 줄이 없으면 적은 삽만 뜨고 영영 못 짓는다.
+  advanceConstructions("enemy");
+
+  // 지난 턴에 다리가 놓였거나 철도가 깔렸으면 어제 그린 길은 이미 틀렸다.
+  clearRouteFields();
+
+  // 부대가 움직이기 전에 참모부가 먼저 계획을 세운다. 부대마다 따로 판단하면
+  // 같은 답이 나와 전군이 한 덩어리로 몰린다.
+  buildEnemyPlan();
+
+  // 공병대가 먼저 움직인다. 나루의 물가는 대개 한 칸뿐이라, 전차가 먼저 그 칸에
+  // 올라서면 다리를 놓을 공병대는 영영 그 자리에 서지 못한다. 실제로 그랬다 —
+  // 적은 자기 전차에 막혀 16턴 내내 강가에 서 있었다. 길을 여는 쪽이 먼저다.
+  // 나머지 순서는 건드리지 않는다(사령부 추종은 지금 순서를 전제로 맞춰 두었다).
   const enemies = state.units.filter((unit) => unit.owner === "enemy");
-  enemies.forEach((unit) => {
+  const ordered = [
+    ...enemies.filter((unit) => unit.type === "engineer"),
+    ...enemies.filter((unit) => unit.type !== "engineer"),
+  ];
+  ordered.forEach((unit) => {
     if (!state.units.includes(unit) || state.gameOver) return;
 
     if (unit.type === "battalionHQ") {
@@ -1917,40 +2498,21 @@ function enemyTurn() {
       return;
     }
 
-    const raidableBase = bestRaidTarget(unit, "player");
-    if (raidableBase) {
-      raidBase(unit, raidableBase);
+    if (unit.type === "engineer") {
+      enemyEngineerTurn(unit);
       captureBase(unit);
       checkVictory();
       return;
     }
 
-    const target = nearestEnemy(unit, "player");
-    if (!target) return;
-
-    if (canAttack(unit, target)) {
-      attack(unit, target);
-    } else {
-      const step = bestStepToward(unit, target);
-      if (step) {
-        recordUnitMove(unit, step.x, step.y);
-        unit.x = step.x;
-        unit.y = step.y;
-        unit.moved = true;
-        if (unit.type === "artillery") unit.acted = true;
-        addLog(`추축군 ${unitLabel(unit)}가 전진했습니다.`);
-        const afterMoveRaid = bestRaidTarget(unit, "player");
-        const afterMoveTarget = nearestEnemy(unit, "player");
-        if (!unit.acted && afterMoveRaid) raidBase(unit, afterMoveRaid);
-        else if (!unit.acted && afterMoveTarget && canAttack(unit, afterMoveTarget)) attack(unit, afterMoveTarget);
-      }
-    }
+    enemyFieldTurn(unit);
     captureBase(unit);
     checkVictory();
   });
 
   updateBattalionSupplyPressure("enemy");
   applySupplyAttrition("enemy");
+  advanceObjectiveHold("enemy");
   checkVictory();
 
   if (state.gameOver) {
@@ -1960,11 +2522,15 @@ function enemyTurn() {
 
   const enemyIncome = projectedIncome("enemy");
   state.enemyResources += enemyIncome;
-  addLog(`추축군이 ${formatNumber(enemyIncome)} 보급품을 확보했습니다.`);
+  addLog(`${sideName("enemy")}이 ${formatNumber(enemyIncome)} 보급품을 확보했습니다.`);
   maybeEnemyRecruit();
 
   state.phase = "player";
   state.turn += 1;
+  if (resolveTurnLimit()) {
+    render();
+    return;
+  }
   advanceConstructions("player");
   const income = projectedIncome("player");
   state.resources += income;
@@ -1985,7 +2551,8 @@ function advanceConstructions(owner) {
     .forEach((construction) => {
       construction.remaining -= 1;
       if (construction.remaining > 0) {
-        addLog(`${constructionName(construction.type)} 공사 완료까지 ${construction.remaining}일 남았습니다.`);
+        // 이제 양측이 함께 공사하므로 누구 공사인지 적어야 로그가 읽힌다.
+        addLog(`${sideName(construction.owner)} ${constructionName(construction.type)} 공사 완료까지 ${construction.remaining}일 남았습니다.`);
       }
     });
 
@@ -2001,23 +2568,138 @@ function completeConstruction(construction) {
   } else {
     state.improvements.push({ type: construction.type, owner: construction.owner, x: construction.x, y: construction.y });
   }
-  addLog(`${constructionName(construction.type)} 공사가 완료되었습니다.`);
+  addLog(`${sideName(construction.owner)} ${constructionName(construction.type)} 공사가 완료되었습니다.`);
+}
+
+// 자세별 목표 편성비. 숫자는 "몇 기"가 아니라 "몇 할"이다 — 정원이 늘면 함께 는다.
+// 수비는 진지에서 쏘는 포가, 공격은 밀고 들어가는 기동이, 사냥은 발이 필요하다.
+// 예전에는 편성이 아니라 각본이었다: 전차 세 대를 채우면 그 뒤로는 영원히 보병.
+// 그래서 적의 편성은 미션이 무엇이든 똑같았고, 미션은 바뀌어도 적은 안 바뀌었다.
+const enemyForceMix = {
+  attack: { armor: 0.3, infantry: 0.4, artillery: 0.1, spArtillery: 0.2 },
+  defend: { armor: 0.15, infantry: 0.45, artillery: 0.3, spArtillery: 0.1 },
+  hunt: { armor: 0.4, infantry: 0.45, artillery: 0.05, spArtillery: 0.1 },
+};
+
+// 정원은 싸우는 부대만 센다. 공병대는 짓고 대대 사령부는 보급한다 — 둘 다
+// 전선에 세우려고 뽑는 부대가 아니다. 이걸 안 걸렀더니 사령부 두 기를 든 쪽은
+// 정원 여섯 중 둘을 앉아서 잃었고, 보급품 216을 쌓아둔 채 한 기도 못 불렀다.
+function isCombatUnit(unit) {
+  return unit.type !== "engineer" && unit.type !== "battalionHQ";
+}
+
+// 적 전투 정원. 플레이어는 상한이 없는데 적만 여섯 기에 묶여 있었다. 그래서
+// 플레이어가 창고로 몸집을 불릴수록 후반은 쉬워지기만 했다. 창고 목표와 같은
+// 원칙으로 간다 — 앞지르지는 않되, 뒤처져서 혼자 작아지지도 않는다.
+function enemyForceLimit() {
+  const rivals = state.units.filter((unit) => unit.owner === "player" && isCombatUnit(unit)).length;
+  return Math.max(enemyForceFloor, rivals);
+}
+
+// 지금 무엇이 모자란가. 편성비에서 가장 크게 벌어진 병종을 부른다.
+// 여유가 있으면 같은 값일 때 비싼 쪽을 고른다 — 보급품 137을 깔고 앉아
+// 3원짜리 보병만 부르던 것이 후반이 무너지던 이유였다.
+function enemyRecruitChoice(combat, limit, flush) {
+  const mix = enemyForceMix[enemyPosture()] ?? enemyForceMix.attack;
+  let best = null;
+  Object.entries(mix).forEach(([type, share]) => {
+    const cost = unitTypes[type]?.cost ?? Infinity;
+    if (state.enemyResources < cost) return;
+    if (!findSpawn("enemy", type)) return;
+    const have = combat.filter((unit) => unit.type === type).length;
+    const shortfall = share * limit - have;
+    // 여유가 없으면 모자란 병종만 본다. 여유가 있으면 정원이 빈 만큼은 채운다.
+    if (shortfall <= 0 && !flush) return;
+    const score = shortfall * 10 + (flush ? cost : 0);
+    if (!best || score > best.score) best = { type, score };
+  });
+  return best?.type ?? null;
 }
 
 function maybeEnemyRecruit() {
-  const enemyCount = state.units.filter((unit) => unit.owner === "enemy").length;
-  if (enemyCount >= 6 || state.turn % 2 !== 0) return;
-  const type = enemyCount < 3 ? "armor" : "infantry";
-  const spawn = findSpawn("enemy", type);
-  if (!spawn) return;
-  const cost = unitTypes[type].cost;
-  if (state.enemyResources < cost) {
-    addLog("추축군 보급 부족으로 예비대 투입이 지연되었습니다.");
+  // 격턴 제한은 자원이 빠듯할 때의 절약책이다. 창고가 늘어 보급품이 쌓이는데도
+  // 이 제한을 지키면 적은 돈을 쌓아두고 굶는다.
+  const flush = state.enemyResources >= enemyRecruitSurplus;
+  if (!flush && state.turn % 2 !== 0) return;
+
+  // 공병대를 먼저 본다. 경제를 키우는 부대가 전투 정원에 밀려 영영 안 나오면
+  // 적 생산은 첫 턴 그대로 굳는다.
+  if (maybeEnemyRecruitEngineer()) return;
+
+  const combat = state.units.filter((unit) => unit.owner === "enemy" && isCombatUnit(unit));
+  const limit = enemyForceLimit();
+  if (combat.length >= limit) return;
+
+  const type = enemyRecruitChoice(combat, limit, flush);
+  if (!type) {
+    // 고를 것이 없는 이유가 돈이면 그렇게 적는다. 자리가 없어서라면 조용히 넘긴다.
+    const mix = enemyForceMix[enemyPosture()] ?? enemyForceMix.attack;
+    const cheapest = Math.min(...Object.keys(mix).map((key) => unitTypes[key]?.cost ?? Infinity));
+    if (state.enemyResources < cheapest) addLog(`${sideName("enemy")} 보급 부족으로 예비대 투입이 지연되었습니다.`);
     return;
   }
-  state.enemyResources -= cost;
+  const spawn = findSpawn("enemy", type);
+  if (!spawn) return;
+  state.enemyResources -= unitTypes[type].cost;
   state.units.push(createUnit("enemy", type, spawn.x, spawn.y));
-  addLog(`추축군 ${unitLabel("enemy", type)} 예비대가 투입되었습니다.`);
+  addLog(`${sideUnitLabel("enemy", type)} 예비대가 투입되었습니다.`);
+}
+
+// 짓는 중인 것까지 함께 센다. 완성된 것만 세면 같은 목표를 두 번 세우게 된다.
+function enemyDepotCount() {
+  const built = state.bases.filter((base) => base.owner === "enemy" && base.builtByEngineer).length;
+  const building = state.constructions.filter((work) => work.owner === "enemy" && work.type === "depot").length;
+  return built + building;
+}
+
+function depotCountFor(owner) {
+  return state.bases.filter((base) => base.owner === owner && base.builtByEngineer).length;
+}
+
+// 적의 창고 목표는 고정 숫자가 아니라 하한이다. 기한 없는 작전에서 플레이어가
+// 공병대 여러 기로 계속 창고를 늘리면, 고정 목표를 든 적은 반드시 뒤처진다.
+// 그래서 목표는 "플레이어가 지은 만큼"까지 따라 올라간다 — 앞지르지는 않는다.
+function enemyDepotTarget() {
+  if (enemyDepotGoal <= 0) return 0;
+  if (!worthBuildingDepot()) return enemyDepotCount();
+  const economy = Math.max(enemyDepotGoal, depotCountFor("player"));
+  // 개통 임무의 창고는 경제가 아니라 작전 수단이다. 목표까지 선을 늘리려면
+  // 창고를 앞으로 밀어야 하는데, 경제 목표를 다 채웠다는 이유로 삽을 놓으면
+  // 적은 자기 승리 조건을 스스로 포기하는 셈이 된다. 그래서 두 기를 더 얹는다.
+  return enemyOpenSupplyObjective() ? economy + 2 : economy;
+}
+
+// 완성도 못 할 공사는 시작하지 않는다. 짓는 기간만큼은 더 굴려야 본전이라,
+// 남은 턴이 그에 못 미치면 적은 삽 대신 총을 든다. 기한이 없으면 계속 짓는다.
+function worthBuildingDepot() {
+  const limit = missionTurnLimit();
+  if (!Number.isFinite(limit)) return true;
+  return limit - state.turn >= constructionDuration("depot") * 2;
+}
+
+// 공병대 수도 플레이어를 따라간다. 플레이어가 3기로 계속 짓는데 적이 1기로 맞서면
+// 격차는 좁혀지지 않는다. 에디터의 한도는 그 위에 씌우는 천장이다.
+function desiredEnemyEngineers() {
+  const playerEngineers = state.units.filter((unit) => unit.owner === "player" && unit.type === "engineer").length;
+  return Math.min(enemyEngineerLimit, Math.max(1, playerEngineers));
+}
+
+function maybeEnemyRecruitEngineer() {
+  const target = enemyDepotTarget();
+  if (target <= 0) return false;
+  const engineers = state.units.filter((unit) => unit.owner === "enemy" && unit.type === "engineer").length;
+  if (engineers >= desiredEnemyEngineers()) return false;
+  // 이미 목표만큼 짓고 있거나 지을 손이 충분하면 더 뽑지 않는다.
+  if (engineers + enemyDepotCount() >= target) return false;
+  const spawn = findSpawn("enemy", "engineer");
+  if (!spawn) return false;
+  // 뽑고 나서 지을 돈이 없으면 공병대는 놀고만 있게 된다. 공사비까지 남는지 본다.
+  const cost = unitTypes.engineer.cost + (constructionCosts.depot ?? 0);
+  if (state.enemyResources < cost) return false;
+  state.enemyResources -= unitTypes.engineer.cost;
+  state.units.push(createUnit("enemy", "engineer", spawn.x, spawn.y));
+  addLog(`${sideName("enemy")} 공병대가 후방 보급 공사를 위해 투입되었습니다.`);
+  return true;
 }
 
 function attack(attacker, defender) {
@@ -2035,15 +2717,86 @@ function attack(attacker, defender) {
   playUnitSound(attacker, "attack");
   defender.hp -= damage;
   recordCombatEvent(attacker, defender, { damage, killed: defender.hp <= 0 });
-  addLog(`${sideName(attacker.owner)} ${unitLabel(attacker)}가 ${sideName(defender.owner)} ${unitLabel(defender)}에 ${damage} 피해를 입혔습니다.`);
-  if (isArtilleryUnit(attacker)) addLog(`${unitLabel(attacker)}는 장거리 포격 후 즉각적인 근접 반격을 받지 않습니다.`);
+  addLog(`${sideUnitLabel(attacker)}가 ${sideUnitLabel(defender)}에 ${damage} 피해를 입혔습니다.`);
 
   const baseUnderDefender = getBaseAt(defender.x, defender.y);
   if (baseUnderDefender?.owner === defender.owner) damageBaseProduction(baseUnderDefender, attacker);
 
   if (defender.hp <= 0) {
     state.units = state.units.filter((unit) => unit.id !== defender.id);
-    addLog(`${sideName(defender.owner)} ${unitLabel(defender)}가 전투 불능이 되었습니다.`);
+    addLog(`${sideUnitLabel(defender)}가 전투 불능이 되었습니다.`);
+    return;
+  }
+
+  resolveCounterattack(attacker, defender);
+}
+
+// 반격은 "살아남은 방어자가 자기 사거리로 공격자를 물 수 있는가"만 본다.
+// 포병이 사거리 3에서 때리면 사거리 1인 방어자는 닿지 않으므로 반격이 없다 —
+// 포병 면제를 따로 예외로 적지 않고 사거리 규칙에서 저절로 나오게 한다.
+// 야포/자주포는 근접 방어 무기가 아니므로 반격하지 않는다(그래서 artilleryVulnerability가 있다).
+function canCounterattack(defender, attacker) {
+  if (!defender || !attacker || defender.hp <= 0) return false;
+  if (isArtilleryUnit(defender)) return false;
+  if (supplyStatus(defender).level === "isolated") return false;
+  if (distance(defender, attacker) > unitTypes[defender.type].range) return false;
+  return !ridgeBlocksFire(defender, attacker);
+}
+
+// 반격은 반응이므로 행동력(acted/moved)을 쓰지 않는다. 맞았다고 다음 턴까지 벌받으면
+// 방어가 이중으로 손해다. 대신 위력은 counterattackFactor로 깎아서,
+// 선공이 여전히 유리하되 공짜는 아니게 만든다.
+// 반격을 숨기면 규칙이 아니라 함정이 된다. 공격 전에 "내가 몇 대 때리고
+// 몇 대 맞는지"를 그대로 보여준다. 계산은 실제 전투와 같은 함수를 쓴다 —
+// 예측과 결과가 다르면 플레이어는 규칙을 못 배운다.
+function attackForecast(attacker, defender) {
+  if (!attacker || !defender || attacker.owner === defender.owner) return null;
+  // 사거리 밖은 여기서 끊는다. canAttack/combatDamage는 보급 BFS를 타므로
+  // 매 렌더마다 전 유닛에 대해 돌리면 비싸다.
+  if (distance(attacker, defender) > unitTypes[attacker.type].range) return null;
+  if (!canAttack(attacker, defender)) return null;
+
+  const damage = combatDamage(attacker, defender);
+  const kills = damage >= defender.hp;
+  const counter = !kills && canCounterattack(defender, attacker)
+    ? Math.max(1, Math.round(combatDamage(defender, attacker) * counterattackFactor))
+    : 0;
+  return { damage, kills, counter, counterKills: counter >= attacker.hp };
+}
+
+function formatAttackForecast(forecast) {
+  const head = `예상 피해 ${forecast.damage}${forecast.kills ? " · 격파" : ""}`;
+  if (forecast.kills) return head;
+  if (!forecast.counter) return `${head} · 반격 없음`;
+  return `${head} · 반격 ${forecast.counter}${forecast.counterKills ? " (아군 격파)" : ""}`;
+}
+
+// AI는 아직 표적 점수 계산이 없고 "가장 가까운 적"만 친다(5번 항목).
+// 반격이 생긴 이상 그대로 두면 손상된 부대가 고지의 전차에 달려들어 자살한다.
+// 표적 선정을 통째로 고치는 건 5번으로 미루고, 여기서는 최소한의 금지선만 긋는다:
+// 상대를 못 죽이는데 반격에 내가 죽는 공격은 하지 않는다.
+function attackIsSuicidal(attacker, defender) {
+  if (combatDamage(attacker, defender) >= defender.hp) return false;
+  if (!canCounterattack(defender, attacker)) return false;
+  return Math.max(1, Math.round(combatDamage(defender, attacker) * counterattackFactor)) >= attacker.hp;
+}
+
+function resolveCounterattack(attacker, defender) {
+  if (!canCounterattack(defender, attacker)) {
+    if (isArtilleryUnit(attacker) && distance(attacker, defender) > unitTypes[defender.type].range) {
+      addLog(`${unitLabel(attacker)}는 사거리 밖에서 포격해 반격을 받지 않았습니다.`);
+    }
+    return;
+  }
+
+  const damage = Math.max(1, Math.round(combatDamage(defender, attacker) * counterattackFactor));
+  attacker.hp -= damage;
+  recordCombatEvent(defender, attacker, { damage, killed: attacker.hp <= 0, counter: true });
+  addLog(`${sideUnitLabel(defender)}가 반격해 ${unitLabel(attacker)}에 ${damage} 피해를 입혔습니다.`);
+
+  if (attacker.hp <= 0) {
+    state.units = state.units.filter((unit) => unit.id !== attacker.id);
+    addLog(`${sideUnitLabel(attacker)}가 반격으로 전투 불능이 되었습니다.`);
   }
 }
 
@@ -2056,7 +2809,16 @@ function combatDamage(attacker, defender) {
   const commander = commanderFor(attacker.owner);
   const directArtilleryVulnerability = isArtilleryUnit(defender) && unitTypes[attacker.type].range <= 1 ? artilleryVulnerability(defender) : 0;
   const defenderSupplyPenalty = supplyDefensePenalty(defender);
-  const rawDamage = attackerSpec.attack + heightModifier + commander.attack + directArtilleryVulnerability + defenderSupplyPenalty - defenderTile.defense - artilleryPenalty;
+  // 부대 자체의 방어력. 지형 보정과 같은 단위로 빠진다. 값을 안 준 병종은 0이라
+  // 지금까지의 피해표가 그대로 남는다 — 지금은 대대 사령부만 이 값을 가진다.
+  const defenderArmor = unitTypes[defender.type].defense ?? 0;
+  // 지휘관의 공격 보정은 싸우는 부대에만 붙는다. 정액이라 공격력이 낮은 쪽이
+  // 상대적으로 크게 받는데, 그 결과 공병대(공3)와 소총분대(공4)의 개활지 실피해가
+  // 똑같이 6이 됐다. 체력도 이동도 나은 공병대가 1원 더 주면 되는 상위호환이었고,
+  // 대대 사령부(공1)조차 보병의 3분의 2를 때렸다. 지휘관은 전투를 지휘하지,
+  // 삽질과 보급을 지휘해 적을 때리지 않는다.
+  const commanderAttack = isCombatUnit(attacker) ? commander.attack : 0;
+  const rawDamage = attackerSpec.attack + heightModifier + commanderAttack + directArtilleryVulnerability + defenderSupplyPenalty - defenderTile.defense - defenderArmor - artilleryPenalty;
   const moraleAdjusted = rawDamage * (effectiveMorale(attacker) / 100);
   return Math.max(1, Math.round(moraleAdjusted));
 }
@@ -2071,7 +2833,7 @@ function raidBase(attacker, base) {
     addLog("산등성이 뒤의 보급 거점은 현재 위치에서 포격할 수 없습니다.");
     return;
   }
-  addLog(`${sideName(attacker.owner)} ${unitLabel(attacker)}가 (${base.x}, ${base.y}) 보급 거점을 공격했습니다.`);
+  addLog(`${sideUnitLabel(attacker)}가 (${base.x}, ${base.y}) 보급 거점을 공격했습니다.`);
   playUnitSound(attacker, "attack");
   recordCombatEvent(attacker, base, { base: true });
   damageBaseProduction(base, attacker);
@@ -2087,30 +2849,58 @@ function damageBaseProduction(base, attacker) {
   }
 }
 
-function applySupplyAttrition(owner) {
-  const isolated = state.units.filter((unit) => unit.owner === owner && supplyStatus(unit).level === "isolated");
-  if (!isolated.length) return;
+// 두절 지속 턴에 따른 누진 피해. 선형이면 보병(체력 10)이 녹는 데 20턴 가까이 걸려
+// 위협으로 안 느껴진다. 누진이면 유예가 끝난 뒤 4~5턴에 무너져서
+// "지금 돌아가면 산다, 뭉개면 죽는다"가 된다.
+function collapseDamageFor(unit) {
+  const turns = unit.hqOutTurns ?? 0;
+  if (turns <= collapseGraceTurns) return 0;
+  return Math.min(collapseMaxDamage, turns - collapseGraceTurns);
+}
 
-  isolated.forEach((unit) => {
+function applySupplyAttrition(owner) {
+  const mine = state.units.filter((unit) => unit.owner === owner);
+
+  // 전술적 포위(3면)는 즉시·정액. 전략적 보급 두절은 유예 후·누진. 같은 결말, 다른 경로.
+  const encircled = mine.filter((unit) => supplyStatus(unit).level === "isolated");
+  encircled.forEach((unit) => {
     unit.hp -= isolatedAttritionDamage;
   });
-  addLog(`${sideName(owner)} 고립 부대 ${isolated.length}개가 보급 부족으로 ${isolatedAttritionDamage} 피해를 받았습니다.`);
+  if (encircled.length) {
+    addLog(`${sideName(owner)} 고립 부대 ${encircled.length}개가 포위 압박으로 ${isolatedAttritionDamage} 피해를 받았습니다.`);
+  }
 
-  const destroyed = isolated.filter((unit) => unit.hp <= 0);
+  const collapsing = mine
+    .filter((unit) => supplyStatus(unit).level === "cut")
+    .map((unit) => ({ unit, damage: collapseDamageFor(unit) }))
+    .filter((entry) => entry.damage > 0);
+  collapsing.forEach(({ unit, damage }) => {
+    unit.hp -= damage;
+  });
+  if (collapsing.length) {
+    const total = collapsing.reduce((sum, entry) => sum + entry.damage, 0);
+    addLog(`${sideName(owner)} 보급 두절 부대 ${collapsing.length}개가 붕괴로 총 ${total} 피해를 받았습니다.`);
+  }
+
+  const destroyed = state.units.filter((unit) => unit.owner === owner && unit.hp <= 0);
   if (destroyed.length) {
-    destroyed.forEach((unit) => addLog(`${sideName(unit.owner)} ${unitLabel(unit)}가 보급 붕괴로 전투 불능이 되었습니다.`));
+    destroyed.forEach((unit) => addLog(`${sideUnitLabel(unit)}가 보급 붕괴로 전투 불능이 되었습니다.`));
     state.units = state.units.filter((unit) => unit.hp > 0);
   }
 }
 
+// 두절이 몇 턴째인지만 센다. 사기 하락도 붕괴 소모도 전부 이 카운터에서 파생된다.
+// 예전에는 여기서 protectedByFriendlySupplyBase(거점 1칸 이내)를 면제 기준으로 썼는데,
+// 보급 표시(normalizedSupplyStatus)는 BFS 6칸을 정상으로 쳐서 둘이 어긋났다 —
+// 화면에 "정상 보급"이라고 나오는 부대의 사기가 조용히 빠지고 있었다. 기준을 하나로 통일한다.
 function updateBattalionSupplyPressure(owner) {
   state.units
     .filter((unit) => unit.owner === owner)
     .forEach((unit) => {
-      if (unit.type === "battalionHQ" || inBattalionSupplyRange(unit) || protectedByFriendlySupplyBase(unit)) {
-        unit.hqOutTurns = 0;
-      } else {
+      if (supplyStatus(unit).level === "cut") {
         unit.hqOutTurns = (unit.hqOutTurns ?? 0) + 1;
+      } else {
+        unit.hqOutTurns = 0;
       }
     });
 }
@@ -2133,7 +2923,10 @@ function replenishNearBattalionHQ(owner) {
   if (recovered.length) addLog(`${sideName(owner)} 대대사령부가 밀접 부대 ${recovered.length}개의 병력을 1씩 보충했습니다.`);
 }
 
+// 반격이 생기면서 공격자가 attack() 안에서 죽을 수 있게 됐다. 호출부들은
+// 공격 직후 captureBase(unit)을 부르므로, 죽은 부대가 거점을 점령하지 않도록 여기서 막는다.
 function captureBase(unit) {
+  if (!unit || unit.hp <= 0) return;
   const base = getBaseAt(unit.x, unit.y);
   if (base && base.owner !== unit.owner) {
     base.owner = unit.owner;
@@ -2142,14 +2935,236 @@ function captureBase(unit) {
   }
 }
 
+function missionObjectives() {
+  return state.mission?.objectives ?? [];
+}
+
+function objectivesFor(owner) {
+  return missionObjectives().filter((objective) => objective.owner === owner);
+}
+
+// 좌표가 없는 목표(사령부 격파, 사수 대상)도 있다. 타일에 그릴 수 있는 건 좌표가 있는 것뿐이다.
+function objectiveAt(x, y) {
+  return missionObjectives().find((objective) => objective.x === x && objective.y === y);
+}
+
+// 좌표가 있는 목표 전부. AI가 "어디로 가야 하는가"를 물을 때 보는 목록이고,
+// 유지 턴이 도는 목표이기도 하다. 점령이든 개통이든 지도 위의 한 점을 두고
+// 다투는 것은 같으므로, 자세·축선·초소는 이 목록 하나만 보면 된다.
+function objectiveTiles(owner) {
+  return objectivesFor(owner).filter((objective) => objective.kind === "seize" || objective.kind === "supply");
+}
+
+// 이 칸이 그 진영의 거점 보급망에 "정상" 등급으로 이어져 있는가.
+// 자는 부대에 쓰는 것과 똑같다(normalizedSupplyStatus의 거점 경로) — 목표만 다른
+// 자를 쓰면 화면에 뜨는 보급 표시와 승패 판정이 서로 다른 말을 하게 된다.
+// supplyLineCost는 상대 부대가 선 칸을 통과하지 못한다. 그래서 수비 측은
+// 회랑 위에 서 있는 것만으로 개통을 끊을 수 있다 — 이게 이 목표의 승부처다.
+function supplyOpenAt(owner, x, y) {
+  const cost = supplyLineCost({ owner, x, y });
+  return Number.isFinite(cost) && cost <= effectiveSupplyRange({ owner });
+}
+
+// 개통 목표를 클릭했을 때 보이는 한 줄. "안 된다"만 알려주면 플레이어는 무엇을
+// 해야 할지 모른다. 길이 없는 것(다리)과 너무 먼 것(창고·철도)은 다른 문제다.
+function objectiveSupplyText(objective) {
+  const cost = supplyLineCost({ owner: objective.owner, x: objective.x, y: objective.y });
+  if (!Number.isFinite(cost)) return "단절 (도하로 없음)";
+  const need = effectiveSupplyRange({ owner: objective.owner });
+  return `${formatNumber(cost)} / ${formatNumber(need)}${cost <= need ? " 개통" : " 초과"}`;
+}
+
+function taggedUnits(owner, tag) {
+  return state.units.filter((unit) => unit.owner === owner && unit.tag === tag);
+}
+
+// 이 부대가 미션에서 이름이 불린 부대인가. 불렸다면 그 이름을 돌려준다.
+function missionRoleFor(unit) {
+  if (!unit.tag) return "";
+  const mine = missionObjectives().filter((objective) => objective.owner === unit.owner);
+  // 사수 대상(protect)의 이름이 그 부대의 이름이다. 탈출 지점 이름을 부대에 붙이면 헷갈린다.
+  const named = mine.find((objective) => objective.tag === unit.tag) ?? mine.find((objective) => objective.byTag === unit.tag);
+  return named ? named.label : "";
+}
+
+function objectiveHoldRequirement(objective) {
+  return objective.holdTurns ?? objectiveHoldTurns;
+}
+
+// 좌표 뒤에 조사를 바로 붙이면 "(4, 12)을"처럼 읽히는 대로 틀린다. "지점"으로 끊고 붙인다.
+function objectiveName(objective) {
+  return `${objective.label} (${objective.x}, ${objective.y}) 지점`;
+}
+
+// 타일 하나에는 한쪽 부대만 설 수 있으므로(canMoveTo) 점유 = 장악이다.
+// byTag가 붙은 목표는 아무 부대나로는 안 된다 — 그 부대가 직접 그 칸에 서야 한다(탈출 미션).
+function controlsObjective(objective) {
+  // 개통 목표는 밟는 것이 아니라 잇는 것이다. 그 칸이 비어 있어도 보급선이 닿으면
+  // 달성이고, 부대를 올려놓아도 선이 끊겨 있으면 미달성이다.
+  if (objective.kind === "supply") return supplyOpenAt(objective.owner, objective.x, objective.y);
+  return state.units.some(
+    (unit) =>
+      unit.owner === objective.owner &&
+      unit.x === objective.x &&
+      unit.y === objective.y &&
+      (!objective.byTag || unit.tag === objective.byTag),
+  );
+}
+
+// 장악은 자기 턴이 끝나는 순간에만 한 칸 오른다. 사이에 상대 턴이 통째로 끼어 있으니
+// 유지 턴이 2면 "상대의 반격을 한 번 넘기고도 그 자리에 남아 있어라"가 된다.
+// 빼앗기면 0으로 돌아간다 — 누적이 아니라 유지여야 목표가 방어할 값어치를 가진다.
+function advanceObjectiveHold(owner) {
+  objectiveTiles(owner).forEach((objective) => {
+    const holding = controlsObjective(objective);
+    const previous = objective.held;
+    objective.held = holding ? objective.held + 1 : 0;
+    const need = objectiveHoldRequirement(objective);
+    const where = objectiveName(objective);
+    const opened = objective.kind === "supply";
+    if (holding && objective.held < need) {
+      const what = opened ? `${where}까지 보급선을 열었습니다` : `${where}을 장악했습니다`;
+      addLog(`${sideName(owner)}이 ${what}. 유지 ${objective.held}/${need}턴.`);
+    } else if (!holding && previous > 0) {
+      const what = opened ? `${where}의 보급선이 끊겼습니다` : `${where}의 장악을 잃었습니다`;
+      addLog(`${sideName(owner)}${what}. 유지 턴이 초기화됩니다.`);
+    }
+  });
+}
+
+// 달성된 "승리 목표". protect는 승리 목표가 아니라 실패 조건이라 여기서 빠진다.
+function completedObjective() {
+  return missionObjectives().find((objective) => {
+    if (objective.kind === "seize" || objective.kind === "supply") return objective.held >= objectiveHoldRequirement(objective);
+    if (objective.kind === "destroy") {
+      const prey = objective.owner === "player" ? "enemy" : "player";
+      return !state.units.some((unit) => unit.owner === prey && unit.type === objective.targetType);
+    }
+    return false;
+  });
+}
+
+// 지켜야 할 대상이 사라졌으면 그 진영이 진다. 승리 목표보다 먼저 본다 —
+// 사령부를 잃고서 같은 턴에 목표를 밟았다고 이기는 건 말이 안 된다.
+function failedObjective() {
+  return missionObjectives().find(
+    (objective) => objective.kind === "protect" && taggedUnits(objective.owner, objective.tag).length === 0,
+  );
+}
+
+function objectiveGoalText(objective) {
+  if (objective.kind === "seize") {
+    const need = objectiveHoldRequirement(objective);
+    const who = objective.byTag ? "지정 부대가 " : "";
+    return `${objective.label} (${objective.x}, ${objective.y}) ${who}${need}턴 유지`;
+  }
+  // 개통 목표는 "가라"가 아니라 "이어라"다. 무엇을 해야 하는지가 이름에 드러나야
+  // 플레이어가 부대 대신 공병대를 먼저 움직인다.
+  if (objective.kind === "supply") {
+    return `${objective.label} (${objective.x}, ${objective.y}) 보급선 개통 ${objectiveHoldRequirement(objective)}턴 유지`;
+  }
+  // 격파 목표의 이름은 "무엇을"만 적는다. "누구 것을"은 목표 주인이 정하므로 여기서 붙인다.
+  if (objective.kind === "destroy") return `${objective.owner === "player" ? "적" : "아군"} ${objective.label} 격파`;
+  if (objective.kind === "protect") return `${objective.label} 사수`;
+  return objective.label;
+}
+
+// 목표 이름은 시나리오가 짓는다. 받침을 코드가 모르면 "사령부을 잃었습니다"가 나온다.
+// 한글이 아닌 끝(좌표 괄호 등)은 기존 표기대로 "을"을 쓴다.
+function objectParticle(word) {
+  const code = String(word).trimEnd().slice(-1).charCodeAt(0);
+  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return "을";
+  return (code - 0xac00) % 28 === 0 ? "를" : "을";
+}
+
+function completionMessage(objective) {
+  if (objective.kind === "destroy") {
+    const target = `${objective.label}${objectParticle(objective.label)}`;
+    return objective.owner === "player"
+      ? `승리: ${sideName("enemy")} ${target} 격파했습니다.`
+      : `패배: ${sideName("enemy")}이 아군 ${target} 격파했습니다.`;
+  }
+  const where = objectiveName(objective);
+  if (objective.kind === "supply") {
+    return objective.owner === "player"
+      ? `승리: ${where}까지 보급선을 개통했습니다.`
+      : `패배: ${sideName("enemy")}이 ${where}까지 보급선을 개통했습니다.`;
+  }
+  // 점령 목표가 늘 "적 후방 돌파"인 건 아니다(탈출 지점, 교차로…). 목표 이름이 상황을 말하게 둔다.
+  return objective.owner === "player"
+    ? `승리: ${where}을 확보해 작전 목표를 달성했습니다.`
+    : `패배: ${sideName("enemy")}이 ${where}을 확보했습니다.`;
+}
+
+function failureMessage(objective) {
+  const target = `${objective.label}${objectParticle(objective.label)}`;
+  return objective.owner === "player"
+    ? `패배: 사수해야 할 ${target} 잃었습니다.`
+    : `승리: ${sideName("enemy")}의 ${target} 무너뜨렸습니다.`;
+}
+
+function missionTurnLimit() {
+  return operationTurnLimit > 0 ? operationTurnLimit : Infinity;
+}
+
+function turnsRemaining() {
+  const limit = missionTurnLimit();
+  return Number.isFinite(limit) ? Math.max(0, limit - state.turn + 1) : Infinity;
+}
+
+function missionBriefText() {
+  const limit = missionTurnLimit();
+  const outcome = state.mission?.timeoutOutcome ?? "draw";
+  const deadlineTail = outcome === "playerWin" ? " 사수 시 승리" : outcome === "playerLose" ? " 안에 달성 실패 시 패배" : "";
+  const deadline = Number.isFinite(limit) ? `작전 기한 ${limit}턴${deadlineTail}` : "작전 기한 없음";
+  const mine = objectivesFor("player").map((objective) => `아군: ${objectiveGoalText(objective)}`);
+  const theirs = objectivesFor("enemy").map((objective) => `적: ${objectiveGoalText(objective)}`);
+  return [deadline, ...mine, ...theirs].join(" · ");
+}
+
+function timeoutMessage() {
+  const outcome = state.mission?.timeoutOutcome ?? "draw";
+  if (outcome === "playerWin") return "승리: 작전 기한이 끝날 때까지 전선을 지켜냈습니다.";
+  if (outcome === "playerLose") return "패배: 작전 기한 안에 목표를 달성하지 못했습니다.";
+  return "무승부: 작전 기한이 끝나 전선이 교착되었습니다.";
+}
+
+// 턴이 오른 직후에 부른다. 기한이 지났으면 true를 돌려주고 호출부가 턴 진행을 멈춘다.
+function resolveTurnLimit() {
+  if (state.gameOver) return true;
+  const limit = missionTurnLimit();
+  if (!Number.isFinite(limit)) return false;
+  if (state.turn > limit) {
+    finishGame(timeoutMessage());
+    return true;
+  }
+  const left = turnsRemaining();
+  if (left === 5 || left === 3 || left === 1) addLog(`작전 기한까지 ${left}턴 남았습니다.`);
+  return false;
+}
+
 function checkVictory() {
+  if (state.gameOver) return;
+
+  const failed = failedObjective();
+  if (failed) {
+    finishGame(failureMessage(failed));
+    return;
+  }
+
+  const objective = completedObjective();
+  if (objective) {
+    finishGame(completionMessage(objective));
+    return;
+  }
+
   const playerUnits = state.units.some((unit) => unit.owner === "player");
   const enemyUnits = state.units.some((unit) => unit.owner === "enemy");
   const playerBases = state.bases.some((base) => base.owner === "player");
   const enemyBases = state.bases.some((base) => base.owner === "enemy");
 
-  if ((!enemyUnits || !enemyBases) && !state.gameOver) finishGame("승리: 추축군 전선이 붕괴되었습니다.");
-  if ((!playerUnits || !playerBases) && !state.gameOver) finishGame("패배: 연합군 교두보를 상실했습니다.");
+  if (!enemyUnits || !enemyBases) finishGame("승리: 추축군 전선이 붕괴되었습니다.");
+  else if (!playerUnits || !playerBases) finishGame("패배: 연합군 교두보를 상실했습니다.");
 }
 
 function finishGame(message) {
@@ -2191,22 +3206,30 @@ function effectiveHQSupplyRange(ownerOrUnit) {
   return Math.max(0, hqSupplyRange + commanderSupplyBonus(owner));
 }
 
+// 보급은 2층이다. 1층 = 대대 HQ(전진 보급소), 2층 = 거점 보급망(BFS).
+// 둘 중 하나라도 닿으면 정상. 둘 다 잃었을 때만 "두절"이 되고, 두절만이 부대를 죽인다.
+// 대대 HQ 자신은 1층을 못 쓴다(자기까지의 거리는 늘 0이므로) — 거점 보급망으로만 판정한다.
+// 그래야 보급망에서 끊긴 사령부가 실제로 위험해지고, "고립 사령부 구조" 상황이 성립한다.
 function normalizedSupplyStatus(unit) {
   const hqDistanceNow = nearestBattalionHQDistance(unit);
   const enemyFaces = adjacentEnemyFaceCount(unit);
   if (enemyFaces >= 3) {
-    return { level: "isolated", label: `고립 ${enemyFaces}/4`, cost: supplyLineCost(unit), hqDistance: hqDistanceNow };
+    return { level: "isolated", via: "none", label: `고립 ${enemyFaces}/4`, cost: supplyLineCost(unit), hqDistance: hqDistanceNow };
   }
 
-  const hqsNow = battalionHQs(unit.owner);
-  if (!hqsNow.length) return { level: "strained", label: "사령부 전멸", cost: Infinity, hqDistance: hqDistanceNow };
-  if (hqDistanceNow <= effectiveHQSupplyRange(unit)) return { level: "full", label: "대대 보급", cost: hqDistanceNow, hqDistance: hqDistanceNow };
+  const isHQ = unit.type === "battalionHQ";
+  if (!isHQ && hqDistanceNow <= effectiveHQSupplyRange(unit)) {
+    return { level: "full", via: "hq", label: "대대 보급", cost: hqDistanceNow, hqDistance: hqDistanceNow };
+  }
 
   const costNow = supplyLineCost(unit);
-  if (!Number.isFinite(costNow)) return { level: "strained", label: "보급선 단절", cost: costNow, hqDistance: hqDistanceNow };
-  if (costNow <= effectiveSupplyRange(unit)) return { level: "full", label: "정상 보급", cost: costNow, hqDistance: hqDistanceNow };
-  if (costNow <= effectiveStrainedSupplyRange(unit)) return { level: "strained", label: "보급 불안", cost: costNow, hqDistance: hqDistanceNow };
-  return { level: "strained", label: "보급선 장거리", cost: costNow, hqDistance: hqDistanceNow };
+  if (!Number.isFinite(costNow)) {
+    const label = battalionHQs(unit.owner).length ? "보급선 두절" : "사령부 전멸";
+    return { level: "cut", via: "none", label, cost: costNow, hqDistance: hqDistanceNow };
+  }
+  if (costNow <= effectiveSupplyRange(unit)) return { level: "full", via: "base", label: "정상 보급", cost: costNow, hqDistance: hqDistanceNow };
+  if (costNow <= effectiveStrainedSupplyRange(unit)) return { level: "strained", via: "base", label: "보급 불안", cost: costNow, hqDistance: hqDistanceNow };
+  return { level: "cut", via: "none", label: "보급선 이탈", cost: costNow, hqDistance: hqDistanceNow };
 }
 
 function adjacentEnemyFaceCount(unit) {
@@ -2245,9 +3268,58 @@ function supplyLineCost(unit) {
   return Infinity;
 }
 
+// 보급선이 실제로 지나는 길. supplyLineCost는 값만 돌려주므로 "어디에 철도를
+// 깔아야 이 선이 짧아지는가"에 답할 수 없다. 왔던 칸을 적어 두었다가 되짚는다.
+// 규칙(통행 비용, 철도 할인, 적 부대가 선 칸은 못 지나감)은 supplyLineCost와 같아야
+// 한다 — 자가 둘이면 공병대가 엉뚱한 곳에 철도를 깐다.
+function supplyRouteTo(owner, x, y) {
+  const sources = state.bases.filter((base) => base.owner === owner);
+  if (!sources.length) return { cost: Infinity, path: [] };
+
+  const queue = sources.map((base) => ({ x: base.x, y: base.y, cost: 0 }));
+  const best = new Map(queue.map((source) => [posKey(source.x, source.y), 0]));
+  const from = new Map();
+
+  while (queue.length) {
+    queue.sort((a, b) => a.cost - b.cost);
+    const current = queue.shift();
+    if (current.x === x && current.y === y) {
+      const path = [];
+      let at = posKey(x, y);
+      let here = { x, y };
+      while (here) {
+        path.unshift(here);
+        here = from.get(at) ?? null;
+        at = here ? posKey(here.x, here.y) : null;
+      }
+      return { cost: current.cost, path };
+    }
+    if (current.cost > (best.get(posKey(current.x, current.y)) ?? Infinity)) continue;
+
+    neighbors(current.x, current.y).forEach((next) => {
+      const tileCost = movementCostForTile(next.x, next.y);
+      const blockers = getUnitsAt(next.x, next.y);
+      if (!Number.isFinite(tileCost) || blockers.some((other) => other.owner !== owner)) return;
+      const railBonus = hasImprovement(next.x, next.y, "rail") ? 0.35 : 1;
+      const newCost = current.cost + tileCost * railBonus;
+      const key = posKey(next.x, next.y);
+      if (newCost < (best.get(key) ?? Infinity)) {
+        best.set(key, newCost);
+        from.set(key, { x: current.x, y: current.y });
+        queue.push({ ...next, cost: newCost });
+      }
+    });
+  }
+
+  return { cost: Infinity, path: [] };
+}
+
+// 실제로 어느 층에서 보급받는지를 그대로 보여준다. 예전에는 hqDistance가 유한하면
+// 무조건 "HQ n"을 찍어서, 두절된 대대 사령부 카드에 자기 자신까지의 거리인 "HQ 0"이
+// 떠 있었다 — 같은 카드 안에서 "보급선 이탈"과 정면으로 모순됐다.
 function formatSupplyDistance(supply) {
-  if (Number.isFinite(supply.hqDistance)) return `HQ ${formatNumber(supply.hqDistance)}`;
-  return Number.isFinite(supply.cost) ? formatNumber(supply.cost) : "단절";
+  if (supply.via === "hq") return `HQ ${formatNumber(supply.hqDistance)}`;
+  return Number.isFinite(supply.cost) ? `거점 ${formatNumber(supply.cost)}` : "단절";
 }
 
 function battalionHQs(owner) {
@@ -2272,6 +3344,17 @@ function inBattalionSupplyRange(unit) {
   return nearestBattalionHQDistance(unit) <= effectiveHQSupplyRange(unit);
 }
 
+// 이 칸이 대대 사령부의 어느 고리에 드는가. "recovery"는 매 턴 체력이 1씩 차는
+// 안쪽 고리, "supply"는 거점 보급망이 끊겨도 정상 보급으로 쳐주는 바깥 고리다.
+// 안쪽이 더 좁으므로 먼저 본다.
+function battalionSupplyReach(owner, x, y) {
+  const hqs = battalionHQs(owner);
+  if (!hqs.length) return "";
+  const nearest = Math.min(...hqs.map((hq) => distance({ x, y }, hq)));
+  if (nearest <= hqRecoveryRange) return "recovery";
+  return nearest <= effectiveHQSupplyRange(owner) ? "supply" : "";
+}
+
 function canMoveTo(unit, x, y) {
   if (!inBounds(x, y)) return false;
   if (unit.acted || unit.moved) return false;
@@ -2284,6 +3367,9 @@ function effectiveMove(unit) {
   const baseMove = Math.max(1, rawMove + (commanderFor(unit.owner).move ?? 0));
   const supply = supplyStatus(unit);
   if (supply.level === "isolated") return Math.min(baseMove, 1);
+  // 두절은 일부러 불안과 같은 페널티만 준다. 여기서 발을 묶으면 복귀가 불가능해져서
+  // 두절 = 확정 사망이 된다. 되돌아갈 수 있어야 플레이어의 선택이 된다.
+  if (supply.level === "cut") return Math.max(1, baseMove - 1);
   if (supply.level === "strained") return Math.max(1, baseMove - 1);
   return baseMove;
 }
@@ -2314,13 +3400,15 @@ function canEnterTerrain(unit, x, y) {
   return traversalCostForUnit(unit, x, y) < Infinity;
 }
 
+// 다리가 놓인 물칸은 뭍처럼 건넌다. 이 한 줄이 없어서 지금까지 다리는 반쪽이었다 —
+// movementCostForTile은 다리를 알아보므로 보급선은 강을 건넜지만, 정작 부대는
+// 못 건넜다. 그러면 다리를 놓을 이유가 없고, 강을 사이에 둔 작전 자체가 성립하지 않는다.
 function canUnitDomainEnter(unit, x, y) {
   const domain = unitTypes[unit?.type]?.domain ?? "land";
   const terrainKey = getTerrainKey(x, y);
-  if (domain === "land") return terrainKey !== "W";
   if (domain === "naval") return terrainKey === "W";
   if (domain === "air") return true;
-  return terrainKey !== "W";
+  return terrainKey !== "W" || hasBridgeableCrossing(x, y);
 }
 
 function movementCost(startX, startY, targetX, targetY, unit) {
@@ -2358,7 +3446,7 @@ function traversalCostForUnit(unit, x, y) {
   const terrainKey = getTerrainKey(x, y);
   if (domain === "naval") return terrainKey === "W" ? 1 : Infinity;
   if (domain === "air") return 1;
-  return terrainKey === "W" ? Infinity : movementCostForTile(x, y);
+  return terrainKey === "W" && !hasBridgeableCrossing(x, y) ? Infinity : movementCostForTile(x, y);
 }
 
 function hasBridgeableCrossing(x, y) {
@@ -2372,8 +3460,23 @@ function isBridgeableWater(x, y) {
   return horizontalBanks || verticalBanks;
 }
 
+// 사령부 엄호. 사령부는 예하 부대 뒤에 선다 — 인접한 아군 전투부대가 하나라도
+// 있으면 직접 사격 대상이 되지 않는다. 호위를 먼저 걷어내야 사령부에 닿는다.
+// 이 규칙이 없으면 "고립 사령부 구조"는 미션이 아니라 처형이다. 체력 9짜리
+// 사령부에 네 부대가 화력을 모으면 플레이어가 손도 대기 전에 첫 턴에 끝난다.
+// 부수 효과도 의도한 것이다: 사령부 사냥이 "호위를 뚫는 작전"이 되고,
+// 보급의 중심인 사령부를 앞에 세우면 안 된다는 압력이 양쪽에 똑같이 걸린다.
+// 에디터에서 0으로 두면 규칙이 꺼져 예전처럼 사령부를 바로 칠 수 있다.
+function isScreenedHQ(unit) {
+  if (!hqScreening || unit.type !== "battalionHQ") return false;
+  return neighbors(unit.x, unit.y).some((spot) =>
+    getUnitsAt(spot.x, spot.y).some((other) => other.owner === unit.owner && other.type !== "battalionHQ"),
+  );
+}
+
 function canAttack(attacker, defender) {
   if (!attacker || !defender || attacker.owner === defender.owner) return false;
+  if (isScreenedHQ(defender)) return false;
   if (attacker.type === "artillery" && attacker.moved) return false;
   if (isTowedArtillery(attacker)) return false;
   if (supplyStatus(attacker).level === "isolated" && unitTypes[attacker.type].range > 1) return false;
@@ -2431,28 +3534,1000 @@ function bestRaidTarget(unit, owner) {
     .sort((a, b) => baseProduction(b) - baseProduction(a))[0];
 }
 
-function bestStepToward(unit, target) {
+// ── 적 AI 정책 ──────────────────────────────────────────────────────────────
+// 적의 자세는 미션이 정한다. 시나리오에 따로 적을 필요가 없다 — 목표가 곧 자세다.
+//   hunt   : 잡아야 할 상대가 지목되어 있다(적 사령부 사냥, 플레이어의 사수 대상).
+//   attack : 밟아야 할 칸이 있다. 그 칸을 향해 민다.
+//   defend : 내 목표는 없고 시계가 내 편이다. 플레이어의 목표를 막는다.
+// 예전 AI는 자세가 없어서 어느 미션에서든 "가장 가까운 거점 습격"만 했다.
+function enemyPosture() {
+  const mine = objectivesFor("enemy");
+  if (mine.some((objective) => objective.kind === "destroy")) return "hunt";
+  // 플레이어가 지켜야 하는 부대는 곧 적이 노려야 할 사냥감이다.
+  if (objectivesFor("player").some((objective) => objective.kind === "protect")) return "hunt";
+  // 개통 목표도 공격이다. 강 건너의 칸을 보급망으로 이으려면 결국 그 칸까지
+  // 밀고 나가 그 자리를 지켜야 한다 — 앉아서는 절대 채워지지 않는 목표다.
+  if (mine.some((objective) => objective.kind === "seize" || objective.kind === "supply")) return "attack";
+  // 목표가 없다 = 버티기만 하면 이긴다. 앉아 있으라는 뜻은 아니다(아래 출격 규칙).
+  if (objectiveTiles("player").length || state.mission?.timeoutOutcome === "playerLose") return "defend";
+  return "attack";
+}
+
+// ── 적 참모부 ──────────────────────────────────────────────────────────────
+// 예전에는 부대마다 따로 "가장 가까운 적이 어디냐"를 물었다. 전군이 같은 질문에
+// 같은 답을 내니 결과는 한 덩어리 전진이었다 — 그건 전략이 아니라 무리 짓기다.
+// 이제는 턴이 시작될 때 참모부가 한 번 계획을 세운다: 축선을 고르고, 어디에
+// 주력을 걸지 정하고, 예비를 떼어 남긴다. 부대는 배정받은 임무만 수행한다.
+let enemyPlan = new Map();
+
+// 이번 턴에 노릴 축선. 자세가 무엇을 축선으로 볼지 정한다.
+function enemyAxes() {
+  const posture = enemyPosture();
+
+  if (posture === "hunt") {
+    return enemyPreyUnits().map((prey) => ({ x: prey.x, y: prey.y, label: "표적", key: `표적:${prey.id}` }));
+  }
+
+  if (posture === "defend") {
+    return defensePosts("enemy").map((post) => defenseAnchor("enemy", post));
+  }
+
+  const seats = objectiveTiles("enemy").map((objective) => ({
+    x: objective.x,
+    y: objective.y,
+    label: "목표",
+    key: `목표:${objective.x},${objective.y}`,
+  }));
+  if (seats.length) return seats;
+  // 좌표 목표가 없으면 플레이어의 보급 거점이 축선이다. 보급이 이 게임의 중심이니
+  // 그걸 끊는 것이 언제나 유효한 작전이다.
+  return state.bases
+    .filter((base) => base.owner === "player")
+    .map((base) => ({ x: base.x, y: base.y, label: "거점", key: `거점:${base.x},${base.y}` }));
+}
+
+// ── 수비 교리 ──────────────────────────────────────────────────────────────
+// 예전 수비는 초소를 밟고 서서 적이 사거리에 들어오기를 기다리는 것이었다.
+// 그건 수비가 아니라 대기다. riverBreak 8턴을 재보니 보병은 8턴, 전차는 7턴을
+// 제자리에 서 있었다. 지킨다는 것은 적이 목표에 닿기 전에 막는다는 뜻이다.
+
+// 지킬 칸 앞의 자리. 어느 쪽이 앞인지는 나침반이 아니라 적이 정한다.
+function defenseAnchor(owner, post) {
+  // key는 화면에 찍히는 이름(label)과 달리 계획을 잇는 손잡이다. 전방 자리는 적이
+  // 움직이면 좌표가 흔들리므로, 흔들리지 않는 초소 좌표로 이름을 붙인다. 그래야
+  // 같은 초소를 맡은 부대가 매 턴 "다른 축선"으로 읽히지 않는다.
+  const base = { x: post.x, y: post.y, label: "초소", key: `초소:${post.x},${post.y}` };
+  if (enemyForwardDefense <= 0) return base;
+  const foes = state.units.filter((unit) => unit.owner !== owner);
+  if (!foes.length) return base;
+  const cx = foes.reduce((sum, unit) => sum + unit.x, 0) / foes.length;
+  const cy = foes.reduce((sum, unit) => sum + unit.y, 0) / foes.length;
+  const dx = cx - post.x;
+  const dy = cy - post.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 1) return base;
+  const x = clampToBoard(Math.round(post.x + (dx / length) * enemyForwardDefense), width);
+  const y = clampToBoard(Math.round(post.y + (dy / length) * enemyForwardDefense), height);
+  if (x === post.x && y === post.y) return base;
+  return { x, y, label: "전방", key: `전방:${post.x},${post.y}`, post: { x: post.x, y: post.y } };
+}
+
+// 수비의 축선 분할은 좌우가 아니라 앞뒤다. 한 줄로 늘어선 방어선은 한 번 뚫리면
+// 그 뒤가 텅 비어 있고, 그때 남는 것은 방어가 아니라 추격당하는 행렬이다.
+function defenseLanes(anchor) {
+  if (!anchor.post) return [anchor];
+  return [
+    { x: anchor.x, y: anchor.y, label: "전방", key: anchor.key ?? `전방:${anchor.post.x},${anchor.post.y}` },
+    { x: anchor.post.x, y: anchor.post.y, label: "종심", key: `종심:${anchor.post.x},${anchor.post.y}` },
+  ];
+}
+
+// 초소가 실제로 밟히는 순간 예비는 풀린다. 뚫린 뒤에 도착하는 예비는
+// 예비가 아니라 잔당이고, 아껴 둔 보람은 거기서 사라진다.
+function enemyBreach(unit) {
+  if (enemyPosture() !== "defend") return null;
+  const posts = defensePosts(unit.owner);
+  if (!posts.length) return null;
+  const broken = state.units.filter(
+    (foe) => foe.owner !== unit.owner && posts.some((post) => distance(foe, post) <= enemyDefenseRadius),
+  );
+  return broken.length ? nearestOf(unit, broken) : null;
+}
+
+// 어느 축선에 주력을 걸 것인가. 공격이면 "적이 얇은 곳", 수비면 "적이 몰려오는 곳".
+// 둘 다 결국 같은 원칙이다 — 결정이 날 곳에 무게를 싣는다.
+function axisWeight(axis, units) {
+  const defenders = state.units.filter((foe) => foe.owner === "player" && distance(foe, axis) <= 3).length;
+  const closeness = units.length
+    ? units.reduce((sum, unit) => sum + distance(unit, axis), 0) / units.length
+    : 0;
+  if (enemyPosture() === "defend") {
+    // 수비: 위협이 큰 초소가 주공. 몰려오는 쪽을 비워두면 그대로 뚫린다.
+    return defenders * 4 - closeness * 0.5;
+  }
+  // 공격: 얇은 곳이 주공. 가깝기도 하면 더 좋다.
+  return -defenders * 2.5 - closeness;
+}
+
+// 매 턴 새로 짠다. 부대가 죽고 전선이 밀리면 어제의 계획은 이미 남의 계획이다.
+// 계획을 새로 짜면 뒤에 있던 예비가 자연히 전방 부대로 승격되므로,
+// "예비 투입" 규칙을 따로 두지 않아도 결원이 메워진다.
+function buildEnemyPlan() {
+  // 어제의 계획은 버리되, 누가 무엇을 맡았는지는 기억해 둔다. 매 턴 백지에서
+  // 다시 뽑으면 뒤로 한 발 물러선 부대가 그 이유만으로 예비가 되고, 다음 턴에
+  // 다시 전방이 된다. 그러면 부대는 앞뒤로 왕복만 하다가 작전이 끝난다.
+  // 임무는 상황이 바뀌어야 바뀌는 것이지, 계산을 다시 했다고 바뀌는 게 아니다.
+  const lastPlan = enemyPlan;
+  const wasRole = (unit, role) => (lastPlan.get(unit.id)?.role === role ? 0 : 1);
+  const lastAxisKey = (unit) => lastPlan.get(unit.id)?.axis?.key ?? null;
+
+  enemyPlan = new Map();
+  const units = state.units.filter((unit) => unit.owner === "enemy" && isAssaultUnit(unit));
+  const axes = enemyAxes();
+  if (!units.length || !axes.length) return;
+
+  // 예비는 가장 뒤에 있는 부대에서 뗀다. 이미 붙어 있는 부대를 뒤로 빼는 건
+  // 그 자체로 손해고, 뒤에 있는 부대는 어차피 이번 턴에 결판에 못 닿는다.
+  // 다만 어제 예비였던 부대가 먼저다 — 예비를 매 턴 갈아치우면 아껴 둔 부대가
+  // 없는 것과 같다.
+  const byRear = units
+    .slice()
+    .sort(
+      (a, b) =>
+        wasRole(a, "reserve") - wasRole(b, "reserve") ||
+        nearestOpposingDistance("enemy", b.x, b.y) - nearestOpposingDistance("enemy", a.x, a.y),
+    );
+  const reserveCount = Math.min(units.length - 1, Math.floor((units.length * enemyReserveShare) / 100));
+  const reserves = byRear.slice(0, Math.max(0, reserveCount));
+  const committed = units.filter((unit) => !reserves.includes(unit));
+
+  // 축선이 하나뿐이면 갈라 만든다. 목표가 하나인 것과 길이 하나인 것은 다른
+  // 이야기다. 다만 공격과 수비는 가르는 방향이 다르다 — 공격은 좌우로 벌려
+  // 접근로를 늘리고, 수비는 앞뒤로 겹쳐 종심을 만든다.
+  const spread =
+    axes.length !== 1
+      ? axes
+      : enemyPosture() === "defend"
+        ? defenseLanes(axes[0])
+        : approachLanes(axes[0], committed);
+  const ranked = spread.slice().sort((a, b) => axisWeight(b, committed) - axisWeight(a, committed));
+  const main = ranked[0];
+  const others = ranked.slice(1);
+
+  // 주공 몫을 먼저 떼고, 나머지를 남은 축선에 돌린다. 축선이 하나뿐이면
+  // 몫을 나눌 데가 없으니 전부 그리로 간다 — 그때는 예비가 유일한 종심이다.
+  const mainCount = others.length
+    ? Math.max(1, Math.round((committed.length * enemyMainEffortShare) / 100))
+    : committed.length;
+  // 주공도 어제 주공이었던 부대를 먼저 세운다. 거리만 보면 한 칸 뒤처졌다는
+  // 이유로 선두가 매 턴 뒤바뀌고, 그때마다 앞뒤 대열이 통째로 갈린다.
+  const forMain = committed
+    .slice()
+    .sort((a, b) => wasRole(a, "main") - wasRole(b, "main") || distance(a, main) - distance(b, main))
+    .slice(0, mainCount);
+  forMain.forEach((unit) => enemyPlan.set(unit.id, { role: "main", axis: main }));
+
+  const rest = committed.filter((unit) => !forMain.includes(unit));
+  rest.forEach((unit, index) => {
+    // 어제 맡았던 축선이 아직 살아 있으면 그리로 간다. 조공이 매 턴 가까운 쪽으로
+    // 갈아타면 좌우로 왕복만 하고 어느 쪽에도 도착하지 못한다.
+    const prior = others.find((axis) => axis.key && axis.key === lastAxisKey(unit));
+    const axis = prior ?? (others.length ? nearestOf(unit, others) ?? others[index % others.length] : main);
+    enemyPlan.set(unit.id, { role: "support", axis });
+  });
+
+  // 예비의 집결지는 주공 축선과 자기 거점 사이. 전선에 닿지는 않되
+  // 결판이 나는 곳으로 한 번에 달려갈 수 있는 자리다.
+  const rally = enemyRallyPoint(main);
+  reserves.forEach((unit) => enemyPlan.set(unit.id, { role: "reserve", axis: rally }));
+}
+
+// 목표 하나를 여러 접근로로 나눈다. 부대 무게중심에서 목표를 향한 방향을 구하고,
+// 그 직각 방향으로 좌우에 우회 지점을 세운다. 정면 하나, 좌우 하나씩 — 셋이면
+// 길목 하나를 막아 작전 전체를 끝내지는 못한다.
+function approachLanes(axis, units) {
+  if (enemyFlankSpread <= 0 || units.length < 3) return [axis];
+  const cx = units.reduce((sum, unit) => sum + unit.x, 0) / units.length;
+  const cy = units.reduce((sum, unit) => sum + unit.y, 0) / units.length;
+  // 이미 목표에 붙었으면 우회는 끝이다. 여기서도 좌우로 벌리면 무게중심에서
+  // 목표를 향한 벡터가 너무 짧아 매 턴 방향이 뒤집히고, 부대는 목표 앞에서
+  // 좌우로 왕복만 한다. 우회는 접근 수단이지 도착지가 아니다.
+  const closed = units.every((unit) => distance(unit, axis) <= enemyFlankSpread);
+  if (closed) return [axis];
+  const dx = axis.x - cx;
+  const dy = axis.y - cy;
+  const length = Math.hypot(dx, dy);
+  if (length < 1) return [axis];
+  // 진행 방향의 직각 단위벡터. 좌우로 이만큼 벌린 지점이 우회로의 입구가 된다.
+  const px = -dy / length;
+  const py = dx / length;
+  const lanes = [{ ...axis, label: "정면", key: `정면:${axis.key ?? `${axis.x},${axis.y}`}`, target: axis }];
+  [1, -1].forEach((side) => {
+    const x = clampToBoard(Math.round(axis.x + px * enemyFlankSpread * side), width);
+    const y = clampToBoard(Math.round(axis.y + py * enemyFlankSpread * side), height);
+    if (x === axis.x && y === axis.y) return;
+    // 우회로 입구는 무게중심이 움직일 때마다 좌표가 흔들린다. 그래서 손잡이는
+    // 좌표가 아니라 "목표의 어느 쪽인가"로 잡는다. 같은 쪽 우회로는 좌표가 달라져도
+    // 같은 길이며, 그래야 조공이 매 턴 좌우로 갈아타지 않는다.
+    lanes.push({ x, y, label: "우회", key: `우회${side}:${axis.key ?? `${axis.x},${axis.y}`}`, target: axis });
+  });
+  return lanes;
+}
+
+function clampToBoard(value, limit) {
+  return Math.max(0, Math.min(limit - 1, value));
+}
+
+function enemyRallyPoint(main) {
+  const anchor = state.bases.filter((base) => base.owner === "enemy").sort((a, b) => distance(a, main) - distance(b, main))[0];
+  if (!anchor) return main;
+  return { x: Math.round((anchor.x + main.x) / 2), y: Math.round((anchor.y + main.y) / 2), label: "집결지" };
+}
+
+function enemyRoleFor(unit) {
+  return enemyPlan.get(unit.id)?.role ?? null;
+}
+
+function postureVerb(unit) {
+  // 병종이 하는 일이 다르면 전황판에 찍히는 말도 달라야 한다. 야포가 "주공으로
+  // 전진"했다고 적히면 플레이어는 무슨 일이 벌어지는지 읽을 수 없다.
+  if (isArtilleryUnit(unit)) return "사격 진지로 이동";
+  if (unit && infantryScreenGoal(unit)) return "포병 엄호로 이동";
+  const role = unit ? enemyRoleFor(unit) : null;
+  if (role === "reserve") return "예비로 집결";
+  if (role === "support") return "조공으로 기동";
+  if (role === "main") return "주공으로 전진";
+  const posture = enemyPosture();
+  if (posture === "defend") return "방어 위치로 이동";
+  if (posture === "hunt") return "표적을 향해 기동";
+  return "전진";
+}
+
+// 미션이 지목한 사냥감. 격파 목표가 가리키는 부대와, 플레이어가 사수해야 하는 부대.
+function enemyPreyUnits() {
+  const prey = [];
+  objectivesFor("enemy")
+    .filter((objective) => objective.kind === "destroy")
+    .forEach((objective) => {
+      prey.push(...state.units.filter((unit) => unit.owner === "player" && unit.type === objective.targetType));
+    });
+  objectivesFor("player")
+    .filter((objective) => objective.kind === "protect")
+    .forEach((objective) => prey.push(...taggedUnits("player", objective.tag)));
+  return prey;
+}
+
+// 목표 칸을 맡을 부대. 공병대는 공사가 임무고, 사령부는 보급의 중심이라
+// 최전선 칸을 맡기지 않는다.
+function isAssaultUnit(unit) {
+  return unit.type !== "engineer" && unit.type !== "battalionHQ";
+}
+
+function nearestOf(unit, candidates) {
+  return candidates.slice().sort((a, b) => distance(unit, a) - distance(unit, b))[0] ?? null;
+}
+
+// 점령 목표는 한 부대가 그 칸에 서 있으면 채워진다. 전군이 한 칸으로 몰리면
+// 나머지는 길만 막으므로, 목표마다 가장 가까운 한 부대에게만 그 칸을 맡긴다.
+function assaultSeatFor(unit) {
+  if (!isAssaultUnit(unit)) return null;
+  const claimants = state.units.filter((other) => other.owner === unit.owner && isAssaultUnit(other));
+  // 개통 목표도 한 부대를 앉힌다. 그 칸이 비어 있으면 상대가 올라서기만 해도
+  // 보급선이 끊기기 때문이다 — 개통은 열고 끝이 아니라 지켜야 하는 것이다.
+  for (const objective of objectiveTiles(unit.owner)) {
+    const pool = objective.byTag ? claimants.filter((other) => other.tag === objective.byTag) : claimants;
+    const closest = pool.slice().sort((a, b) => distance(a, objective) - distance(b, objective))[0];
+    if (closest && closest.id === unit.id) return { x: objective.x, y: objective.y };
+  }
+  return null;
+}
+
+// 지킬 곳: 플레이어가 노리는 칸이 먼저다. 그런 칸이 없으면 내 보급 거점을 지킨다.
+function defensePosts(owner) {
+  const foe = owner === "enemy" ? "player" : "enemy";
+  const contested = objectiveTiles(foe).map((objective) => ({ x: objective.x, y: objective.y }));
+  if (contested.length) return contested;
+  return state.bases.filter((base) => base.owner === owner).map((base) => ({ x: base.x, y: base.y }));
+}
+
+function defensePostFor(unit) {
+  const posts = defensePosts(unit.owner);
+  if (!posts.length) return null;
+  // 이미 아군이 선 초소는 비워둔다. 한 칸에 전군이 몰리면 나머지 초소가 빈다.
+  const open = posts.filter(
+    (post) => !state.units.some((other) => other.owner === unit.owner && other.id !== unit.id && other.x === post.x && other.y === post.y),
+  );
+  return nearestOf(unit, open.length ? open : posts);
+}
+
+// 초소 반경 안까지 들어온 상대. 수비라고 가만히 서서 맞을 이유는 없다.
+function nearestIntruder(unit, post) {
+  const intruders = state.units.filter((foe) => foe.owner !== unit.owner && distance(foe, post) <= enemyDefenseRadius);
+  return intruders.length ? nearestOf(unit, intruders) : null;
+}
+
+// ── 병종 교리 ──────────────────────────────────────────────────────────────
+// 예전에는 야포도 전차도 보병과 똑같이 "목표를 향해 한 칸"이었다. 그래서 야포가
+// 보병처럼 접촉까지 걸어 들어가 사거리 3을 한 번도 못 쓰고 죽었다. 병종이 다르다는
+// 것은 능력치가 다르다는 뜻이 아니라 할 일이 다르다는 뜻이다.
+
+// 노출된 아군 포병을 엄호할 보병 하나를 고른다. 전 보병이 포를 둘러싸면 축선이
+// 비므로, 포 하나당 가장 가까운 보병 하나만 붙인다.
+function infantryScreenGoal(unit) {
+  if (unit.type !== "infantry" || enemyScreenRange <= 0) return null;
+  const guns = state.units.filter((other) => other.owner === unit.owner && isArtilleryUnit(other));
+  if (!guns.length) return null;
+  const naked = guns.filter((gun) => {
+    if (nearestOpposingDistance(gun.owner, gun.x, gun.y) > enemyScreenRange) return false;
+    // 이미 누가 붙어 있으면 엄호는 끝난 것이다.
+    return !state.units.some(
+      (other) => other.owner === gun.owner && other.id !== gun.id && !isArtilleryUnit(other) && distance(other, gun) <= 1,
+    );
+  });
+  if (!naked.length) return null;
+  const gun = nearestOf(unit, naked);
+  const closest = state.units
+    .filter((other) => other.owner === unit.owner && other.type === "infantry")
+    .sort((a, b) => distance(a, gun) - distance(b, gun))[0];
+  return closest?.id === unit.id ? { x: gun.x, y: gun.y, label: "엄호" } : null;
+}
+
+// 포병의 자리 고르기. 좋은 자리란 "표적은 닿고 나는 안 닿는 자리"다.
+// 야포는 한 턴에 이동과 사격 중 하나만 하므로, 지금 쏠 수 있는 자리로 걸어가는 것은
+// 그 턴을 버리는 짓이다. 다음 턴에 안전하게 쏠 수 있는 자리가 언제나 더 값지다.
+function bestFiringPost(unit, goal) {
+  const range = unitTypes[unit.type].range;
+  const foes = state.units.filter((foe) => foe.owner !== unit.owner);
+  const scored = [{ x: unit.x, y: unit.y }, ...reachableTiles(unit)].map((tile) => {
+    const spot = { owner: unit.owner, type: unit.type, x: tile.x, y: tile.y };
+    return {
+      x: tile.x,
+      y: tile.y,
+      // 표적: 이 칸에서 닿는 상대. 능선에 가리면 사거리 안이어도 못 쏜다.
+      targets: foes.filter((foe) => distance(spot, foe) <= range && !ridgeBlocksFire(spot, foe)).length,
+      // 노출: 상대가 지금 선 자리에서 이 칸을 때릴 수 있는가. 이게 0인 칸이 포병의 자리다.
+      exposed: foes.filter((foe) => distance(spot, foe) <= unitTypes[foe.type].range).length,
+      // 다음 턴 위협: 걸어와서 때릴 수 있는가. 사격 진지끼리 비교할 때만 쓴다.
+      stalked: foes.filter((foe) => distance(spot, foe) <= unitTypes[foe.type].range + unitTypes[foe.type].move).length,
+      cover: tileAt(tile.x, tile.y).defense,
+      reach: distance(tile, goal),
+      here: tile.x === unit.x && tile.y === unit.y,
+    };
+  });
+  // 동점이면 제자리가 이긴다. 포병은 옮기는 순간 그 턴 사격을 잃으므로,
+  // 점수가 같은 칸으로 옮기는 것은 순손해다. 이게 없으면 진지 주변을
+  // 매 턴 배회하며 한 발도 쏘지 않는다.
+  const stay = (a, b) => (a.here === b.here ? 0 : a.here ? -1 : 1);
+
+  // 쏠 수 있는 자리가 있으면 그 중에서 고른다. 진지 싸움에서는 노출이 전부고
+  // 목표까지의 거리는 곁다리다.
+  const firing = scored.filter((tile) => tile.targets > 0 && tile.exposed === 0);
+  if (firing.length) {
+    return firing.sort(
+      (a, b) => b.targets - a.targets || a.stalked - b.stalked || b.cover - a.cover || a.reach - b.reach || stay(a, b),
+    )[0];
+  }
+
+  // 쏠 자리가 없으면 전진이 임무다. 여기서 다음 턴 위협까지 피하려 들면 포는
+  // 후방에 눌러앉아 작전 내내 한 발도 못 쏜다 — 지금 맞을 자리만 피하고 나아간다.
+  const safe = scored.filter((tile) => tile.exposed === 0);
+  return (safe.length ? safe : scored).sort(
+    (a, b) => a.exposed - b.exposed || a.reach - b.reach || b.cover - a.cover || a.stalked - b.stalked || stay(a, b),
+  )[0];
+}
+
+// 견인 판단. 전선이 멀면 포를 걸고 달리는 편이 빠르고, 사거리 언저리에 들어왔으면
+// 전개해야 한다. 전환에 한 턴이 통째로 드니 이 판단이 흔들리면 그 포는 작전 내내
+// 트럭에 매달린 채 끝난다.
+function enemyTowDecision(gun, goal) {
+  if (gun.type !== "artillery" || gun.acted || gun.moved || enemyTowDistance <= 0) return false;
+  const threat = nearestOpposingDistance(gun.owner, gun.x, gun.y);
+  // 자리에 도착했으면 적이 멀어도 전개한다. 적 거리만 보면 수비 미션의 포는
+  // 초소에 앉은 채 영원히 트럭에 매달려 있게 된다 — 그건 포가 아니라 짐이다.
+  const posted = goal ? distance(gun, goal) <= unitTypes[gun.type].range : false;
+  if (!gun.towed && threat > enemyTowDistance && !posted) {
+    gun.towed = true;
+    gun.acted = true;
+    addLog(`${sideUnitLabel(gun)}가 포를 트럭에 걸었습니다.`);
+    return true;
+  }
+  if (gun.towed && (threat <= enemyTowDistance || posted)) {
+    gun.towed = false;
+    gun.acted = true;
+    addLog(`${sideUnitLabel(gun)}가 포를 전개했습니다.`);
+    return true;
+  }
+  return false;
+}
+
+// 전차의 자리 고르기. 전차의 값어치는 맷집이 아니라 속도다. 고지와 삼림에 박힌
+// 방어선을 정면으로 갈아내는 것은 그 값어치를 스스로 버리는 짓이므로, 같은 거리면
+// 트인 땅으로 돌아 들어간다. 엄폐를 찾아다니는 보병의 규칙을 그대로 쓰면 안 된다.
+function enemyArmorStep(unit, goal) {
+  // 전차도 길을 따라 재야 한다. 직선거리로 재면 강 건너의 목표가 코앞으로 보이고,
+  // 전차는 그 강가에서 작전이 끝날 때까지 서 있게 된다.
+  const here = routeCostFrom(unit, goal, unit.x, unit.y);
+  const foes = state.units.filter((foe) => foe.owner !== unit.owner);
   let best = null;
-  neighbors(unit.x, unit.y).forEach((next) => {
-    if (!canMoveTo(unit, next.x, next.y)) return;
-    const score = distance(next, target) + tileAt(next.x, next.y).defense * -0.2;
-    if (!best || score < best.score) best = { ...next, score };
+  reachableTiles(unit).forEach((tile) => {
+    let score = routeCostFrom(unit, goal, tile.x, tile.y);
+    // 험지는 전차의 발을 묶는다. 엄폐 보너스보다 통과 비용이 먼저다.
+    score += traversalCostForUnit(unit, tile.x, tile.y) * 0.25;
+    // 험지에 박힌 상대와 맞붙는 자리는 소모전 자리다. 붙을 거면 트인 땅에서 붙는다.
+    foes.forEach((foe) => {
+      if (distance(tile, foe) <= 1) score += tileAt(foe.x, foe.y).defense * 0.6;
+    });
+    if (!best || score < best.score) best = { x: tile.x, y: tile.y, score };
+  });
+  return best && distance(best, goal) < here ? best : null;
+}
+
+// 이번 턴에 어디를 향할 것인가. 참모부의 계획이 먼저다.
+// 계획에 없는 부대(공병·사령부, 또는 계획이 비어 있는 경우)만 예전 규칙으로 떨어진다.
+function enemyGoalFor(unit) {
+  // 보병의 임무는 확보와 엄호다. 축선을 향해 걷는 것보다 급한 일이 하나 있는데,
+  // 노출된 아군 포병 앞에 서는 것이다. 포병은 반격 한 번에 무너지는 병종이라
+  // 여기서 한 턴 늦는 것이 포 하나를 잃는 것보다 싸다.
+  const screen = infantryScreenGoal(unit);
+  if (screen) return screen;
+
+  const assignment = enemyPlan.get(unit.id);
+  if (assignment) {
+    // 예비는 결판이 나는 곳에 끌려들어가지 않는다. 집결지에 모여 있는 것이 임무다.
+    // 단 하나, 초소가 밟혔을 때만은 예외다 — 그 순간이 예비를 아껴 둔 이유다.
+    if (assignment.role === "reserve") return enemyBreach(unit) ?? assignment.axis;
+    // 우회로 입구에 닿았으면 이제 목표로 꺾는다. 그러지 않으면 조공이 측면에
+    // 도착해서 그대로 눌러앉는다 — 우회는 도는 것이지 비켜서는 것이 아니다.
+    const lane = assignment.axis;
+    // 입구에 닿았거나, 돌아가는 것이 무의미할 만큼 목표에 가까워졌으면 꺾는다.
+    // 앞의 조건만 두면 입구 칸이 지형에 막혔을 때 부대가 그 앞에서 멈춰 선다.
+    const turned = lane.target && (distance(unit, lane) <= 1 || distance(unit, lane.target) <= distance(lane, lane.target));
+    const axis = turned ? lane.target : lane;
+    // 축선 반경 안에 상대가 들어와 있으면 축선 자체보다 그 상대가 급하다.
+    // 방어 초소를 밟고 서서 옆칸의 적을 구경하는 일을 막는 규칙이다.
+    return nearestIntruder(unit, axis) ?? axis;
+  }
+
+  const posture = enemyPosture();
+
+  if (posture === "hunt") {
+    const prey = enemyPreyUnits();
+    if (prey.length) return nearestOf(unit, prey);
+  }
+
+  if (posture === "attack") {
+    const seat = assaultSeatFor(unit);
+    if (seat) return seat;
+  }
+
+  if (posture === "defend") {
+    const post = defensePostFor(unit);
+    if (post) return nearestIntruder(unit, post) ?? post;
+  }
+
+  return nearestEnemy(unit, "player") ?? null;
+}
+
+// 사거리 안의 표적 중 가장 값진 것을 고른다. 예전에는 "가장 가까운 적"이라
+// 반쯤 죽은 전차를 두고 멀쩡한 보병을 쳤다.
+function bestEnemyStrike(unit) {
+  const prey = enemyPreyUnits();
+  // 사냥감이 엄호를 받고 있으면 사냥감 자체는 못 친다. 그럴 때 아무나 치면
+  // 사냥이 흐지부지된다(사령부 사냥이 무승부로 끝나던 이유). 엄호하는 부대를
+  // 표적으로 승격시켜, 호위를 걷어내는 것이 곧 사냥이 되게 한다.
+  const screens = prey
+    .filter((target) => isScreenedHQ(target))
+    .flatMap((target) => neighbors(target.x, target.y).flatMap((spot) => getUnitsAt(spot.x, spot.y)))
+    .filter((guard) => guard.owner !== unit.owner);
+  let best = null;
+  state.units.forEach((foe) => {
+    if (foe.owner === unit.owner) return;
+    if (attackIsSuicidal(unit, foe)) return;
+    const forecast = attackForecast(unit, foe);
+    if (!forecast) return;
+    let score = forecast.damage - forecast.counter;
+    if (forecast.kills) score += 8;
+    if (prey.includes(foe)) score += 12; // 미션이 지목한 사냥감
+    if (screens.includes(foe)) score += 10; // 사냥감을 가린 호위 — 이걸 걷어내야 닿는다
+    if (foe.type === "battalionHQ") score += 6; // 보급의 중심
+    if (foe.type === "engineer") score += 3; // 경제를 짓는 손
+    if (!best || score > best.score) best = { foe, score };
+  });
+  return best?.foe ?? null;
+}
+
+// 예전 AI는 거점 습격을 늘 먼저 봐서, 눈앞의 부대에게 맞고만 있었다.
+// 죽일 수 있거나 어차피 상대 사거리 안이면 부대를 먼저 친다. 그게 아니면
+// 경제를 때리는 습격이 남는 장사다.
+function strikeBeatsRaid(unit, foe) {
+  if (!foe) return false;
+  if (combatDamage(unit, foe) >= foe.hp) return true;
+  return canAttack(foe, unit);
+}
+
+function tryEnemyStrike(unit) {
+  if (unit.acted) return false;
+  const foe = bestEnemyStrike(unit);
+  const raid = bestRaidTarget(unit, "player");
+  if (foe && (!raid || strikeBeatsRaid(unit, foe))) {
+    attack(unit, foe);
+    return true;
+  }
+  if (raid) {
+    raidBase(unit, raid);
+    return true;
+  }
+  return false;
+}
+
+// 전투 부대의 한 턴. 어디로 갈지는 임무가, 어떻게 갈지는 병종이,
+// 무엇을 칠지는 표적 점수가 정한다.
+function enemyFieldTurn(unit) {
+  if (tryEnemyStrike(unit)) return;
+
+  const goal = enemyGoalFor(unit);
+  if (!goal) return;
+
+  // 포병은 전선을 향해 걷는 게 아니라 사격 진지를 고른다.
+  if (isArtilleryUnit(unit)) {
+    if (enemyTowDecision(unit, goal)) return;
+    const post = bestFiringPost(unit, goal);
+    if (post && (post.x !== unit.x || post.y !== unit.y)) moveEnemyUnit(unit, post);
+    tryEnemyStrike(unit);
+    return;
+  }
+
+  const step = unit.type === "armor" ? enemyArmorStep(unit, goal) : bestReachableStepToward(unit, goal);
+  if (step) moveEnemyUnit(unit, step);
+  tryEnemyStrike(unit);
+}
+
+function moveEnemyUnit(unit, step) {
+  recordUnitMove(unit, step.x, step.y);
+  unit.x = step.x;
+  unit.y = step.y;
+  unit.moved = true;
+  // 야포는 이동한 턴에 쏘지 못한다(canAttack). 행동까지 닫아 두지 않으면
+  // 이동 후 사격을 다시 시도하며 매 턴 헛수고를 한다.
+  if (unit.type === "artillery") unit.acted = true;
+  addLog(`${sideUnitLabel(unit)}가 ${postureVerb(unit)}했습니다.`);
+}
+
+// 적 공병대는 싸우러 가지 않는다. 무엇을 지을지는 미션이 정한다.
+//   1) 개통 목표가 강 건너라 아예 안 닿는다  → 다리를 놓는다
+//   2) 닿지만 보급선이 너무 길다             → 목표 쪽으로 창고, 안 되면 철도
+//   3) 그런 목표가 없다                      → 예전대로 후방 창고로 생산을 키운다
+// 예전에는 3번만 있었다. 그래서 적은 강가에서 창고만 짓고 작전을 시작하지 못했다.
+function enemyEngineerTurn(engineer) {
+  // 공사 중인 공병대는 현장을 지킨다(움직이면 공사가 취소된다).
+  if (activeConstructionForBuilder(engineer)) return;
+
+  const crossing = enemyBridgeSite(engineer);
+  const focus = enemyOpenSupplyObjective();
+
+  // 나루가 정해진 공병대는 그 일만 한다. 여기서 창고를 먼저 보면, 서 있는 자리가
+  // 마침 안전하다는 이유로 삽을 뜨고 — 3일 뒤 다시 같은 자리에서 또 삽을 뜬다.
+  // 실제로 그랬다: 적 공병대는 강가에 창고를 두 채 세우고 강은 끝내 건너지 않았다.
+  // 강을 못 건너면 창고를 아무리 지어도 작전은 시작되지 않는다.
+  if (crossing && isEnemyBridgeBuilder(engineer, crossing)) {
+    if (tryStartEnemyBridge(engineer, crossing)) return;
+    const approach = bestReachableStepToward(engineer, crossing.stand);
+    if (approach) {
+      recordUnitMove(engineer, approach.x, approach.y);
+      engineer.x = approach.x;
+      engineer.y = approach.y;
+      engineer.moved = true;
+    }
+    // 도착했으면 그 턴에 바로 놓는다. 물가는 오래 서 있을 자리가 아니다.
+    tryStartEnemyBridge(engineer, enemyBridgeSite(engineer));
+    return;
+  }
+
+  // 창고가 철도보다 먼저다. 창고 하나는 보급망의 출발점을 통째로 앞으로 옮기지만,
+  // 철도는 지나는 칸 하나의 값만 깎는다. 그래서 창고 자리가 없을 때만 철도를 본다.
+  const depot = bestEnemyDepotSite(engineer, focus);
+  const rail = depot ? null : bestEnemyRailSite(engineer, focus);
+  if (tryStartEnemyRail(engineer, rail)) return;
+  if (tryStartEnemyDepot(engineer, focus)) return;
+
+  const goal = rail ?? depot ?? nearestOwnedBase(engineer);
+  if (!goal) return;
+
+  const step = bestReachableStepToward(engineer, goal);
+  if (!step) return;
+  recordUnitMove(engineer, step.x, step.y);
+  engineer.x = step.x;
+  engineer.y = step.y;
+  engineer.moved = true;
+  // 도착했으면 그 턴에 바로 삽을 뜬다. 한 턴을 통째로 버리면 목표를 채우지 못한다.
+  if (tryStartEnemyRail(engineer, rail)) return;
+  tryStartEnemyDepot(engineer, focus);
+}
+
+// 다리는 하나면 된다. 공병대가 여럿일 때 전원이 나루로 몰려가면 경제가 멈춘다.
+// 나루에 가장 가까운 한 기만 보내고, 나머지는 하던 대로 창고를 짓는다.
+function isEnemyBridgeBuilder(engineer, site) {
+  const engineers = state.units.filter((unit) => unit.owner === "enemy" && unit.type === "engineer");
+  if (engineers.length <= 1) return true;
+  // 공사 중인 공병대는 부를 수 없다. 전원이 공사 중이면 그때는 순위를 그대로 쓴다.
+  const free = engineers.filter((unit) => !activeConstructionForBuilder(unit));
+  const pool = free.length ? free : engineers;
+  const first = pool
+    .slice()
+    .sort((a, b) => distance(a, site.stand) - distance(b, site.stand) || String(a.id).localeCompare(String(b.id)))[0];
+  return first?.id === engineer.id;
+}
+
+// 아직 채우지 못한 적의 개통 목표. 공병대의 임무는 이 칸까지 선을 잇는 것이다.
+function enemyOpenSupplyObjective() {
+  return objectiveTiles("enemy").find(
+    (objective) => objective.kind === "supply" && objective.held < objectiveHoldRequirement(objective),
+  );
+}
+
+// 이번 작전에서 적이 끝내 닿아야 하는 칸. 다리를 놓을 값어치가 있는지는
+// 이 칸에 걸어서 갈 수 있는가로만 판단한다.
+function enemyCrossingGoal() {
+  const tiles = objectiveTiles("enemy");
+  if (tiles.length) return tiles[0];
+  const prey = enemyPreyUnits();
+  if (prey.length) return { x: prey[0].x, y: prey[0].y };
+  const base = state.bases.find((candidate) => candidate.owner === "player");
+  return base ? { x: base.x, y: base.y } : null;
+}
+
+// 다리는 "지금 걸어서 못 가는 곳"에만 값어치가 있다. 이 판단이 없으면 적 공병대는
+// 강가마다 다리를 놓다가 보급품을 다 쓴다. 후보는 이쪽 기슭에서 발로 닿는 물칸뿐이다 —
+// 강 건너의 더 좋은 자리는 거기까지 갈 수가 없으니 자리가 아니다.
+function enemyBridgeSite(engineer) {
+  // 다리는 공격 수단이다. 수비 중에 강에 다리를 놓으면 그 다리로 건너오는 것은
+  // 상대다 — 자기 방벽에 스스로 문을 뚫는 셈이다. 실제로 수비 자세의 적이
+  // 플레이어 거점 쪽으로 다리를 놓아 도하로를 거저 내줬다.
+  if (enemyPosture() === "defend") return null;
+  if (state.enemyResources < (constructionCosts.bridge ?? 0)) return null;
+  const goal = enemyCrossingGoal();
+  if (!goal || routeConnected(engineer, goal)) return null;
+
+  const reach = routeReach(engineer);
+  let best = null;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (!isBridgeableWater(x, y) || hasImprovement(x, y, "bridge")) continue;
+      // 설 수 없는 물가는 나루가 아니다. 이미 아군이 올라선 칸을 목표로 잡으면
+      // 공병대는 그 뒤에서 평생 기다린다 — 그러느니 다른 나루를 찾는 게 낫다.
+      const stand = neighbors(x, y)
+        .filter((spot) => reach.has(posKey(spot.x, spot.y)))
+        .filter(
+          (spot) =>
+            (spot.x === engineer.x && spot.y === engineer.y) ||
+            canOccupy(engineer, spot.x, spot.y),
+        )
+        .sort((a, b) => reach.get(posKey(a.x, a.y)) - reach.get(posKey(b.x, b.y)))[0];
+      if (!stand) continue;
+      // 가까운 나루를 먼저 보되, 목표에서 한참 벗어난 나루로 돌아가지는 않는다.
+      const score = reach.get(posKey(stand.x, stand.y)) + distance({ x, y }, goal) * 1.5;
+      if (!best || score < best.score) best = { x, y, stand, score };
+    }
+  }
+  return best;
+}
+
+// 다리는 플레이어와 똑같이 하루 만에 걸린다(engineerBuild). 양쪽이 다른 규칙으로
+// 강을 건너면 그건 더 이상 같은 게임이 아니다.
+function tryStartEnemyBridge(engineer, site) {
+  if (!site || engineer.acted) return false;
+  if (!neighbors(engineer.x, engineer.y).some((spot) => spot.x === site.x && spot.y === site.y)) return false;
+  const cost = constructionCosts.bridge ?? 0;
+  if (state.enemyResources < cost) return false;
+
+  state.enemyResources -= cost;
+  state.improvements.push({ type: "bridge", owner: engineer.owner, x: site.x, y: site.y });
+  engineer.acted = true;
+  // 지형이 바뀌었으니 어제 그린 길은 이제 거짓말이다.
+  clearRouteFields();
+  addLog(`${sideName("enemy")} 공병대가 (${site.x}, ${site.y}) 하천에 임시 교량을 완성했습니다.`);
+  return true;
+}
+
+// 철도는 통행 비용을 0.35배로 깎는다. 보급선이 지나는 칸에 깔아야 값어치가 있고,
+// 비싼 칸(숲)일수록 깎이는 값이 크다. 선이 이미 짧으면 깔 이유가 없다.
+function bestEnemyRailSite(engineer, focus) {
+  if (!focus) return null;
+  if (state.enemyResources < (constructionCosts.rail ?? 0)) return null;
+  const route = supplyRouteTo("enemy", focus.x, focus.y);
+  if (!Number.isFinite(route.cost)) return null;
+  if (route.cost <= effectiveSupplyRange({ owner: "enemy" })) return null;
+
+  let best = null;
+  route.path.forEach((tile) => {
+    if (!canBuildHere(tile.x, tile.y, "rail")) return;
+    if (!Number.isFinite(traversalCostForUnit(engineer, tile.x, tile.y))) return;
+    // 공사 중에는 도망칠 수 없다. 창고와 같은 자를 쓴다 — 철도도 임무 공사다.
+    if (!isSafeDepotSite("enemy", tile.x, tile.y, true)) return;
+    const saving = movementCostForTile(tile.x, tile.y) * 0.65;
+    const score = saving * 10 - distance(engineer, tile) * 1.5;
+    if (!best || score > best.score) best = { x: tile.x, y: tile.y, score };
   });
   return best;
+}
+
+function tryStartEnemyRail(engineer, site) {
+  if (!site || engineer.acted) return false;
+  if (engineer.x !== site.x || engineer.y !== site.y) return false;
+  const cost = constructionCosts.rail ?? 0;
+  if (state.enemyResources < cost) return false;
+  if (!canBuildHere(site.x, site.y, "rail")) return false;
+
+  state.enemyResources -= cost;
+  state.constructions.push({
+    type: "rail",
+    owner: engineer.owner,
+    builderId: engineer.id,
+    x: site.x,
+    y: site.y,
+    remaining: constructionDuration("rail"),
+  });
+  engineer.acted = true;
+  addLog(`${sideName("enemy")} 공병대가 (${site.x}, ${site.y})에서 철도 부설을 시작했습니다.`);
+  return true;
+}
+
+function tryStartEnemyDepot(engineer, focus) {
+  if (engineer.acted) return false;
+  if (enemyDepotCount() >= enemyDepotTarget()) return false;
+  if (!canBuildHere(engineer.x, engineer.y, "depot")) return false;
+  const cost = constructionCosts.depot ?? 0;
+  if (state.enemyResources < cost) return false;
+  // 안전한 자리가 아니면 삽을 뜨지 않는다. 공사 중에는 도망칠 수 없어서,
+  // 전선 근처 창고는 짓는 순간 공병대와 공사비를 함께 헌납하는 짓이다.
+  if (!isSafeDepotSite(engineer.owner, engineer.x, engineer.y, Boolean(focus))) return false;
+
+  state.enemyResources -= cost;
+  state.constructions.push({
+    type: "depot",
+    owner: engineer.owner,
+    builderId: engineer.id,
+    x: engineer.x,
+    y: engineer.y,
+    remaining: constructionDuration("depot"),
+  });
+  engineer.acted = true;
+  addLog(`${sideName("enemy")} 공병대가 (${engineer.x}, ${engineer.y})에서 보급창고 공사를 시작했습니다.`);
+  return true;
+}
+
+// 보급창고는 반드시 안전한 곳에 짓는다. 점수로 "웬만하면 안전한 쪽"을 고르는 게
+// 아니라, 안전하지 않은 자리는 아예 후보에서 뺀다 — 공사는 3일이 걸리고 그동안
+// 공병대는 못 움직이므로, 전선 근처 창고는 지어지기 전에 반드시 털린다.
+// 조건은 셋이다: 적에게서 충분히 멀 것, 내 거점보다 적이 가깝지 않을 것,
+// 내 보급망이 이미 닿는 곳일 것(내 뒷마당이라는 뜻).
+// forward는 "임무 창고"라는 뜻이다. 개통 목표의 창고는 앞으로 나가야만 값어치가
+// 있는데, 앞으로 나갈수록 내 거점은 멀어지므로 "적보다 내 거점이 가까울 것"이라는
+// 후방 조건은 영영 만족되지 않는다. 그 조건을 그대로 두면 적 AI는 자기 승리 조건을
+// 구조적으로 채울 수 없다. 그래서 임무 창고에서는 후방 조건만 뺀다 —
+// 진짜 안전 조건(적과의 최소 거리, 내 보급망이 이미 닿을 것)은 그대로다.
+// 즉 적은 여전히 교두보를 굳혀 적을 네 칸 밖으로 밀어낸 뒤에야 삽을 뜰 수 있다.
+function isSafeDepotSite(owner, x, y, forward = false) {
+  const threat = nearestOpposingDistance(owner, x, y);
+  if (threat < depotSafeDistance) return false;
+  const ownBase = nearestOwnedBaseDistance(owner, x, y);
+  if (!Number.isFinite(ownBase)) return false;
+  if (!forward && threat <= ownBase) return false;
+  return Number.isFinite(supplyLineCost({ owner, x, y }));
+}
+
+function bestEnemyDepotSite(engineer, focus) {
+  if (enemyDepotCount() >= enemyDepotTarget()) return null;
+  let best = null;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (!canBuildHere(x, y, "depot")) continue;
+      if (!Number.isFinite(traversalCostForUnit(engineer, x, y))) continue;
+      if (!isSafeDepotSite(engineer.owner, x, y, Boolean(focus))) continue;
+      const score = enemyDepotSiteScore(engineer, x, y, focus);
+      if (!Number.isFinite(score)) continue;
+      if (!best || score > best.score) best = { x, y, score };
+    }
+  }
+  return best;
+}
+
+// 안전한 자리들 중에서 고르는 기준: 내 거점에서 두 칸쯤 떨어져 있고
+// (붙여 지으면 보급망이 안 넓어진다), 적에게서 멀고, 지금 걸어갈 만한 곳.
+// 개통 임무가 걸려 있으면 자가 바뀐다 — 창고가 곧 보급망의 새 출발점이므로,
+// 목표까지 남는 이동 비용이 짧은 자리가 곧 짧은 보급선이다. 안전 조건은 그대로다:
+// 전선 코앞의 창고는 지어지기 전에 털린다는 사실이 임무가 있다고 달라지지 않는다.
+// 그래서 적은 다리를 건너 교두보를 굳힌 뒤에야 그쪽에 창고를 세울 수 있다.
+function enemyDepotSiteScore(engineer, x, y, focus) {
+  const ownBase = nearestOwnedBaseDistance(engineer.owner, x, y);
+  if (!Number.isFinite(ownBase)) return -Infinity;
+  const threat = nearestOpposingDistance(engineer.owner, x, y);
+  if (focus) {
+    let score = -routeCostFrom(engineer, focus, x, y) * 6;
+    score += Math.min(threat, 8) * 2;
+    score -= distance(engineer, { x, y }) * 1.5;
+    return score;
+  }
+  let score = 0;
+  score += Math.min(threat, 8) * 3;
+  score -= Math.abs(ownBase - 2) * 4;
+  score -= distance(engineer, { x, y }) * 1.5;
+  return score;
+}
+
+// 이동력 안에 설 수 있는 칸을 한 번의 탐색으로 모두 구한다. 칸마다 canMoveTo를
+// 부르면 판 하나에 다익스트라를 수백 번 돌리게 되어 적 턴이 눈에 띄게 느려진다.
+// 판정 기준은 canMoveTo와 같다 — 설 수 있고, 비용이 이동력 안인 칸.
+function reachableTiles(unit) {
+  if (unit.acted || unit.moved || activeConstructionForBuilder(unit)) return [];
+  const budget = effectiveMove(unit);
+  const best = new Map([[posKey(unit.x, unit.y), { x: unit.x, y: unit.y, cost: 0 }]]);
+  const queue = [{ x: unit.x, y: unit.y, cost: 0 }];
+
+  while (queue.length) {
+    queue.sort((a, b) => a.cost - b.cost);
+    const current = queue.shift();
+    if (current.cost > (best.get(posKey(current.x, current.y))?.cost ?? Infinity)) continue;
+
+    neighbors(current.x, current.y).forEach((next) => {
+      const tileCost = traversalCostForUnit(unit, next.x, next.y);
+      if (!canEnterTerrain(unit, next.x, next.y) || !Number.isFinite(tileCost)) return;
+      // 적 부대가 선 칸은 통과할 수 없다(movementCost와 같은 규칙).
+      if (getUnitsAt(next.x, next.y).some((other) => other.owner !== unit.owner)) return;
+      const cost = current.cost + tileCost;
+      if (cost > budget) return;
+      const key = posKey(next.x, next.y);
+      if (cost < (best.get(key)?.cost ?? Infinity)) {
+        best.set(key, { x: next.x, y: next.y, cost });
+        queue.push({ x: next.x, y: next.y, cost });
+      }
+    });
+  }
+
+  // 지나갈 수는 있어도 설 수는 없는 칸이 있다(아군이 꽉 찬 칸 등).
+  return [...best.values()].filter((tile) => (tile.x !== unit.x || tile.y !== unit.y) && canOccupy(unit, tile.x, tile.y));
+}
+
+// 한 칸씩 걷지 않고 이동력만큼 간다. 전차 이동력이 3인데 한 칸씩 기어가면
+// 기한 있는 작전에서 적은 도착하지도 못하고 얻어맞기만 한다.
+function bestReachableStepToward(unit, target) {
+  // 길이 있는 목표라면 이동 비용으로 간다. 직선거리는 강 건너의 목표를 코앞으로
+  // 보여주지만, 부대는 그 강을 못 건넌다.
+  const routed = routeStepToward(unit, target);
+  if (routed) return routed;
+
+  const here = distance(unit, target);
+  let best = null;
+  reachableTiles(unit).forEach((tile) => {
+    // 가까워지되 엄폐가 나은 칸을 고른다. 개활지로 뛰어드는 돌격은 반격에 녹는다.
+    const score = distance(tile, target) - tileAt(tile.x, tile.y).defense * 0.2;
+    if (!best || score < best.score) best = { x: tile.x, y: tile.y, score };
+  });
+  if (!best) return null;
+  return distance(best, target) < here ? best : null;
+}
+
+// ── 경로 ────────────────────────────────────────────────────────────────────
+// 예전에는 "직선거리가 줄어드는 칸"만 골랐다. 그래서 앞이 숲이나 강으로 막히면
+// 옆으로 한 칸 돌아가는 길을 후퇴로 판정해 거부했고, 부대는 장애물 앞에 서서
+// 작전이 끝날 때까지 기다렸다. 사령부가 8턴 동안 한 칸을 움직인 것도 이 때문이다.
+// 우회는 후퇴가 아니다. 그래서 기준을 거리에서 "목표까지 남은 이동 비용"으로 바꾼다.
+// 이 지도 위에서는 막다른 골짜기가 생기지 않는다 — 길이 있는 한 반드시 내려가는
+// 이웃 칸이 있고, 없다면 그건 애초에 갈 수 없는 목표다.
+let routeFieldCache = new Map();
+
+// 지형이 바뀌면(다리·철도 완공) 어제 그린 길은 거짓말이 된다.
+function clearRouteFields() {
+  routeFieldCache = new Map();
+}
+
+// 목표에서 거꾸로 퍼뜨린 이동 비용 지도. 부대 위치는 넣지 않는다 — 부대는 매 턴
+// 움직여서 지도를 다시 그려야 하고, 실제로 막힌 칸은 reachableTiles가 이미 걸러
+// 준다. 여기서 알고 싶은 건 "이 방향이 뚫려 있는가"이지 "지금 비어 있는가"가 아니다.
+function routeField(unit, target) {
+  const key = `${unit.type}:${target.x},${target.y}`;
+  const cached = routeFieldCache.get(key);
+  if (cached) return cached;
+
+  const field = new Map();
+  if (!inBounds(target.x, target.y)) return field;
+  field.set(posKey(target.x, target.y), 0);
+  const queue = [{ x: target.x, y: target.y, cost: 0 }];
+
+  while (queue.length) {
+    queue.sort((a, b) => a.cost - b.cost);
+    const current = queue.shift();
+    if (current.cost > (field.get(posKey(current.x, current.y)) ?? Infinity)) continue;
+    neighbors(current.x, current.y).forEach((next) => {
+      // 목표 칸 자체는 통과 불가 지형일 수 있다(사령부가 강 건너를 노릴 때 등).
+      // 그래도 "그 칸에 들어가는 비용"은 이웃에서 재야 하므로 현재 칸이 아니라
+      // 다음 칸의 비용을 더한다.
+      const stepCost = traversalCostForUnit(unit, current.x, current.y);
+      if (!canEnterTerrain(unit, next.x, next.y) || !Number.isFinite(traversalCostForUnit(unit, next.x, next.y))) return;
+      if (!Number.isFinite(stepCost) && (current.x !== target.x || current.y !== target.y)) return;
+      const cost = current.cost + (Number.isFinite(stepCost) ? stepCost : 0);
+      const at = posKey(next.x, next.y);
+      if (cost < (field.get(at) ?? Infinity)) {
+        field.set(at, cost);
+        queue.push({ x: next.x, y: next.y, cost });
+      }
+    });
+  }
+
+  routeFieldCache.set(key, field);
+  return field;
+}
+
+// 어떤 칸에서 목표까지 남은 이동 비용. 길이 없으면 직선거리로 답한다 —
+// 거친 대답이 대답 없는 것보다 낫다.
+function routeCostFrom(unit, target, x, y) {
+  const value = routeField(unit, target).get(posKey(x, y));
+  return value === undefined ? distance({ x, y }, target) : value;
+}
+
+// 걸어서 닿는가. routeCostFrom은 길이 없을 때 직선거리로 둘러대므로 "연결되어
+// 있는가"를 물을 때는 쓸 수 없다. 다리를 놓을지 말지가 이 답 하나로 갈린다.
+function routeConnected(unit, target) {
+  return routeField(unit, target).get(posKey(unit.x, unit.y)) !== undefined;
+}
+
+// 이 부대가 지금 발로 갈 수 있는 칸 전부(비용표). 강 이쪽 기슭이 어디까지인지를
+// 한 번의 탐색으로 알려준다.
+function routeReach(unit) {
+  return routeField(unit, { x: unit.x, y: unit.y });
+}
+
+function routeStepToward(unit, target) {
+  const field = routeField(unit, target);
+  const here = field.get(posKey(unit.x, unit.y));
+  // 길이 아예 없으면 이 규칙은 할 말이 없다. 그때는 부르는 쪽이 직선거리로 되돌아간다.
+  if (here === undefined) return null;
+
+  let best = null;
+  reachableTiles(unit).forEach((tile) => {
+    const remain = field.get(posKey(tile.x, tile.y));
+    if (remain === undefined) return;
+    // 남은 길이 짧은 칸이 우선, 같으면 엄폐가 나은 칸. 개활지로 뛰어드는 돌격은
+    // 반격에 녹는다는 원칙은 그대로 둔다.
+    const score = remain - tileAt(tile.x, tile.y).defense * 0.2;
+    if (!best || score < best.score) best = { x: tile.x, y: tile.y, score, remain };
+  });
+  if (!best) return null;
+  return best.remain < here ? best : null;
+}
+
+function nearestOwnedBase(unit) {
+  return state.bases
+    .filter((base) => base.owner === unit.owner)
+    .sort((a, b) => distance(unit, a) - distance(unit, b))[0] ?? null;
+}
+
+function nearestOpposingDistance(owner, x, y) {
+  const foes = state.units.filter((unit) => unit.owner !== owner);
+  if (!foes.length) return 99;
+  return Math.min(...foes.map((unit) => distance({ x, y }, unit)));
 }
 
 function enemyHQTurn(hq) {
   const step = bestSafeHQStep(hq);
   if (step && (step.x !== hq.x || step.y !== hq.y)) {
+    const station = hqStation(hq);
+    const closing = distance(step, station) < distance(hq, station);
     recordUnitMove(hq, step.x, step.y);
     hq.x = step.x;
     hq.y = step.y;
     hq.moved = true;
-    addLog("추축군 대대 사령부가 호위 부대 뒤로 신중하게 위치를 조정했습니다.");
+    addLog(
+      closing
+        ? `${sideName("enemy")} 대대 사령부가 주력을 따라 전진해 보급 범위를 옮겼습니다.`
+        : `${sideName("enemy")} 대대 사령부가 호위 부대 뒤로 신중하게 위치를 조정했습니다.`,
+    );
   }
 
   const target = nearestEnemy(hq, "player");
-  if (target && canAttack(hq, target) && hqGuardCount(hq, hq.x, hq.y) > 0) {
+  // 사령부는 공격 1 / 체력 9라 반격 한 방에 죽는 경우가 흔하다. 보급의 중심이
+  // 화풀이 공격으로 사라지면 진영 전체가 무너지므로, 자살 공격은 특히 막아야 한다.
+  if (target && canAttack(hq, target) && hqGuardCount(hq, hq.x, hq.y) > 0 && !attackIsSuicidal(hq, target)) {
     attack(hq, target);
   }
 }
@@ -2466,6 +4541,28 @@ function bestSafeHQStep(hq) {
   if (!best) return null;
   const currentScore = hqSafetyScore(hq, hq.x, hq.y);
   return best.score > currentScore + 0.25 ? best : null;
+}
+
+// 사령부가 서 있어야 할 자리. 우산은 비를 따라가야 우산이다 — 보급의 중심이
+// 후방 거점에 눌러앉으면 전군이 제 발로 보급 밖으로 걸어 나간다. 그래서 자리의
+// 기준은 "내 거점에서 얼마나 가까운가"가 아니라 "주력에서 얼마나 뒤인가"다.
+function hqStation(hq) {
+  const flock = state.units.filter((unit) => unit.owner === hq.owner && unit.id !== hq.id && isAssaultUnit(unit));
+  const rear = nearestOwnedBase(hq);
+  if (!flock.length) return rear ?? { x: hq.x, y: hq.y };
+  const cx = flock.reduce((sum, unit) => sum + unit.x, 0) / flock.length;
+  const cy = flock.reduce((sum, unit) => sum + unit.y, 0) / flock.length;
+  if (!rear || hqTrailDistance <= 0) return { x: clampToBoard(Math.round(cx), width), y: clampToBoard(Math.round(cy), height) };
+  // 무게중심에서 아군 거점 쪽으로 추종 거리만큼 물러난 지점. 뒤가 어디인지는
+  // 나침반이 아니라 내 보급 거점이 정한다.
+  const dx = rear.x - cx;
+  const dy = rear.y - cy;
+  const length = Math.hypot(dx, dy);
+  if (length < 1) return { x: clampToBoard(Math.round(cx), width), y: clampToBoard(Math.round(cy), height) };
+  return {
+    x: clampToBoard(Math.round(cx + (dx / length) * hqTrailDistance), width),
+    y: clampToBoard(Math.round(cy + (dy / length) * hqTrailDistance), height),
+  };
 }
 
 function hqSafetyScore(hq, x, y) {
@@ -2484,14 +4581,24 @@ function hqSafetyScore(hq, x, y) {
     unit.id !== hq.id &&
     distance({ x, y }, unit) <= effectiveHQSupplyRange(hq)
   ).length;
-  const ownedBaseDistance = nearestOwnedBaseDistance(hq.owner, x, y);
+  const station = hqStation(hq);
 
   let score = 0;
   score += Math.min(nearestThreat, 5) * 4;
   score += guards * 8;
   score += commandCoverage * 3;
   score += supplyCoverage;
-  score -= Number.isFinite(ownedBaseDistance) ? ownedBaseDistance * 1.4 : 12;
+  // 예전에는 여기서 자기 거점까지의 거리를 뺐다. 그래서 사령부는 전선이 15칸을
+  // 나아가는 동안 한 칸을 움직였고, 야전 부대가 전부 「보급 압박」으로 끝났다.
+  // 이제 기준은 주력 뒤의 자리다. 다만 보급망을 벗어난 칸은 여전히 금물 —
+  // 사령부 자신이 보급을 못 받으면 우산이 아니라 짐이다.
+  // 거리가 아니라 남은 이동 비용이다. 직선거리로 재면 숲 하나를 사이에 둔 두 칸이
+  // 같은 점수를 받고, 그러면 사령부는 "나아지지 않는다"며 제자리에 눌러앉는다.
+  // 비용으로 재면 숲을 돌아가는 칸이 분명히 더 낫고, 사령부는 그리로 걷는다.
+  // 가중치를 낮춘 것은 규칙이 바뀌어서가 아니라 자가 바뀌어서다 — 이 판은 상하좌우로만
+  // 움직이므로 같은 거리라도 비용은 대각선만큼 더 나온다.
+  score -= routeCostFrom(hq, station, x, y) * 1.5;
+  if (!Number.isFinite(supplyLineCost({ owner: hq.owner, x, y }))) score -= 20;
   if (nearestThreat <= 1) score -= 60;
   else if (nearestThreat <= 2) score -= 24;
   if (guards === 0) score -= 18;
@@ -2553,30 +4660,30 @@ function hqMoraleBonus(unit) {
     : 0;
 }
 
+// 면제 판정을 여기서 따로 하지 않는다. supplyStatus 하나가 유일한 기준이다.
+// 예전에는 protectedByFriendlySupplyBase(거점 1칸)로 면제했는데, 표시 함수는 BFS 6칸을
+// 정상으로 쳐서 "정상 보급"으로 보이는 부대의 사기가 몰래 빠졌다.
 function supplyMoralePenalty(unit) {
   const level = supplyStatus(unit).level;
   if (level === "isolated") return isolatedSupplyMoralePenalty;
-  if (protectedByFriendlySupplyBase(unit)) return 0;
+  if (level === "cut") return cutSupplyMoralePenalty;
   if (level === "strained") return strainedSupplyMoralePenalty;
   return 0;
 }
 
+// 두절 즉시 -25(위 flat)에 더해, 유예가 지나면 턴마다 더 깎인다.
+// 사기 → 소모 순서로 무너지게 만드는 장치. 대대 사령부도 예외가 아니다 —
+// 보급망에서 끊긴 사령부는 실제로 위험해야 "고립 사령부 구조" 미션이 성립한다.
 function hqOutOfRangeMoraleLoss(unit) {
-  if (!unit || unit.type === "battalionHQ") return 0;
-  if (protectedByFriendlySupplyBase(unit)) return 0;
+  if (!unit) return 0;
   const exposedTurns = Math.max(0, (unit.hqOutTurns ?? 0) - hqOutOfRangeGraceTurns);
   return exposedTurns * hqOutOfRangeMoralePenalty;
-}
-
-function protectedByFriendlySupplyBase(unit) {
-  if (!unit) return false;
-  const nearOwnedBase = state.bases.some((base) => base.owner === unit.owner && distance(unit, base) <= 1);
-  return nearOwnedBase && supplyLineCost(unit) <= effectiveSupplyRange(unit);
 }
 
 function supplyDefensePenalty(unit) {
   const level = supplyStatus(unit).level;
   if (level === "isolated") return 2;
+  if (level === "cut") return 2;
   if (level === "strained") return 1;
   return 0;
 }
@@ -2676,6 +4783,14 @@ function inBounds(x, y) {
 
 function posKey(x, y) {
   return `${x},${y}`;
+}
+
+// "주도권" 칸은 phase를 그대로 진영명으로 바꿔 찍었다. 배치 단계가 생기면서
+// deploy가 들어오면 sideName이 이를 모르는 값으로 보고 적 진영명을 찍는다 —
+// 내가 배치 중인데 화면은 적 차례라고 말하게 된다. 단계 이름은 여기서 따로 정한다.
+function phaseDisplayName() {
+  if (state.phase === "deploy") return "배치";
+  return state.phase === "player" ? sideName("player") : sideName("enemy");
 }
 
 function sideName(owner) {
