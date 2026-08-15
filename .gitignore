@@ -1,0 +1,8 @@
+# 빌드 산출물. `npm run build` 한 번이면 원본에서 그대로 다시 나온다.
+# 저장소에 넣어두면 원본과 배포본이 따로 늙는다 — 실제로 그랬다.
+dist/
+
+node_modules/
+*.log
+.DS_Store
+Thumbs.db

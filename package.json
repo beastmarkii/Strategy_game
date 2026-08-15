@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "mkdir -p dist/server dist/client dist/public dist/.openai && cp index.html styles.css game.js dist/client/ && cp -R assets dist/client/assets && cp index.html styles.css game.js dist/public/ && cp -R assets dist/public/assets && cp .openai/hosting.json dist/.openai/hosting.json && cp server/index.js dist/server/index.js"
+    "build": "node build.mjs"
   }
 }
