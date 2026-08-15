@@ -710,6 +710,11 @@ h1 {
   --map-cols: 20;
   --map-rows: 16;
 
+  /* 판을 눕힌 각도. 아래 transform과 반드시 같아야 한다 — 전투 효과 중 공중에
+     있는 것들(섬광·불덩이·연기)이 이 값만큼 되세워져 카메라를 마주 본다.
+     여기만 바꾸고 transform을 안 바꾸면 폭발이 비스듬히 누워서 터진다. */
+  --board-tilt: 58deg;
+
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--map-cols), minmax(20px, 1fr));
@@ -1393,6 +1398,9 @@ h1 {
   opacity: 0;
 }
 
+/* 이동하는 분신. 위치는 자바스크립트가 경로의 칸마다 한 프레임씩 찍어서 움직인다
+   (animateAlongPath). 여기서는 모양만 잡는다 — transform을 CSS 애니메이션으로 잡으면
+   그 경로 애니메이션과 서로 덮어쓴다. */
 .unit.unit-move-ghost {
   position: fixed;
   z-index: 999;
@@ -1400,124 +1408,317 @@ h1 {
   pointer-events: none;
   opacity: 1;
   transform: translateZ(0) rotate(-1deg);
-  animation: unitGhostMove var(--move-duration, 960ms) cubic-bezier(0.22, 0.68, 0.22, 1) both;
-}
-
-.unit.unit-move-ghost .unit-icon {
-  animation: unitMoveGlide var(--move-duration, 960ms) ease-out both;
-}
-
-.unit.unit-moving {
-  z-index: 12;
-  animation: unitMove var(--move-duration, 560ms) cubic-bezier(0.18, 0.78, 0.2, 1) both;
-  pointer-events: none;
   will-change: transform;
 }
 
-.unit.unit-moving .unit-icon {
-  animation: unitMoveBob var(--move-duration, 560ms) ease-out both;
+/* 걸음. 한 칸에 한 번씩 돈다 — 이동 전체에 한 번만 흔들리면 긴 이동이
+   미끄러지는 판때기처럼 보인다. */
+.unit.unit-move-ghost .unit-icon {
+  animation: unitMoveGlide var(--step-duration, 165ms) ease-in-out infinite;
 }
 
-.unit.unit-firing .unit-icon {
-  animation: unitFireKick 420ms ease-out both;
+/* ── 전투 연출 ─────────────────────────────────────────────────────────────
+   판은 58도로 누워 있다(.battlefield transform). 그래서 효과는 두 종류다.
+   땅에 있는 것(충격파 고리, 그을음)은 그대로 두어 타원으로 눕히고,
+   공중에 있는 것(섬광, 불덩이, 연기, 잔해)은 --board-tilt만큼 되세워서
+   카메라를 마주 보게 한다. 되세우지 않으면 폭발이 바닥에 그려진 얼룩이 된다. */
+
+/* 쏘는 쪽 ─ 무기마다 반동이 다르다. --fire-angle은 표적 방향(라디안)이다. */
+.unit.fx-fire-rifle .unit-icon {
+  animation: fxRecoilLight 200ms ease-out 3;
 }
 
-.unit.unit-striking {
-  animation: unitStrike 380ms cubic-bezier(0.22, 0.78, 0.3, 1) both;
+.unit.fx-fire-sidearm .unit-icon {
+  animation: fxRecoilLight 180ms ease-out 2;
 }
 
-.unit.unit-hit {
-  animation: unitHit 360ms cubic-bezier(0.3, 0, 0.2, 1) both;
+.unit.fx-fire-cannon .unit-icon {
+  animation: fxRecoilHeavy 340ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 
-.unit.unit-destroyed {
-  animation: unitDestroyed 520ms ease-in both;
+.unit.fx-fire-howitzer .unit-icon {
+  animation: fxRecoilHowitzer 480ms cubic-bezier(0.16, 0.9, 0.26, 1) both;
 }
 
-.combat-line {
+/* 공병대는 쏘지 않는다. 붙어서 터뜨리는 쪽이라 앞으로 파고든다. */
+.unit.fx-fire-charge {
+  animation: fxLunge 380ms cubic-bezier(0.24, 0.78, 0.3, 1) both;
+}
+
+/* 반격은 밀려나면서 쏜다. 먼저 친 쪽과 되받아친 쪽이 자세부터 다르다. */
+.unit.fx-fire-counter .unit-icon {
+  filter: brightness(1.12) saturate(0.86);
+}
+
+/* 맞는 쪽 ─ --hit-angle 방향으로 밀린다. 예전에는 방향 없이 좌우로만 떨었다. */
+.unit.fx-hit {
+  animation: fxKnockback 420ms cubic-bezier(0.22, 0.68, 0.24, 1) both;
+}
+
+.unit.fx-hit-counter {
+  animation: fxKnockback 380ms cubic-bezier(0.22, 0.68, 0.24, 1) both;
+  animation-name: fxKnockbackLight;
+}
+
+/* 총구 화염 */
+.fx-muzzle {
   position: absolute;
-  z-index: 11;
-  height: 3px;
+  z-index: 14;
+  width: calc(13px * var(--fx-scale, 1));
+  height: calc(13px * var(--fx-scale, 1));
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(var(--fx-angle, 0rad));
+  background:
+    radial-gradient(ellipse 62% 100% at 12% 50%, #fffdf0 0 22%, #ffd977 23% 46%, rgb(255 138 46 / 62%) 47% 72%, rgb(255 138 46 / 0%) 74%);
+  animation: fxMuzzle 200ms ease-out both;
+}
+
+.fx-muzzle.fx-rifle {
+  width: calc(9px * var(--fx-scale, 1));
+  height: calc(7px * var(--fx-scale, 1));
+  animation: fxMuzzle 66ms ease-out 3;
+}
+
+.fx-muzzle.fx-sidearm {
+  width: calc(6px * var(--fx-scale, 1));
+  height: calc(5px * var(--fx-scale, 1));
+  animation: fxMuzzle 60ms ease-out 2;
+}
+
+.fx-muzzle.fx-cannon {
+  width: calc(19px * var(--fx-scale, 1));
+  height: calc(12px * var(--fx-scale, 1));
+  animation-duration: 240ms;
+}
+
+/* 곡사포는 화염이 크고 오래 남는다. 뒤로 뿜는 폭풍까지 보인다. */
+.fx-muzzle.fx-howitzer {
+  width: calc(26px * var(--fx-scale, 1));
+  height: calc(16px * var(--fx-scale, 1));
+  animation-duration: 320ms;
+}
+
+.fx-muzzle.fx-counter {
+  filter: saturate(0.6) brightness(1.1);
+}
+
+/* 날아가는 것 ─ 예전에는 선 하나를 clip-path로 쓸어냈을 뿐이라
+   사거리 3 곡사포가 레이저처럼 보였다. 이제는 실제로 날아간다. */
+.fx-shot {
+  position: absolute;
+  z-index: 14;
+  width: calc(7px * var(--fx-scale, 1));
+  height: calc(3px * var(--fx-scale, 1));
   border-radius: 999px;
   pointer-events: none;
-  transform-origin: 0 50%;
-  transform: translateZ(24px);
-}
-
-.combat-line.shell {
-  height: 2px;
-  background: linear-gradient(90deg, rgb(255 240 168 / 0%), rgb(255 221 87 / 94%), rgb(255 112 67 / 0%));
-  box-shadow: 0 0 10px rgb(255 196 77 / 65%);
-  animation: shellTrace 520ms ease-out both;
-}
-
-.combat-line.strike {
-  background: linear-gradient(90deg, rgb(255 255 255 / 0%), rgb(255 246 220 / 92%), rgb(204 47 34 / 0%));
-  box-shadow: 0 0 8px rgb(255 255 255 / 42%);
-  animation: strikeTrace 340ms ease-out both;
-}
-
-.combat-burst {
-  position: absolute;
-  z-index: 13;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle, #fff8d8 0 16%, #f7b955 17% 36%, rgb(181 48 33 / 76%) 37% 54%, rgb(47 35 25 / 0%) 58%);
-  box-shadow:
-    0 0 0 5px rgb(246 173 65 / 14%),
-    0 0 14px rgb(240 101 51 / 48%);
-  pointer-events: none;
-  transform: translate(-50%, -50%);
   transform-origin: 50% 50%;
-  animation: impactBurst 560ms ease-out both;
-  will-change: transform, opacity;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(90deg, rgb(255 236 170 / 0%), #fff6cf 55%, #fff);
+  box-shadow: 0 0 6px rgb(255 206 108 / 70%);
 }
 
-.combat-burst::after {
+.fx-shot.fx-rifle,
+.fx-shot.fx-sidearm {
+  width: calc(9px * var(--fx-scale, 1));
+  height: calc(2px * var(--fx-scale, 1));
+  background: linear-gradient(90deg, rgb(255 255 255 / 0%), rgb(255 250 224 / 90%) 70%, #fff);
+  box-shadow: 0 0 4px rgb(255 244 200 / 62%);
+}
+
+.fx-shot.fx-cannon {
+  width: calc(15px * var(--fx-scale, 1));
+  height: calc(4px * var(--fx-scale, 1));
+  background: linear-gradient(90deg, rgb(255 176 74 / 0%), #ffca6a 42%, #fffaea);
+  box-shadow: 0 0 9px rgb(255 158 58 / 78%);
+}
+
+/* 곡사탄은 검은 탄체에 코만 달아오른다. 꼬리에 연기를 끈다. */
+.fx-shot.fx-howitzer {
+  width: calc(9px * var(--fx-scale, 1));
+  height: calc(5px * var(--fx-scale, 1));
+  background: linear-gradient(90deg, #3b3222 0 42%, #b8712c 62%, #ffe9b0);
+  box-shadow: 0 0 7px rgb(255 190 96 / 52%);
+}
+
+.fx-shot.fx-howitzer::after {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: calc(26px * var(--fx-scale, 1));
+  height: calc(3px * var(--fx-scale, 1));
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgb(214 205 186 / 0%), rgb(214 205 186 / 52%));
+  content: "";
+  transform: translateY(-50%);
+}
+
+.fx-shot.fx-counter {
+  filter: saturate(0.55) brightness(1.15);
+}
+
+/* 착탄 ─ 층을 나눈다. 예전에는 원 하나가 커졌다 사라지는 게 전부였고,
+   격파도 그 원을 18px로 키운 것뿐이었다. */
+.fx-impact {
+  position: absolute;
+  z-index: 15;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  transform: translateZ(2px);
+  transform-style: preserve-3d;
+}
+
+.fx-impact > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+}
+
+/* 섬광 ─ 가장 먼저, 가장 짧게. 흰색 한 점. */
+.fx-flash {
+  width: calc(24px * var(--fx-scale, 1));
+  height: calc(24px * var(--fx-scale, 1));
+  background: radial-gradient(circle, #fff 0 26%, rgb(255 246 206 / 82%) 27% 52%, rgb(255 246 206 / 0%) 70%);
+  animation: fxFlash 170ms ease-out both;
+}
+
+/* 불덩이 ─ 부풀면서 위로 뜬다. 카메라를 마주 보게 되세운다. */
+.fx-fire {
+  width: calc(26px * var(--fx-scale, 1));
+  height: calc(26px * var(--fx-scale, 1));
+  background:
+    radial-gradient(circle at 50% 62%, #fff3c4 0 14%, #ffb545 15% 34%, #e0561f 35% 56%, rgb(122 46 22 / 62%) 57% 74%, rgb(60 34 22 / 0%) 80%);
+  animation: fxFire 420ms cubic-bezier(0.18, 0.72, 0.3, 1) both;
+}
+
+/* 충격파 ─ 땅에 붙어 퍼진다. 그래서 되세우지 않는다. 눕힌 판 위에서
+   저절로 타원이 되고, 그게 지면을 따라 퍼지는 것처럼 보인다. */
+.fx-ring {
+  width: calc(16px * var(--fx-scale, 1));
+  height: calc(16px * var(--fx-scale, 1));
+  border: calc(2px * var(--fx-scale, 1)) solid rgb(255 233 176 / 82%);
+  box-shadow: 0 0 10px rgb(255 190 104 / 42%);
+  animation: fxRing 480ms cubic-bezier(0.12, 0.8, 0.24, 1) both;
+}
+
+/* 파편 ─ 방향과 거리와 회전은 자바스크립트가 하나씩 다르게 준다.
+   전부 같은 값이면 폭발이 아니라 도형이 된다. */
+.fx-shard {
+  width: calc(6px * var(--fx-scale, 1));
+  height: calc(2px * var(--fx-scale, 1));
+  border-radius: 1px;
+  background: linear-gradient(90deg, #ffe6a8, #b4571f);
+  animation: fxShard 520ms cubic-bezier(0.16, 0.72, 0.3, 1) both;
+  animation-delay: var(--shard-delay, 0ms);
+}
+
+/* 연기 ─ 격파에만. 가장 느리고 가장 오래 남아서 "여기서 뭔가 죽었다"를 남긴다. */
+.fx-smoke {
+  width: calc(28px * var(--fx-scale, 1));
+  height: calc(28px * var(--fx-scale, 1));
+  background: radial-gradient(circle at 50% 60%, rgb(96 88 76 / 72%) 0 36%, rgb(72 66 58 / 38%) 37% 62%, rgb(60 56 50 / 0%) 74%);
+  animation: fxSmoke 1400ms ease-out both;
+}
+
+/* 잔해 ─ 격파된 부대는 이 시점에 이미 판에서 지워져 있어서, 무너지는 연출을
+   붙일 요소가 없다. 대신 불탄 덩어리를 그 자리에 세운다. */
+.fx-wreck {
+  width: calc(17px * var(--fx-scale, 1));
+  height: calc(11px * var(--fx-scale, 1));
+  border-radius: calc(2px * var(--fx-scale, 1));
+  background: linear-gradient(160deg, #4a4034 0 46%, #2b241c 47% 100%);
+  box-shadow: inset 0 0 0 1px rgb(255 186 96 / 30%);
+  animation: fxWreck 1400ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* 그을음 ─ 타일에 남는다. 폭발이 사라져도 잠깐 자국이 있다. */
+.tile.fx-scorched::after {
   position: absolute;
   left: 50%;
-  top: -18px;
-  min-width: 22px;
-  padding: 1px 5px;
+  top: 50%;
+  z-index: 3;
+  width: 74%;
+  height: 74%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(28 22 16 / 62%) 0 38%, rgb(28 22 16 / 22%) 39% 68%, rgb(28 22 16 / 0%) 78%);
+  content: "";
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: fxScorch 1500ms ease-out both;
+}
+
+.fx-damage {
+  z-index: 4;
+  min-width: calc(20px * var(--fx-scale, 1));
+  padding: 1px calc(4px * var(--fx-scale, 1));
   border: 1px solid rgb(255 255 255 / 62%);
   border-radius: 999px;
-  background: rgb(35 28 22 / 86%);
+  background: rgb(35 28 22 / 88%);
   color: #fff4d6;
-  content: attr(data-damage);
-  font-size: 10px;
+  font-size: calc(9px * var(--fx-scale, 1));
   font-weight: 900;
-  line-height: 1.2;
+  line-height: 1.3;
   text-align: center;
-  transform: translateX(-50%);
-  animation: damageFloat 620ms ease-out both;
+  white-space: nowrap;
+  animation: fxDamage 720ms ease-out both;
 }
 
-.combat-burst:not([data-damage])::after {
-  display: none;
-}
-
-.combat-burst.impact {
-  width: 11px;
-  height: 11px;
+/* 반격 ─ 되받아친 쪽은 잿빛이다. 색만 봐도 "이건 답례"라고 읽힌다. */
+.fx-impact.fx-counter .fx-fire {
   background:
-    radial-gradient(circle, #fff 0 20%, #f2d49b 21% 42%, rgb(198 43 31 / 82%) 43% 60%, rgb(47 35 25 / 0%) 62%);
-  box-shadow:
-    0 0 0 4px rgb(255 255 255 / 12%),
-    0 0 12px rgb(198 43 31 / 42%);
+    radial-gradient(circle at 50% 62%, #fffdf4 0 14%, #ded0b0 15% 34%, #9a8f76 35% 58%, rgb(78 74 64 / 0%) 74%);
 }
 
-.combat-burst.destroyed {
-  width: 18px;
-  height: 18px;
-  animation-duration: 720ms;
+.fx-impact.fx-counter .fx-shard {
+  background: linear-gradient(90deg, #f3ead2, #7d7461);
 }
 
-.combat-burst.base-hit {
-  box-shadow:
-    0 0 0 6px rgb(255 208 92 / 14%),
-    0 0 16px rgb(255 208 92 / 46%);
+.fx-impact.fx-counter .fx-ring {
+  border-color: rgb(228 224 208 / 74%);
+}
+
+.fx-impact.fx-counter .fx-damage {
+  border-color: rgb(206 216 226 / 70%);
+  color: #e6eef5;
+}
+
+/* 보급 거점 타격 ─ 폭발이 아니라 무너지는 건물이다. 불보다 먼지가 많다. */
+.fx-impact.fx-base .fx-fire {
+  background:
+    radial-gradient(circle at 50% 60%, #fff4d8 0 12%, #dcc08a 13% 32%, rgb(150 122 78 / 72%) 33% 58%, rgb(96 84 62 / 0%) 76%);
+}
+
+.fx-impact.fx-base .fx-ring {
+  border-color: rgb(255 208 92 / 78%);
+}
+
+/* 격파 ─ 한 급 크게. 불덩이는 더 오래, 고리는 더 멀리 간다. */
+.fx-impact.fx-kill .fx-fire {
+  width: calc(38px * var(--fx-scale, 1));
+  height: calc(38px * var(--fx-scale, 1));
+  animation-duration: 620ms;
+}
+
+.fx-impact.fx-kill .fx-flash {
+  width: calc(34px * var(--fx-scale, 1));
+  height: calc(34px * var(--fx-scale, 1));
+  animation-duration: 220ms;
+}
+
+.fx-impact.fx-kill .fx-ring {
+  animation-duration: 640ms;
+}
+
+/* 판 흔들림 ─ .battlefield의 transform은 판을 눕히는 그 각도라서 건드리면 안 된다.
+   translate 속성은 transform과 따로 겹쳐지므로 각도를 그대로 둔 채 흔들 수 있다. */
+.battlefield.fx-shake-light {
+  animation: fxShakeLight 240ms ease-out both;
+}
+
+.battlefield.fx-shake-heavy {
+  animation: fxShakeHeavy 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
 .unit::before {
@@ -1950,128 +2151,126 @@ h1 {
   content: "";
 }
 
-@keyframes unitGhostMove {
-  0% {
-    transform: translate(0, 0) rotate(-1deg) scale(1);
-  }
-
-  18% {
-    transform: translate(var(--ghost-move-x-18), var(--ghost-move-y-18)) rotate(-1deg) scale(1.01);
-  }
-
-  58% {
-    transform: translate(var(--ghost-move-x-62), var(--ghost-move-y-62)) rotate(-1deg) scale(1.015);
-  }
-
-  88% {
-    opacity: 1;
-    transform: translate(var(--ghost-move-x-94), var(--ghost-move-y-94)) rotate(-1deg) scale(1.005);
-  }
-
-  100% {
-    opacity: 0;
-    transform: translate(var(--ghost-move-x), var(--ghost-move-y)) rotate(-1deg) scale(1);
-  }
-}
-
-@keyframes unitMove {
-  0% {
-    opacity: 0.94;
-    transform: translate(var(--move-x), var(--move-y)) translateZ(20px) rotate(-1deg) scale(0.98);
-  }
-
-  18% {
-    opacity: 1;
-    transform: translate(var(--move-x-78), var(--move-y-78)) translateZ(26px) rotate(-1deg) scale(1.02);
-  }
-
-  54% {
-    transform: translate(var(--move-x-28), var(--move-y-28)) translateZ(28px) rotate(-1deg) scale(1.04);
-  }
-
-  86% {
-    transform: translate(1px, -2px) translateZ(22px) rotate(-1deg) scale(1.02);
-  }
-
-  100% {
-    transform: translate(0, 0) translateZ(18px) rotate(-1deg) scale(1);
-  }
-}
-
-@keyframes unitMoveBob {
-  0% {
-    transform: translateY(0) translateZ(14px) rotateX(-18deg) scale(1.04);
-  }
-
-  45% {
-    transform: translateY(-5px) translateZ(18px) rotateX(-18deg) scale(1.08);
-  }
-
-  100% {
-    transform: translateY(0) translateZ(14px) rotateX(-18deg) scale(1.04);
-  }
-}
-
+/* 걸음. 한 칸에 한 번 돈다. 진폭이 크면 긴 이동이 멀미가 된다. */
 @keyframes unitMoveGlide {
-  0% {
+  0%,
+  100% {
     transform: translateY(0) translateZ(14px) rotateX(-18deg) scale(1.04);
   }
 
   50% {
-    transform: translateY(-1px) translateZ(15px) rotateX(-18deg) scale(1.045);
-  }
-
-  100% {
-    transform: translateY(0) translateZ(14px) rotateX(-18deg) scale(1.04);
+    transform: translateY(-2px) translateZ(16px) rotateX(-18deg) scale(1.055);
   }
 }
 
-@keyframes unitFireKick {
+/* ── 쏘는 쪽 ────────────────────────────────────────────────────────────── */
+/* --fire-x/y는 표적 반대 방향(반동)이다. 자바스크립트가 픽셀로 계산해서 넘긴다. */
+@keyframes fxRecoilLight {
   0% {
-    transform: translateX(0) translateZ(14px) rotateX(-18deg) scale(1.04);
-    filter: brightness(1.25) drop-shadow(0 0 0 rgb(255 217 112 / 0%));
+    transform: translate(0, 0) translateZ(14px) rotateX(-18deg) scale(1.04);
   }
 
-  28% {
-    transform: translateX(-4px) translateZ(18px) rotateX(-18deg) scale(1.1);
-    filter: brightness(1.55) drop-shadow(0 0 8px rgb(255 217 112 / 72%));
+  30% {
+    transform: translate(calc(var(--fire-x, 0px) * 0.45), calc(var(--fire-y, 0px) * 0.45)) translateZ(16px) rotateX(-18deg) scale(1.06);
+    filter: brightness(1.4);
   }
 
   100% {
-    transform: translateX(0) translateZ(14px) rotateX(-18deg) scale(1.04);
-    filter:
-      brightness(1)
-      drop-shadow(0 8px 4px rgb(0 0 0 / 46%))
-      drop-shadow(0 2px 1px rgb(0 0 0 / 62%));
+    transform: translate(0, 0) translateZ(14px) rotateX(-18deg) scale(1.04);
   }
 }
 
-@keyframes unitStrike {
+@keyframes fxRecoilHeavy {
   0% {
-    transform: translateZ(18px) rotate(-1deg) scale(1);
+    transform: translate(0, 0) translateZ(14px) rotateX(-18deg) scale(1.04);
   }
 
-  38% {
-    transform: translateZ(24px) rotate(-1deg) translateY(-4px) scale(1.08);
+  14% {
+    transform: translate(var(--fire-x, 0px), var(--fire-y, 0px)) translateZ(19px) rotateX(-18deg) scale(1.12);
+    filter: brightness(1.7) drop-shadow(0 0 9px rgb(255 205 108 / 78%));
   }
 
   100% {
-    transform: translateZ(18px) rotate(-1deg) translateY(0) scale(1);
+    transform: translate(0, 0) translateZ(14px) rotateX(-18deg) scale(1.04);
+    filter: none;
   }
 }
 
-@keyframes unitHit {
+/* 곡사포는 주저앉았다가 천천히 제자리로 돌아온다. 포가가 밀리는 그 시간이다. */
+@keyframes fxRecoilHowitzer {
+  0% {
+    transform: translate(0, 0) translateZ(14px) rotateX(-18deg) scale(1.04);
+  }
+
+  10% {
+    transform: translate(calc(var(--fire-x, 0px) * 1.4), calc(var(--fire-y, 0px) * 1.4)) translateZ(20px) rotateX(-18deg) scale(1.16);
+    filter: brightness(1.9) drop-shadow(0 0 13px rgb(255 190 92 / 84%));
+  }
+
+  46% {
+    transform: translate(calc(var(--fire-x, 0px) * 0.5), calc(var(--fire-y, 0px) * 0.5)) translateZ(16px) rotateX(-18deg) scale(1.06);
+  }
+
+  100% {
+    transform: translate(0, 0) translateZ(14px) rotateX(-18deg) scale(1.04);
+    filter: none;
+  }
+}
+
+/* 공병대는 붙어서 터뜨린다. 뒤로 밀리는 게 아니라 앞으로 파고든다. */
+@keyframes fxLunge {
   0% {
     transform: translateZ(18px) rotate(-1deg) translate(0, 0);
-    filter: brightness(1.45) saturate(1.12);
   }
 
-  25% {
-    transform: translateZ(20px) rotate(-4deg) translate(-4px, 1px);
+  34% {
+    transform: translateZ(26px) rotate(-1deg) translate(var(--lunge-x, 0px), var(--lunge-y, 0px)) scale(1.09);
   }
 
-  55% {
-    transform: translateZ(20px) rotate(3deg) translate(4px, -1px);
+  100% {
+    transform: translateZ(18px) rotate(-1deg) translate(0, 0) scale(1);
+  }
+}
+
+/* ── 맞는 쪽 ────────────────────────────────────────────────────────────── */
+/* 예전에는 방향 없이 좌우로 4px 떨었다. 이제는 맞은 방향으로 밀렸다가 버틴다 —
+   어느 쪽에서 날아왔는지가 몸짓으로 읽힌다. */
+@keyframes fxKnockback {
+  0% {
+    transform: translateZ(18px) rotate(-1deg) translate(0, 0);
+    filter: brightness(1.9) saturate(1.25);
+  }
+
+  16% {
+    transform: translateZ(23px) rotate(5deg) translate(var(--hit-x, 0px), var(--hit-y, 0px)) scale(0.94);
+  }
+
+  44% {
+    transform: translateZ(20px) rotate(-5deg) translate(calc(var(--hit-x, 0px) * -0.35), calc(var(--hit-y, 0px) * -0.35)) scale(1.02);
+  }
+
+  72% {
+    transform: translateZ(19px) rotate(2deg) translate(calc(var(--hit-x, 0px) * 0.14), calc(var(--hit-y, 0px) * 0.14));
+  }
+
+  100% {
+    transform: translateZ(18px) rotate(-1deg) translate(0, 0) scale(1);
+    filter: none;
+  }
+}
+
+@keyframes fxKnockbackLight {
+  0% {
+    transform: translateZ(18px) rotate(-1deg) translate(0, 0);
+    filter: brightness(1.5) saturate(0.9);
+  }
+
+  22% {
+    transform: translateZ(21px) rotate(3deg) translate(calc(var(--hit-x, 0px) * 0.6), calc(var(--hit-y, 0px) * 0.6));
+  }
+
+  60% {
+    transform: translateZ(19px) rotate(-2deg) translate(calc(var(--hit-x, 0px) * -0.18), calc(var(--hit-y, 0px) * -0.18));
   }
 
   100% {
@@ -2080,80 +2279,216 @@ h1 {
   }
 }
 
-@keyframes unitDestroyed {
+/* ── 날아가는 것 ────────────────────────────────────────────────────────── */
+@keyframes fxMuzzle {
   0% {
-    transform: translateZ(18px) rotate(-1deg) scale(1);
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(var(--fx-angle, 0rad)) scaleX(0.3) scaleY(0.6);
+  }
+
+  22% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(var(--fx-angle, 0rad)) scaleX(1.15) scaleY(1.1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(var(--fx-angle, 0rad)) scaleX(0.75) scaleY(0.5);
+  }
+}
+
+/* ── 착탄 ──────────────────────────────────────────────────────────────── */
+/* 층마다 시간이 다르다. 섬광이 먼저 꺼지고, 불덩이가 뜨고, 고리가 퍼지고,
+   파편이 흩어지고, 연기가 마지막까지 남는다. 전부 같은 시간에 사라지면
+   그건 폭발이 아니라 도형 하나가 깜빡인 것이다. */
+@keyframes fxFlash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(0.3);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(1.35);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(1.9);
+  }
+}
+
+@keyframes fxFire {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(0.35);
+  }
+
+  22% {
+    opacity: 1;
+    transform: translate(-50%, -62%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(1.05);
+  }
+
+  62% {
+    opacity: 0.86;
+    transform: translate(-50%, -82%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(1.3);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -104%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(1.5);
+  }
+}
+
+/* 고리는 눕힌 판 위에 그대로 둔다 — 저절로 타원이 되어 지면을 따라 퍼진다. */
+@keyframes fxRing {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+
+  18% {
     opacity: 1;
   }
 
   100% {
-    transform: translateZ(8px) rotate(-8deg) translateY(7px) scale(0.74);
     opacity: 0;
+    border-width: 1px;
+    transform: translate(-50%, -50%) scale(3.4);
   }
 }
 
-@keyframes shellTrace {
+@keyframes fxShard {
   0% {
-    clip-path: inset(0 100% 0 0);
     opacity: 0;
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.6);
   }
 
-  20% {
+  12% {
     opacity: 1;
   }
 
   100% {
-    clip-path: inset(0 0 0 100%);
     opacity: 0;
+    transform: translate(calc(-50% + var(--shard-x, 0px)), calc(-50% + var(--shard-y, 0px))) rotate(var(--shard-spin, 180deg)) scale(0.5);
   }
 }
 
-@keyframes strikeTrace {
+@keyframes fxSmoke {
   0% {
-    clip-path: inset(0 100% 0 0);
     opacity: 0;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(0.4);
   }
 
-  28% {
+  26% {
+    opacity: 0.9;
+    transform: translate(-50%, -76%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -150%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(1.9);
+  }
+}
+
+/* 잔해는 튀어 올랐다가 주저앉는다. 그 자리에 있던 부대가 남긴 흔적이다. */
+@keyframes fxWreck {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(0deg) scale(0.5);
+  }
+
+  16% {
+    opacity: 1;
+    transform: translate(-50%, -86%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(-14deg) scale(1.04);
+  }
+
+  46% {
+    opacity: 1;
+    transform: translate(-50%, -44%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(-24deg) scale(0.94);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -40%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(-28deg) scale(0.86);
+  }
+}
+
+@keyframes fxScorch {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+
+  14% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  70% {
+    opacity: 0.85;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+@keyframes fxDamage {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg)));
+  }
+
+  22% {
     opacity: 1;
   }
 
   100% {
-    clip-path: inset(0 0 0 55%);
     opacity: 0;
+    transform: translate(-50%, calc(-50% - 26px)) rotateX(calc(-1 * var(--board-tilt, 58deg)));
   }
 }
 
-@keyframes impactBurst {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.55);
+/* ── 판 흔들림 ─────────────────────────────────────────────────────────── */
+/* transform이 아니라 translate 속성을 쓴다. .battlefield의 transform은 판을
+   눕히는 그 각도라서, 여기서 덮어쓰면 지도가 벌떡 일어선다. */
+@keyframes fxShakeLight {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  30% {
+    translate: -2px 1px;
+  }
+
+  65% {
+    translate: 2px -1px;
+  }
+}
+
+@keyframes fxShakeHeavy {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  14% {
+    translate: -5px 3px;
   }
 
   34% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.75);
+    translate: 4px -3px;
   }
 
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(2.15);
-  }
-}
-
-@keyframes damageFloat {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 6px);
+  56% {
+    translate: -3px 2px;
   }
 
-  24% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -16px);
+  78% {
+    translate: 2px -1px;
   }
 }
 
@@ -2209,21 +2544,57 @@ h1 {
   }
 }
 
+/* 움직임을 줄이겠다고 설정한 사용자에게는 전부 끈다. 판 흔들림과 튀는 파편은
+   특히 그렇다 — 재미로 넣은 것이 누군가에게는 멀미가 된다.
+   피해 숫자만은 남긴다. 그건 연출이 아니라 정보라서, 끄면 무슨 일이 있었는지
+   알 수 없게 된다. 대신 떠오르지 않고 그 자리에 뜬다. */
 @media (prefers-reduced-motion: reduce) {
-  .unit.unit-moving,
-  .unit.unit-moving .unit-icon,
-  .unit.unit-firing .unit-icon,
-  .unit.unit-striking,
-  .unit.unit-hit,
-  .unit.unit-destroyed,
-  .combat-line,
-  .combat-burst,
-  .combat-burst::after,
+  .unit.unit-move-ghost .unit-icon,
+  .unit[class*="fx-fire-"],
+  .unit[class*="fx-fire-"] .unit-icon,
+  .unit.fx-hit,
+  .unit.fx-hit-counter,
+  .battlefield.fx-shake-light,
+  .battlefield.fx-shake-heavy,
+  .fx-muzzle,
+  .fx-shot,
+  .fx-flash,
+  .fx-fire,
+  .fx-ring,
+  .fx-shard,
+  .fx-smoke,
+  .fx-wreck,
+  .tile.fx-scorched::after,
   .construction-site,
   .construction-site::before,
   .construction-site::after,
   .construction-badge {
     animation: none;
+  }
+
+  .fx-shard,
+  .fx-smoke,
+  .fx-wreck,
+  .fx-muzzle,
+  .fx-shot {
+    display: none;
+  }
+
+  .fx-damage {
+    animation: fxDamageStill 720ms steps(1, end) both;
+  }
+}
+
+@keyframes fxDamageStill {
+  0%,
+  92% {
+    opacity: 1;
+    transform: translate(-50%, calc(-50% - 14px)) rotateX(calc(-1 * var(--board-tilt, 58deg)));
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 14px)) rotateX(calc(-1 * var(--board-tilt, 58deg)));
   }
 }
 

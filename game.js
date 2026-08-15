@@ -1313,6 +1313,10 @@ function supplyFlagMark(level) {
   return "불";
 }
 
+// 한 칸을 지나는 데 걸리는 시간(ms). 걸음 수에 곱해서 전체 이동 시간이 나온다.
+// 짧으면 순간이동처럼 보이고, 길면 적 턴에 부대가 줄줄이 걸어가는 걸 지켜봐야 한다.
+const unitStepTime = 165;
+
 function recordUnitMove(unit, toX, toY) {
   if (unit.x === toX && unit.y === toY) return;
   pendingUnitMoves.push({
@@ -1323,53 +1327,52 @@ function recordUnitMove(unit, toX, toY) {
     fromY: unit.y,
     toX,
     toY,
+    // 경로는 지금 뽑아야 한다. 이 함수가 돌아가자마자 호출자가 unit.x를 도착점으로
+    // 덮어써서, 그 뒤에는 어디서 출발했는지조차 남지 않는다.
+    path: movementPath(unit, toX, toY),
   });
 }
 
+// 부대는 실제로 지나간 칸을 순서대로 밟는다. 예전에는 출발점에서 도착점까지 그냥
+// 직선으로 미끄러졌다 — 그래서 고지를 못 넘는 전차가 화면에서는 고지를 가로질렀고,
+// 다리 없는 강 위를 부대가 지나갔다. 눈에 보이는 것과 규칙이 서로 다른 말을 했다.
 function playUnitMoveAnimations() {
   if (!pendingUnitMoves.length) return 0;
   const moves = pendingUnitMoves;
   pendingUnitMoves = [];
   const movementPlans = moves.map((move) => {
-    const moveDistance = Math.hypot(move.toX - move.fromX, move.toY - move.fromY);
-    return {
-      ...move,
-      duration: clamp(720 + moveDistance * 140, 820, 1400),
-    };
+    const path = move.path?.length > 1 ? move.path : [{ x: move.fromX, y: move.fromY }, { x: move.toX, y: move.toY }];
+    // 시간은 걸음 수로 잰다. 직선거리로 재면 멀리 돌아간 부대가 같은 시간에 도착해서,
+    // 두 배 먼 길을 두 배 빨리 달리는 것처럼 보인다.
+    const steps = path.length - 1;
+    return { ...move, path, stepTime: unitStepTime, duration: clamp(240 + steps * unitStepTime, 380, 1600) };
   });
   const longestDuration = Math.max(...movementPlans.map((move) => move.duration), 0);
 
   window.requestAnimationFrame(() => {
     movementPlans.forEach((move) => {
-      const unitEl = Array.from(boardEl.querySelectorAll(".unit")).find((element) => element.dataset.unitId === move.id);
-      const fromTile = tileElementAt(move.fromX, move.fromY);
-      const toTile = tileElementAt(move.toX, move.toY);
-      if (!unitEl || !fromTile || !toTile) return;
+      const unitEl = findUnitElement(move.id);
+      const tiles = move.path.map((spot) => tileElementAt(spot.x, spot.y));
+      if (!unitEl || tiles.some((tile) => !tile)) return;
 
-      const fromRect = fromTile.getBoundingClientRect();
-      const toRect = toTile.getBoundingClientRect();
-      const fromCenterX = fromRect.left + fromRect.width / 2;
-      const fromCenterY = fromRect.top + fromRect.height / 2;
-      const toCenterX = toRect.left + toRect.width / 2;
-      const toCenterY = toRect.top + toRect.height / 2;
+      const points = tiles.map((tile) => {
+        const rect = tile.getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      });
       const unitRect = unitEl.getBoundingClientRect();
       const ghost = unitEl.cloneNode(true);
       ghost.classList.add("unit-move-ghost");
-      ghost.style.left = `${fromCenterX - unitRect.width / 2}px`;
-      ghost.style.top = `${fromCenterY - unitRect.height / 2}px`;
+      ghost.style.left = `${points[0].x - unitRect.width / 2}px`;
+      ghost.style.top = `${points[0].y - unitRect.height / 2}px`;
       ghost.style.width = `${unitRect.width}px`;
       ghost.style.height = `${unitRect.height}px`;
-      ghost.style.setProperty("--ghost-move-x", `${toCenterX - fromCenterX}px`);
-      ghost.style.setProperty("--ghost-move-y", `${toCenterY - fromCenterY}px`);
-      ghost.style.setProperty("--ghost-move-x-18", `${(toCenterX - fromCenterX) * 0.18}px`);
-      ghost.style.setProperty("--ghost-move-y-18", `${(toCenterY - fromCenterY) * 0.18 - 1}px`);
-      ghost.style.setProperty("--ghost-move-x-62", `${(toCenterX - fromCenterX) * 0.62}px`);
-      ghost.style.setProperty("--ghost-move-y-62", `${(toCenterY - fromCenterY) * 0.62 - 2}px`);
-      ghost.style.setProperty("--ghost-move-x-94", `${(toCenterX - fromCenterX) * 0.94}px`);
-      ghost.style.setProperty("--ghost-move-y-94", `${(toCenterY - fromCenterY) * 0.94 - 1}px`);
-      ghost.style.setProperty("--move-duration", `${Math.round(move.duration)}ms`);
+      // 아이콘의 위아래 흔들림은 한 걸음에 한 번씩 돈다. 이동 전체에 한 번만 흔들리면
+      // 긴 이동이 미끄러지는 판때기처럼 보인다.
+      ghost.style.setProperty("--step-duration", `${move.stepTime}ms`);
       document.body.appendChild(ghost);
       playUnitSound(move, "move");
+
+      animateAlongPath(ghost, points, move.duration);
 
       unitEl.classList.add("unit-arriving-hidden");
       window.setTimeout(() => {
@@ -1379,11 +1382,82 @@ function playUnitMoveAnimations() {
     });
   });
 
-  return Math.min(520, longestDuration || 0);
+  // 전투는 이동이 끝난 뒤에 시작한다. 다만 여기서 너무 오래 기다리면 적 턴 전체가
+  // 늘어지므로, 이동이 길어도 상한을 둔다.
+  return Math.min(720, longestDuration || 0);
+}
+
+// 각 칸에 도착하는 시각은 남은 거리에 비례해서 정한다. 칸마다 같은 시간을 주면
+// 꺾이는 지점마다 속도가 튄다. 가감속은 경로 전체에 한 번만 준다 — 걸음마다
+// 서고 다시 출발하면 그게 예전의 그 끊김이다.
+function animateAlongPath(element, points, duration) {
+  if (typeof element.animate !== "function") return;
+  const legs = points.slice(1).map((point, index) => Math.hypot(point.x - points[index].x, point.y - points[index].y));
+  const total = legs.reduce((sum, leg) => sum + leg, 0);
+  if (!total) return;
+
+  let travelled = 0;
+  const frames = points.map((point, index) => {
+    if (index > 0) travelled += legs[index - 1];
+    const dx = point.x - points[0].x;
+    const dy = point.y - points[0].y;
+    // 진행 방향으로 살짝 기운다. 꺾이는 칸에서 기울기가 바뀌면서 "돌았다"가 읽힌다.
+    const lean = index === 0 ? 0 : clamp((point.x - points[index - 1].x) * 0.08, -3, 3);
+    return {
+      offset: clamp(travelled / total, 0, 1),
+      transform: `translate(${dx}px, ${dy}px) rotate(${(-1 + lean).toFixed(2)}deg)`,
+      easing: "linear",
+    };
+  });
+
+  element.animate(frames, { duration, easing: "cubic-bezier(0.4, 0, 0.28, 1)", fill: "both" });
 }
 
 function tileElementAt(x, y) {
   return boardEl.querySelector(`.tile[data-x="${x}"][data-y="${y}"]`);
+}
+
+// ── 전투 연출 ───────────────────────────────────────────────────────────────
+// 병종마다 무기가 다르면 그림도 달라야 한다. 예전에는 "야포냐 아니냐" 불리언
+// 하나뿐이라, 소총분대와 중형전차와 공병대가 전부 똑같은 흰 선을 그었다.
+// 전투 로그를 읽기 전에는 무엇이 나를 때렸는지 알 수 없었다.
+//
+// 여기 있는 값은 전부 그림에만 쓰인다. 피해량은 combatDamage 하나가 정하고,
+// 이 표는 그 결과를 어떻게 보여줄지만 정한다 — 그래서 에디터에 올리지 않는다.
+const unitWeapons = {
+  infantry: "rifle",
+  armor: "cannon",
+  artillery: "howitzer",
+  spArtillery: "howitzer",
+  engineer: "charge",
+  battalionHQ: "sidearm",
+};
+
+// shots    한 번의 교전에서 나가는 발수. 소총은 점사, 전차 주포는 한 발.
+// shotGap  점사 간격(ms).
+// stepTime 한 칸을 나는 데 걸리는 시간(ms). 0이면 날아가는 것이 없다(근접).
+//          사거리 3 야포는 이 값 때문에 실제로 한참 뒤에 떨어진다.
+// arc      포탄이 그리는 곡선의 높이. 칸 하나를 1로 본다. 0이면 직사.
+// burst    착탄 연출의 크기 배수.
+// shards   튀는 파편 수.
+// shake    화면 흔들림 세기. 0이면 흔들지 않는다.
+const weaponProfiles = {
+  rifle: { shots: 3, shotGap: 66, stepTime: 22, arc: 0, burst: 0.68, shards: 3, shake: 0 },
+  cannon: { shots: 1, shotGap: 0, stepTime: 40, arc: 0.16, burst: 1.14, shards: 6, shake: 1 },
+  howitzer: { shots: 1, shotGap: 0, stepTime: 128, arc: 0.9, burst: 1.4, shards: 8, shake: 1 },
+  charge: { shots: 1, shotGap: 0, stepTime: 0, arc: 0, burst: 0.95, shards: 5, shake: 1 },
+  sidearm: { shots: 2, shotGap: 86, stepTime: 20, arc: 0, burst: 0.46, shards: 2, shake: 0 },
+};
+
+// 반격은 공격이 끝난 뒤에 나가야 반격으로 읽힌다. 같은 프레임에 같이 터지면
+// 둘 중 누가 먼저 쐈는지 화면만 봐서는 알 수 없다.
+const counterAnimationPause = 300;
+// 한 턴에 여러 부대가 쏠 때 조금씩 어긋나게 낸다. 완전히 동시에 터지면 화면이
+// 한 번 번쩍이고 끝나서 몇 번의 교전이 있었는지 세지지 않는다.
+const combatEventStagger = 110;
+
+function weaponFor(unit) {
+  return unitWeapons[unit?.type] ?? "rifle";
 }
 
 function recordCombatEvent(attacker, target, options = {}) {
@@ -1394,10 +1468,14 @@ function recordCombatEvent(attacker, target, options = {}) {
     targetId: target.id ?? null,
     targetX: target.x,
     targetY: target.y,
+    weapon: weaponFor(attacker),
     artillery: isArtilleryUnit(attacker),
     killed: Boolean(options.killed),
     damage: options.damage ?? null,
     base: Boolean(options.base),
+    // 반격 표시는 호출하는 쪽에서 줄곧 넘어오고 있었는데 여기서 조용히 버려졌다.
+    // 그래서 반격이 공격과 한 글자도 다르지 않게 생겼다.
+    counter: Boolean(options.counter),
   });
 }
 
@@ -1406,58 +1484,221 @@ function playCombatAnimations(delay = 0) {
   const events = pendingCombatEvents;
   pendingCombatEvents = [];
 
-  const run = () => window.requestAnimationFrame(() => {
-    events.forEach((event) => {
-      const attackerEl = event.attackerId ? Array.from(boardEl.querySelectorAll(".unit")).find((element) => element.dataset.unitId === event.attackerId) : null;
-      const defenderEl = event.targetId ? Array.from(boardEl.querySelectorAll(".unit")).find((element) => element.dataset.unitId === event.targetId) : null;
-      const fromTile = tileElementAt(event.attackerX, event.attackerY);
-      const toTile = tileElementAt(event.targetX, event.targetY);
-      if (!fromTile || !toTile) return;
-
-      if (attackerEl) attackerEl.classList.add(event.artillery ? "unit-firing" : "unit-striking");
-      if (defenderEl) defenderEl.classList.add(event.killed ? "unit-destroyed" : "unit-hit");
-
-      spawnCombatLine(fromTile, toTile, event.artillery);
-      spawnCombatBurst(toTile, event);
-    });
+  let lastAttackStart = delay;
+  let nextStart = delay;
+  const timeline = events.map((event) => {
+    const start = event.counter ? lastAttackStart + counterAnimationPause : nextStart;
+    if (!event.counter) lastAttackStart = start;
+    nextStart = Math.max(nextStart, start + combatEventStagger);
+    return { event, start };
   });
 
-  if (delay > 0) window.setTimeout(run, delay);
-  else run();
+  timeline.forEach(({ event, start }) => {
+    const run = () => window.requestAnimationFrame(() => playCombatEvent(event));
+    if (start > 0) window.setTimeout(run, start);
+    else run();
+  });
 }
 
-function spawnCombatLine(fromTile, toTile, artillery) {
-  const boardRect = boardEl.getBoundingClientRect();
-  const fromRect = fromTile.getBoundingClientRect();
-  const toRect = toTile.getBoundingClientRect();
-  const fromX = fromRect.left + fromRect.width / 2 - boardRect.left;
-  const fromY = fromRect.top + fromRect.height / 2 - boardRect.top;
-  const toX = toRect.left + toRect.width / 2 - boardRect.left;
-  const toY = toRect.top + toRect.height / 2 - boardRect.top;
-  const dx = toX - fromX;
-  const dy = toY - fromY;
-  const line = document.createElement("span");
-  line.className = `combat-line ${artillery ? "shell" : "strike"}`;
-  line.style.left = `${fromX}px`;
-  line.style.top = `${fromY}px`;
-  line.style.width = `${Math.hypot(dx, dy)}px`;
-  line.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
-  boardEl.appendChild(line);
-  window.setTimeout(() => line.remove(), artillery ? 620 : 420);
+// 한 번의 교전은 세 박자다: 쏘고 → 날아가고 → 맞는다. 예전에는 셋이 같은 프레임에
+// 시작해서, 세 칸 밖의 야포가 쏘는 순간 이미 착탄해 있었다.
+function playCombatEvent(event) {
+  const fromTile = tileElementAt(event.attackerX, event.attackerY);
+  const toTile = tileElementAt(event.targetX, event.targetY);
+  if (!fromTile || !toTile) return;
+
+  const profile = weaponProfiles[event.weapon] ?? weaponProfiles.rifle;
+  const from = boardPoint(fromTile);
+  const to = boardPoint(toTile);
+  const angle = Math.atan2(to.y - from.y, to.x - from.x);
+  const tileSpan = Math.max(1, Math.hypot(event.targetX - event.attackerX, event.targetY - event.attackerY));
+  const flight = Math.round(profile.stepTime * tileSpan);
+  // 반격은 한 급 작게 낸다. 위력도 절반(counterattackFactor)이므로 그림도 그래야 한다.
+  const scale = effectScale(toTile) * profile.burst * (event.counter ? 0.78 : 1);
+
+  const attackerEl = findUnitElement(event.attackerId);
+  const defenderEl = findUnitElement(event.targetId);
+
+  // 방향은 여기서 픽셀로 바꿔서 넘긴다. CSS 안에서 cos()/sin()을 쓸 수도 있지만,
+  // 그 함수를 모르는 브라우저에서는 transform 값 전체가 무효가 되어 애니메이션이
+  // 통째로 사라진다. 픽셀은 어디서나 픽셀이다.
+  const kick = Math.max(2, from.w * 0.11);
+  if (attackerEl) {
+    attackerEl.style.setProperty("--fire-x", `${(-Math.cos(angle) * kick).toFixed(2)}px`);
+    attackerEl.style.setProperty("--fire-y", `${(-Math.sin(angle) * kick).toFixed(2)}px`);
+    attackerEl.style.setProperty("--lunge-x", `${(Math.cos(angle) * kick * 1.6).toFixed(2)}px`);
+    attackerEl.style.setProperty("--lunge-y", `${(Math.sin(angle) * kick * 1.6).toFixed(2)}px`);
+    addTempClass(attackerEl, `fx-fire-${event.weapon}`, 560);
+    if (event.counter) addTempClass(attackerEl, "fx-fire-counter", 560);
+  }
+
+  if (profile.stepTime > 0) spawnMuzzleFlash(from, angle, event, scale);
+
+  for (let shot = 0; shot < profile.shots; shot += 1) {
+    const finalShot = shot === profile.shots - 1;
+    window.setTimeout(() => {
+      if (profile.stepTime > 0) spawnProjectile(from, to, angle, flight, profile, event, scale);
+      window.setTimeout(() => {
+        if (!finalShot) {
+          spawnImpact(to, toTile, angle, { ...profile, shards: 1 }, { ...event, killed: false, damage: null }, scale * 0.5);
+          return;
+        }
+        if (defenderEl) {
+          const push = Math.max(3, to.w * 0.17);
+          defenderEl.style.setProperty("--hit-x", `${(Math.cos(angle) * push).toFixed(2)}px`);
+          defenderEl.style.setProperty("--hit-y", `${(Math.sin(angle) * push).toFixed(2)}px`);
+          addTempClass(defenderEl, event.counter ? "fx-hit-counter" : "fx-hit", 460);
+        }
+        spawnImpact(to, toTile, angle, profile, event, scale);
+        if (event.killed) shakeBoard("heavy");
+        else if (profile.shake && !event.counter) shakeBoard("light");
+      }, flight);
+    }, shot * profile.shotGap);
+  }
 }
 
-function spawnCombatBurst(tile, event) {
-  const boardRect = boardEl.getBoundingClientRect();
-  const tileRect = tile.getBoundingClientRect();
-  const x = tileRect.left + tileRect.width / 2 - boardRect.left;
-  const y = tileRect.top + tileRect.height / 2 - boardRect.top;
-  const burst = document.createElement("span");
-  burst.className = `combat-burst ${event.artillery ? "shell" : "impact"} ${event.killed ? "destroyed" : ""} ${event.base ? "base-hit" : ""}`;
-  if (event.damage !== null) burst.dataset.damage = `-${event.damage}`;
-  burst.style.left = `${x}px`;
-  burst.style.top = `${y}px`;
-  boardEl.appendChild(burst);
-  window.setTimeout(() => burst.remove(), event.killed ? 760 : 620);
+// 판은 58도로 눕혀져 있다(styles.css의 .battlefield transform). 그래서 화면 좌표와
+// 판 안쪽 좌표가 다르다 — 화면에서 잰 타일 높이는 실제의 절반쯤이다.
+// 예전 코드는 getBoundingClientRect(화면 좌표)로 재서 left/top(판 좌표)에 넣었다.
+// 그래서 착탄 효과가 맞은 타일 위가 아니라 그 아래 어딘가에서 터졌고, 멀리 있는
+// 칸일수록 더 많이 어긋났다. offsetLeft/offsetTop은 처음부터 판 좌표라 어긋나지 않는다.
+function boardPoint(tile) {
+  return {
+    x: tile.offsetLeft + tile.offsetWidth / 2,
+    y: tile.offsetTop + tile.offsetHeight / 2,
+    w: tile.offsetWidth,
+    h: tile.offsetHeight,
+  };
+}
+
+// 타일은 화면 크기와 지도 크기에 따라 작아진다. 효과 크기를 픽셀로 못 박으면
+// 좁은 화면에서는 폭발이 세 칸을 덮고, 넓은 화면에서는 점만 해진다.
+function effectScale(tile) {
+  return clamp(tile.offsetWidth / 46, 0.5, 1.8);
+}
+
+function findUnitElement(id) {
+  if (!id) return null;
+  return Array.from(boardEl.querySelectorAll(".unit")).find((element) => element.dataset.unitId === id) ?? null;
+}
+
+function addTempClass(element, className, life) {
+  element.classList.add(className);
+  window.setTimeout(() => element.classList.remove(className), life);
+}
+
+// 격파는 판이 흔들릴 만한 일이다. 다만 흔들림은 멀미의 지름길이라 크기는 작게,
+// 시간은 짧게 둔다. 움직임을 줄이겠다고 한 사용자에게는 CSS가 통째로 끈다.
+function shakeBoard(strength) {
+  if (!boardEl) return;
+  addTempClass(boardEl, `fx-shake-${strength}`, strength === "heavy" ? 420 : 240);
+}
+
+function spawnEffect(className, x, y, life, styles = {}) {
+  const element = document.createElement("span");
+  element.className = className;
+  element.style.left = `${x}px`;
+  element.style.top = `${y}px`;
+  Object.entries(styles).forEach(([name, value]) => element.style.setProperty(name, value));
+  boardEl.appendChild(element);
+  window.setTimeout(() => element.remove(), life);
+  return element;
+}
+
+// 총구 화염. 쏜 부대가 어느 쪽을 보고 쐈는지가 여기서 정해진다.
+function spawnMuzzleFlash(from, angle, event, scale) {
+  const reach = from.w * 0.3;
+  spawnEffect(
+    `fx-muzzle fx-${event.weapon}${event.counter ? " fx-counter" : ""}`,
+    from.x + Math.cos(angle) * reach,
+    from.y + Math.sin(angle) * reach,
+    260,
+    { "--fx-angle": `${angle}rad`, "--fx-scale": scale.toFixed(3) },
+  );
+}
+
+// 실제로 날아가는 포탄. 예전에는 선 하나를 clip-path로 쓸어냈을 뿐이라, 사거리 3
+// 곡사포가 레이저처럼 보였다. 곡사는 arc 값만큼 위로 떠서 포물선을 그린다.
+function spawnProjectile(from, to, angle, flight, profile, event, scale) {
+  const shot = spawnEffect(
+    `fx-shot fx-${event.weapon}${event.counter ? " fx-counter" : ""}`,
+    from.x,
+    from.y,
+    flight + 90,
+    { "--fx-angle": `${angle}rad`, "--fx-scale": scale.toFixed(3) },
+  );
+  if (typeof shot.animate !== "function") return;
+
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  // 포물선은 중간 지점을 위로 들어 올려서 만든다. 세 점이면 충분하다 —
+  // 브라우저가 사이를 이어 준다.
+  const lift = profile.arc * from.h * 1.6;
+  shot.animate(
+    [
+      { offset: 0, transform: `translate(-50%, -50%) rotate(${angle}rad) scale(${scale})`, opacity: 0.2 },
+      { offset: 0.12, opacity: 1 },
+      {
+        offset: 0.5,
+        transform: `translate(calc(-50% + ${dx * 0.5}px), calc(-50% + ${dy * 0.5 - lift}px)) rotate(${angle - profile.arc * 0.45}rad) scale(${scale * 1.06})`,
+      },
+      { offset: 1, transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(${angle + profile.arc * 0.5}rad) scale(${scale})`, opacity: 1 },
+    ],
+    { duration: Math.max(60, flight), easing: profile.arc > 0 ? "cubic-bezier(0.35, 0, 0.65, 1)" : "linear", fill: "both" },
+  );
+}
+
+// 착탄. 예전에는 원 하나가 커졌다 사라지는 게 전부였고, 격파도 그 원을 18px로
+// 키운 것뿐이었다. 이제는 층을 나눈다 — 섬광, 불덩이, 충격파 고리, 튀는 파편,
+// 그리고 격파일 때만 남는 연기와 잔해와 그을음.
+function spawnImpact(to, tile, angle, profile, event, scale) {
+  const kind = event.base ? "base" : event.killed ? "kill" : "hit";
+  const life = event.killed ? 1500 : 720;
+  const impact = spawnEffect(
+    `fx-impact fx-${kind} fx-${event.weapon}${event.counter ? " fx-counter" : ""}`,
+    to.x,
+    to.y,
+    life,
+    { "--fx-angle": `${angle}rad`, "--fx-scale": scale.toFixed(3) },
+  );
+
+  impact.appendChild(makeLayer("fx-flash"));
+  impact.appendChild(makeLayer("fx-fire"));
+  impact.appendChild(makeLayer("fx-ring"));
+
+  // 파편은 착탄 방향을 중심으로 부채꼴로 튄다. 뒤로도 조금 튀어야 폭발로 보인다.
+  for (let index = 0; index < profile.shards; index += 1) {
+    const spread = (Math.random() - 0.5) * Math.PI * 1.5;
+    const shardAngle = angle + spread;
+    const distance = (0.4 + Math.random() * 0.7) * to.w * 0.55 * scale;
+    impact.appendChild(makeLayer("fx-shard", {
+      "--shard-x": `${Math.cos(shardAngle) * distance}px`,
+      "--shard-y": `${Math.sin(shardAngle) * distance - to.h * 0.14}px`,
+      "--shard-delay": `${Math.round(Math.random() * 60)}ms`,
+      "--shard-spin": `${Math.round((Math.random() - 0.5) * 540)}deg`,
+    }));
+  }
+
+  if (event.killed) {
+    impact.appendChild(makeLayer("fx-smoke"));
+    // 격파된 부대는 이 시점에 이미 판에서 지워져 있다(state에서 먼저 뺀다).
+    // 그래서 "부대가 무너지는" 연출을 붙일 요소가 없다 — 잔해를 대신 세운다.
+    impact.appendChild(makeLayer("fx-wreck"));
+    addTempClass(tile, "fx-scorched", 1500);
+  }
+
+  if (event.damage !== null) {
+    const pill = makeLayer("fx-damage");
+    pill.textContent = `-${event.damage}`;
+    impact.appendChild(pill);
+  }
+}
+
+function makeLayer(className, styles = {}) {
+  const layer = document.createElement("span");
+  layer.className = className;
+  Object.entries(styles).forEach(([name, value]) => layer.style.setProperty(name, value));
+  return layer;
 }
 
 function renderBalanceEditor() {
@@ -3433,6 +3674,51 @@ function movementCost(startX, startY, targetX, targetY, unit) {
     });
   }
   return Infinity;
+}
+
+// movementCost와 완전히 같은 규칙으로 걷되, 비용 대신 지나간 칸을 순서대로 돌려준다.
+// 규칙을 두 벌로 적지 않으려면 여기가 그 함수를 그대로 베낀 모양이어야 한다 —
+// 한쪽만 고치면 화면 속 부대가 규칙이 금지한 길을 걷게 된다.
+function movementPath(unit, targetX, targetY) {
+  const startKey = posKey(unit.x, unit.y);
+  const targetKey = posKey(targetX, targetY);
+  const queue = [{ x: unit.x, y: unit.y, cost: 0 }];
+  const best = new Map([[startKey, 0]]);
+  const cameFrom = new Map();
+
+  while (queue.length) {
+    queue.sort((a, b) => a.cost - b.cost);
+    const current = queue.shift();
+    if (current.cost > (best.get(posKey(current.x, current.y)) ?? Infinity)) continue;
+    if (current.x === targetX && current.y === targetY) break;
+
+    neighbors(current.x, current.y).forEach((next) => {
+      const tileCost = traversalCostForUnit(unit, next.x, next.y);
+      const blockers = getUnitsAt(next.x, next.y);
+      if (!canEnterTerrain(unit, next.x, next.y) || !Number.isFinite(tileCost) || blockers.some((other) => other.owner !== unit.owner)) return;
+      const newCost = current.cost + tileCost;
+      const key = posKey(next.x, next.y);
+      if (newCost < (best.get(key) ?? Infinity)) {
+        best.set(key, newCost);
+        cameFrom.set(key, { x: current.x, y: current.y });
+        queue.push({ x: next.x, y: next.y, cost: newCost });
+      }
+    });
+  }
+
+  // 길을 못 찾으면 직선으로 되돌린다. 여기까지 왔다는 건 규칙(canMoveTo)이 이미
+  // 허락했다는 뜻이라 정상적으로는 일어나지 않지만, 화면이 멈추는 것보다는 낫다.
+  if (!best.has(targetKey)) return [{ x: unit.x, y: unit.y }, { x: targetX, y: targetY }];
+
+  const path = [{ x: targetX, y: targetY }];
+  let cursor = targetKey;
+  while (cursor !== startKey) {
+    const step = cameFrom.get(cursor);
+    if (!step) break;
+    path.unshift(step);
+    cursor = posKey(step.x, step.y);
+  }
+  return path;
 }
 
 function movementCostForTile(x, y) {
