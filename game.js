@@ -1117,6 +1117,9 @@ function render() {
   boardEl.classList.toggle("map-enabled", mapConfig.enabled);
   if (mapConfig.enabled) renderMapUnderlay();
   const highlights = getHighlights();
+  // 클릭한 사령부/거점의 보급권. 지도 한 장에 한 번만 계산한다 — 칸마다 BFS를 다시 돌리면
+  // 320칸을 그리는 동안 320번을 돈다.
+  const coverage = supplyCoverageFocus();
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -1142,6 +1145,11 @@ function render() {
       if (battalionReach) {
         cell.classList.add(`hq-${battalionReach}`);
         cell.title += battalionReach === "recovery" ? " / 대대 보충 범위" : " / 대대 보급 범위";
+      }
+      const coverBand = coverage?.field.get(posKey(x, y));
+      if (coverBand) {
+        cell.classList.add("supply-cover", `supply-cover-${coverBand}`, `supply-cover-${coverage.owner}`);
+        cell.title += ` / ${supplyCoverLabel(coverage.kind, coverBand)}`;
       }
       if (highlights.moves.has(posKey(x, y))) cell.classList.add("reachable");
       if (highlights.attacks.has(posKey(x, y))) cell.classList.add("attackable");
@@ -2246,6 +2254,7 @@ function renderSelectedCard() {
       ${hqOutOfRangeMoraleLoss(unit) ? `<span>두절 사기 손실 <strong>-${hqOutOfRangeMoraleLoss(unit)}%</strong></span>` : ""}
       ${supply.level === "cut" ? `<span>다음 턴 붕괴 피해 <strong>${collapseDamageFor({ hqOutTurns: (unit.hqOutTurns ?? 0) + 1 })}</strong></span>` : ""}
       ${unit.type === "battalionHQ" ? `<span>지휘 범위 <strong>${spec.commandRange}</strong></span>` : ""}
+      ${unit.type === "battalionHQ" ? `<span>보급권 <strong>${battalionCoverageText(unit)}</strong></span>` : ""}
       ${unit.type === "battalionHQ" && hqScreening ? `<span>엄호 <strong>${isScreenedHQ(unit) ? "받는 중 (직접 피격 불가)" : "없음 (직접 피격 가능)"}</strong></span>` : ""}
       ${hqMoraleBonus(unit) ? `<span>사령부 보너스 <strong>+${hqMoraleBonus(unit)}%</strong></span>` : ""}
     </div>
@@ -2278,6 +2287,7 @@ function renderTileCard(x, y) {
       ${base ? `<span>소유 <strong>${sideName(base.owner)}</strong></span>` : ""}
       ${base ? `<span>생산 <strong>${formatNumber(baseProduction(base))}</strong></span>` : ""}
       ${base ? `<span>효율 <strong>${Math.round(base.efficiency * 100)}%</strong></span>` : ""}
+      ${base ? `<span>보급권 <strong>${baseCoverageText(base)}</strong></span>` : ""}
       ${construction ? `<span>공사 <strong>${constructionName(construction.type)} ${construction.remaining}턴</strong></span>` : ""}
       ${objective ? `<span>작전 목표 <strong>${sideName(objective.owner)} ${objective.label}</strong></span>` : ""}
       ${objective ? `<span>${objective.kind === "supply" ? "개통" : "장악"} 유지 <strong>${objective.held}/${objectiveHoldRequirement(objective)}턴</strong></span>` : ""}
@@ -2390,6 +2400,14 @@ function handleTileClick(x, y) {
   const clickedEnemy = getTargetUnitAt(x, y, "enemy");
   const clickedBase = getBaseAt(x, y);
   const selected = selectedUnit();
+
+  // 보급 거점은 대개 수비대가 올라앉아 있다. 클릭이 늘 부대에 먼저 먹히면 거점 자체는
+  // 영영 못 보게 되고, 거점 보급권도 같이 못 본다. 이미 고른 부대를 한 번 더 누르면
+  // 그 아래 거점으로 넘어간다 — 스택에서 부대를 돌려 고르는 기능이 없으므로 잃는 것도 없다.
+  if (clickedBase && clickedUnit && selected?.id === clickedUnit.id) {
+    inspectTile(x, y);
+    return;
+  }
 
   if (clickedUnit) {
     playUnitSound(clickedUnit, "select");
@@ -3634,6 +3652,93 @@ function battalionSupplyReach(owner, x, y) {
   const nearest = Math.min(...hqs.map((hq) => distance({ x, y }, hq)));
   if (nearest <= hqRecoveryRange) return "recovery";
   return nearest <= effectiveHQSupplyRange(owner) ? "supply" : "";
+}
+
+// 지도에 늘 깔려 있는 고리는 아군 사령부 전체의 합집합이다. 그래서 "이 고리가 어느
+// 사령부의 것인가"에 답하지 못하고, 거점 보급망은 아예 보이지 않았다 — 보급이 이 게임의
+// 중심인데 정작 보급이 어디까지 닿는지는 부대를 하나씩 눌러 카드를 읽어야 알 수 있었다.
+// 사령부나 보급 거점을 클릭하면 그 하나만의 보급권을 따로 그린다. 합집합 고리는 그대로
+// 두고 그 위에 덮는다 — 늘 보이던 것을 뺏지 않으면서 지금 보고 있는 것만 도드라지게.
+function supplyCoverageFocus() {
+  const unit = selectedUnit() ?? inspectedUnit();
+  if (unit?.type === "battalionHQ") return battalionCoverage(unit);
+  const tile = state.inspectedTile;
+  const base = tile ? getBaseAt(tile.x, tile.y) : null;
+  return base ? baseCoverage(base) : null;
+}
+
+// 사령부 하나의 두 고리. 보급선이 끊긴 사령부도 고리를 그리되 "무효"로 칠한다.
+// 아무것도 안 그리면 플레이어는 클릭이 먹지 않은 줄 알지만, 무효로 칠해 두면
+// 왜 이 사령부 주변 부대까지 같이 굶는지가 그 자리에서 보인다.
+function battalionCoverage(hq) {
+  const live = suppliedBattalionHQs(hq.owner).some((other) => other.id === hq.id);
+  const supplyReach = effectiveHQSupplyRange(hq);
+  const field = new Map();
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const step = distance({ x, y }, hq);
+      if (step > supplyReach && step > hqRecoveryRange) continue;
+      if (!live) field.set(posKey(x, y), "dead");
+      else field.set(posKey(x, y), step <= hqRecoveryRange ? "recovery" : "supply");
+    }
+  }
+  return { kind: "hq", owner: hq.owner, live, field };
+}
+
+// 거점 하나가 어디까지 먹이는가. supplyLineCost는 아군 거점 전부를 한꺼번에 출발점으로
+// 삼아 "이 부대가 받는가"에 답한다. 여기서는 방향이 반대다 — 클릭한 거점 하나만 출발점이다.
+// 확장 규칙(통행 비용, 철도 0.35 할인, 적 부대 차단)은 supplyLineCost와 반드시 같아야 한다.
+// 여기서 갈라지면 지도에 그린 보급권과 실제 판정이 어긋나고, 그건 플레이어를 속이는 것이다.
+function baseCoverage(base) {
+  const normal = effectiveSupplyRange(base);
+  const limit = effectiveStrainedSupplyRange(base);
+  const best = new Map([[posKey(base.x, base.y), 0]]);
+  const queue = [{ x: base.x, y: base.y, cost: 0 }];
+
+  while (queue.length) {
+    queue.sort((a, b) => a.cost - b.cost);
+    const current = queue.shift();
+    if (current.cost > (best.get(posKey(current.x, current.y)) ?? Infinity)) continue;
+    neighbors(current.x, current.y).forEach((next) => {
+      const tileCost = movementCostForTile(next.x, next.y);
+      const blockers = getUnitsAt(next.x, next.y);
+      if (!Number.isFinite(tileCost) || blockers.some((other) => other.owner !== base.owner)) return;
+      const railBonus = hasImprovement(next.x, next.y, "rail") ? 0.35 : 1;
+      const newCost = current.cost + tileCost * railBonus;
+      // 불안 사거리 너머는 어차피 보급권이 아니다. 거기서 끊어야 지도 한 장을 다 뒤지지 않는다.
+      if (newCost > limit) return;
+      const key = posKey(next.x, next.y);
+      if (newCost < (best.get(key) ?? Infinity)) {
+        best.set(key, newCost);
+        queue.push({ x: next.x, y: next.y, cost: newCost });
+      }
+    });
+  }
+
+  const field = new Map();
+  best.forEach((cost, key) => field.set(key, cost <= normal ? "supply" : "strained"));
+  return { kind: "base", owner: base.owner, live: true, field };
+}
+
+function supplyCoverLabel(kind, band) {
+  if (band === "dead") return "보급 두절 사령부 / 무효";
+  if (kind === "hq") return band === "recovery" ? "대대 보충권" : "대대 보급권";
+  return band === "supply" ? "거점 보급권" : "거점 보급 불안권";
+}
+
+// 지도 색만으로는 "몇 칸을 먹이는가"를 눈으로 세어야 안다. 카드에 숫자로 같이 적는다.
+function battalionCoverageText(hq) {
+  const coverage = battalionCoverage(hq);
+  if (!coverage.live) return "보급선 두절 / 발급 불가";
+  const bands = [...coverage.field.values()];
+  const recovery = bands.filter((band) => band === "recovery").length;
+  return `보충 ${recovery}칸 / 보급 ${bands.length}칸`;
+}
+
+function baseCoverageText(base) {
+  const bands = [...baseCoverage(base).field.values()];
+  const normal = bands.filter((band) => band === "supply").length;
+  return `정상 ${normal}칸 / 불안 ${bands.length - normal}칸`;
 }
 
 function canMoveTo(unit, x, y) {
