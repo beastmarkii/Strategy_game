@@ -3147,7 +3147,8 @@ function updateBattalionSupplyPressure(owner) {
 }
 
 function replenishNearBattalionHQ(owner) {
-  const hqs = battalionHQs(owner);
+  // 보급선이 끊긴 사령부는 병력을 보충해 주지 못한다. 보충할 물자가 안 들어오니까.
+  const hqs = suppliedBattalionHQs(owner);
   if (!hqs.length) return;
 
   const recovered = state.units.filter((unit) =>
@@ -3582,13 +3583,38 @@ function remainingBattalionHQ(owner) {
   return Math.max(0, battalionHQLimit(owner) - battalionHQs(owner).length);
 }
 
+// 보급선에 이어진 사령부가 어느 것인지는 부대마다 달라지지 않는다 — 지도 위 배치가
+// 그대로면 답도 같다. 배치를 한 줄로 적어 열쇠로 삼고, 그게 바뀔 때만 다시 센다.
+// 이 캐시가 없으면 부대 하나를 판정할 때마다 사령부 수만큼 BFS를 새로 돈다.
+let suppliedHQCache = { key: "", byOwner: new Map() };
+
+function supplyLayoutKey() {
+  const units = state.units.map((unit) => `${unit.id}@${unit.x},${unit.y}`).join("|");
+  const bases = state.bases.map((base) => `${base.x},${base.y}:${base.owner}`).join("|");
+  const built = state.improvements.map((item) => `${item.x},${item.y}:${item.type}`).join("|");
+  return `${units}#${bases}#${built}`;
+}
+
+// 거점 보급망에 이어진 사령부만 전진 보급을 발급한다. 끊긴 사령부가 계속 보급을
+// 나눠 주면, 포위망 안에서 사령부만 "보급선 두절"이고 그 부하들은 "대대 보급 정상"인
+// 그림이 나온다 — 보급의 원천이 굶는데 그 아래는 멀쩡한 셈이다.
+// 사령부는 보급을 만들어내는 곳이 아니라 중계하는 곳이다. 원천이 끊기면 아래도 끊긴다.
+function suppliedBattalionHQs(owner) {
+  const key = supplyLayoutKey();
+  if (suppliedHQCache.key !== key) suppliedHQCache = { key, byOwner: new Map() };
+  if (!suppliedHQCache.byOwner.has(owner)) {
+    suppliedHQCache.byOwner.set(owner, battalionHQs(owner).filter((hq) => Number.isFinite(supplyLineCost(hq))));
+  }
+  return suppliedHQCache.byOwner.get(owner);
+}
+
 // 자기 자신은 세지 않는다. 사령부까지의 거리를 자기 자신으로 재면 늘 0이라
 // 모든 사령부가 무조건 보급 정상이 되고, 포위된 사령부조차 위험해지지 않는다.
 // 예전에는 그걸 막으려고 supplyStatus 안에서 "HQ면 1층을 통째로 못 쓴다"고
 // 잘라냈는데, 그 바람에 사령부 둘이 나란히 서 있어도 서로를 보급하지 못했다.
 // 제외해야 할 것은 1층 전체가 아니라 자기 자신 하나였다.
 function nearestBattalionHQDistance(unit) {
-  const hqs = battalionHQs(unit.owner).filter((hq) => hq.id !== unit.id);
+  const hqs = suppliedBattalionHQs(unit.owner).filter((hq) => hq.id !== unit.id);
   if (!hqs.length) return Infinity;
   return Math.min(...hqs.map((hq) => distance(unit, hq)));
 }
@@ -3600,8 +3626,10 @@ function inBattalionSupplyRange(unit) {
 // 이 칸이 대대 사령부의 어느 고리에 드는가. "recovery"는 매 턴 체력이 1씩 차는
 // 안쪽 고리, "supply"는 거점 보급망이 끊겨도 정상 보급으로 쳐주는 바깥 고리다.
 // 안쪽이 더 좁으므로 먼저 본다.
+// 보급선이 끊긴 사령부는 고리를 그리지 않는다 — 지도에 그려진 고리와 실제 판정이
+// 다르면, 플레이어는 안전하다고 믿고 들어간 자리에서 부대를 잃는다.
 function battalionSupplyReach(owner, x, y) {
-  const hqs = battalionHQs(owner);
+  const hqs = suppliedBattalionHQs(owner);
   if (!hqs.length) return "";
   const nearest = Math.min(...hqs.map((hq) => distance({ x, y }, hq)));
   if (nearest <= hqRecoveryRange) return "recovery";
