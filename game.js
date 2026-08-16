@@ -290,6 +290,10 @@ const defaultBalance = {
   units: JSON.parse(JSON.stringify(unitTypes)),
 };
 
+// 게임에 처음부터 박혀 있는 값. 저장된 설정을 불러올 때 바탕으로 깔아 쓴다.
+// defaultBalance 는 "초기값 저장"을 누르면 바뀌지만 이쪽은 절대 안 바뀐다.
+const builtInBalance = JSON.parse(JSON.stringify(defaultBalance));
+
 const DEFAULT_BALANCE_STORAGE_KEY = "ww2TacticalCommand.defaultBalance";
 
 const constructionCosts = {
@@ -2459,8 +2463,14 @@ function clampUnitHp(type) {
 
 function restoreDefaultBalance() {
   Object.entries(defaultBalance.units).forEach(([type, defaults]) => {
-    Object.keys(unitTypes[type]).forEach((key) => delete unitTypes[type][key]);
-    Object.assign(unitTypes[type], JSON.parse(JSON.stringify(defaults)));
+    if (!unitTypes[type]) return;
+    // 처음 박혀 있던 값을 바탕에 깔고 그 위에 초기값을 얹는다. 예전처럼 키를 전부
+    // 지우고 덮어쓰면, 초기값에 없는 항목은 되돌아오는 게 아니라 아예 없어진다.
+    Object.assign(
+      unitTypes[type],
+      JSON.parse(JSON.stringify(builtInBalance.units[type] || {})),
+      JSON.parse(JSON.stringify(defaults)),
+    );
   });
   Object.entries(defaultBalance.rules).forEach(([key, value]) => setRuleValue(key, value));
   state?.units.forEach((unit) => {
@@ -2476,12 +2486,42 @@ function saveCurrentAsDefaultBalance() {
   addLog("현재 유닛/규칙 수치를 초기값으로 저장했습니다.");
 }
 
+// 예전에 저장해 둔 설정에는 그 뒤에 새로 생긴 값이 들어 있지 않다. 예전에는 저장본을
+// 통째로 갈아끼웠기 때문에, 저장한 날 이후에 추가된 규칙은 불러오는 순간 사라졌다.
+// 거점 안에서 받는 방어 버프가 없어지던 것이 그 증상이고, 유닛 쪽은 더 나빠서 —
+// 키를 전부 지운 뒤 저장본을 덮어썼기 때문에 — 나중에 생긴 시야 값까지 통째로
+// 날아가 전장 안개가 엉뚱하게 돌았다.
+// 그래서 지금은 처음부터 박혀 있는 값을 바탕에 깔고, 저장본 중 지금도 쓰는 값만 위에
+// 얹는다. 저장한 뒤에 생긴 값은 게임이 정한 제값으로 남고, 사용자가 만졌던 값은 그대로다.
+function mergeSavedRules(saved) {
+  const merged = { ...builtInBalance.rules };
+  Object.entries(saved).forEach(([key, value]) => {
+    if (key in merged && Number.isFinite(Number(value))) merged[key] = value;
+  });
+  return merged;
+}
+
+function mergeSavedUnits(saved) {
+  const merged = JSON.parse(JSON.stringify(builtInBalance.units));
+  // 에디터가 만질 수 있는 숫자만 받는다. 이름·그림 같은 건 저장본에 옛것이 들어 있어도
+  // 무시한다 — 균형 설정이 병종의 정체까지 되돌리면 안 된다.
+  const editable = unitEditorFields.map(([key]) => key);
+  Object.entries(saved).forEach(([type, stats]) => {
+    if (!merged[type] || !stats) return;
+    editable.forEach((key) => {
+      if (!(key in merged[type]) || !(key in stats)) return;
+      if (Number.isFinite(Number(stats[key]))) merged[type][key] = stats[key];
+    });
+  });
+  return merged;
+}
+
 function loadSavedDefaultBalance() {
   try {
     const saved = JSON.parse(localStorage.getItem(DEFAULT_BALANCE_STORAGE_KEY));
     if (!saved?.units || !saved?.rules) return;
-    defaultBalance.units = JSON.parse(JSON.stringify(saved.units));
-    defaultBalance.rules = { ...saved.rules };
+    defaultBalance.units = mergeSavedUnits(saved.units);
+    defaultBalance.rules = mergeSavedRules(saved.rules);
     restoreDefaultBalance();
   } catch (error) {
     console.warn("Failed to load saved balance defaults", error);
