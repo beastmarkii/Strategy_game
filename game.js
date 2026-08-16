@@ -2,7 +2,23 @@
 let width = 20;
 let height = 16;
 let wartimeProductionFactor = 0.5;
+// 원거리 포격의 잔존율. "안 뺏고 경제만 죽인다"는 선택이라 대가가 크다.
+// 이 선택의 값은 그 턴을 점령이 아니라 포격에 썼다는 것이다.
 let raidEfficiencyFactor = 0.7;
+// 거점 위 전투로 생기는 부수 피해의 잔존율. 예전에는 포격과 같은 계수(0.7)를
+// 썼는데, 점령하려는 쪽은 어차피 방어자를 때려야 하므로 그건 선택이 아니라
+// 세금이었다. 실측: 보병 3대로 뺏으면 효율 24%, 야포 4대면 4%가 남았다.
+// 생산 6짜리 거점이 0.12가 되니 뺏는 것보다 부수는 것이 이득인 게임이었다.
+let combatBaseDamage = 0.9;
+// 곱셈 감소에는 하한이 있어야 한다. 없으면 0으로 수렴하고, 그러면 "부수기만 하는
+// 쪽"이 언제나 이겨서 거점을 다툴 이유가 사라진다. 아무리 두들겨도 거점은 거점이다.
+let baseEfficiencyFloor = 0.25;
+// 점령 그 자체로 깎이는 몫. 1이면 감소 없음이 기본이다 — 거점을 부순 것은
+// 방어자를 없앤 공격들이고 그 값은 부수 피해에서 이미 받았으므로, 여기서 또
+// 곱하면 같은 전투를 두 번 청구하게 된다. 그게 뺏은 거점을 껍데기로 만들었다.
+// 다만 "적이 물러나며 시설을 태우고 간다"를 넣고 싶으면 0.85쯤으로 내리면 된다.
+// 무주공산 거점에는 적용되지 않는다.
+let captureEfficiencyLoss = 1;
 let maxStackSize = 3;
 let supplyRange = 6;
 let strainedSupplyRange = 9;
@@ -184,6 +200,9 @@ const defaultBalance = {
   rules: {
     wartimeProductionFactor,
     raidEfficiencyFactor,
+    combatBaseDamage,
+    baseEfficiencyFloor,
+    captureEfficiencyLoss,
     maxStackSize,
     supplyRange,
     strainedSupplyRange,
@@ -214,6 +233,13 @@ const defaultBalance = {
     enemyScreenRange,
     hqTrailDistance,
     enemyForwardDefense,
+    // 이 넷은 balanceSnapshot과 ruleEditorFields에는 있는데 여기에만 빠져 있었다.
+    // 에디터에서 만질 수는 있지만 "초기값 복원"이 되돌려 주지 않는다는 뜻이다.
+    // 하필 거점 규칙만 통째로 빠져 있었다.
+    baseLossGraceTurns,
+    baseRepairRate,
+    baseEfficiencyRepair,
+    enemyBaseSeekRange,
     depotSafeDistance,
     hqScreening,
     playerBattalionHQ: episodeLimits.playerBattalionHQ,
@@ -246,7 +272,10 @@ const unitEditorFields = [
 
 const ruleEditorFields = [
   ["wartimeProductionFactor", "전시 생산 배율", 0, 2, 0.1],
-  ["raidEfficiencyFactor", "공격받은 생산 잔존율", 0.1, 1, 0.05],
+  ["raidEfficiencyFactor", "포격받은 생산 잔존율", 0.1, 1, 0.05],
+  ["combatBaseDamage", "거점 위 전투 생산 잔존율", 0.1, 1, 0.05],
+  ["baseEfficiencyFloor", "거점 효율 하한", 0, 1, 0.05],
+  ["captureEfficiencyLoss", "점령 시 생산 잔존율 (1=감소 없음)", 0.1, 1, 0.05],
   ["maxStackSize", "동종 최대 중첩", 1, 9, 1],
   ["supplyRange", "기본 정상 보급선", 1, 20, 1],
   ["strainedSupplyRange", "기본 불안 보급선", 1, 30, 1],
@@ -1924,6 +1953,9 @@ function balanceSnapshot() {
     rules: {
       wartimeProductionFactor,
       raidEfficiencyFactor,
+      combatBaseDamage,
+      baseEfficiencyFloor,
+      captureEfficiencyLoss,
       maxStackSize,
       supplyRange,
       strainedSupplyRange,
@@ -1970,6 +2002,9 @@ function ruleValue(key) {
   const values = {
     wartimeProductionFactor,
     raidEfficiencyFactor,
+    combatBaseDamage,
+    baseEfficiencyFloor,
+    captureEfficiencyLoss,
     maxStackSize,
     supplyRange,
     strainedSupplyRange,
@@ -2015,6 +2050,9 @@ function ruleValue(key) {
 function setRuleValue(key, value) {
   if (key === "wartimeProductionFactor") wartimeProductionFactor = value;
   if (key === "raidEfficiencyFactor") raidEfficiencyFactor = value;
+  if (key === "combatBaseDamage") combatBaseDamage = value;
+  if (key === "baseEfficiencyFloor") baseEfficiencyFloor = value;
+  if (key === "captureEfficiencyLoss") captureEfficiencyLoss = value;
   if (key === "maxStackSize") maxStackSize = value;
   if (key === "supplyRange") supplyRange = value;
   if (key === "strainedSupplyRange") strainedSupplyRange = value;
@@ -3106,7 +3144,7 @@ function attack(attacker, defender) {
   addLog(`${sideUnitLabel(attacker)}가 ${sideUnitLabel(defender)}에 ${damage} 피해를 입혔습니다.`);
 
   const baseUnderDefender = getBaseAt(defender.x, defender.y);
-  if (baseUnderDefender?.owner === defender.owner) damageBaseProduction(baseUnderDefender, attacker);
+  if (baseUnderDefender?.owner === defender.owner) damageBaseProduction(baseUnderDefender, attacker, { collateral: true });
 
   if (defender.hp <= 0) {
     state.units = state.units.filter((unit) => unit.id !== defender.id);
@@ -3225,14 +3263,29 @@ function raidBase(attacker, base) {
   damageBaseProduction(base, attacker);
 }
 
-function damageBaseProduction(base, attacker) {
-  base.efficiency *= raidEfficiencyFactor;
+// 거점을 깎는 길은 두 가지이고, 값이 서로 달라야 한다.
+// - 의도적 포격(raidBase): 점령을 포기하고 경제만 죽인다. 잔존율 0.7, 포병은 두 번.
+// - 부수 피해(collateral): 거점 위 방어자를 때리다 시설이 상한다. 잔존율 0.9, 포병 보너스 없음.
+// 둘을 같은 계수로 묶었더니 점령이 곧 파괴가 됐다. 포병 2배는 "포격을 골랐다"는
+// 선택에 붙는 보상이지, 유닛을 때리는 김에 딸려오는 공짜가 아니다.
+// 어느 쪽이든 baseEfficiencyFloor 밑으로는 안 내려간다.
+function damageBaseProduction(base, attacker, { collateral = false } = {}) {
+  const factor = collateral ? combatBaseDamage : raidEfficiencyFactor;
+  if (!applyBaseEfficiencyLoss(base, factor)) return;
   addLog(`${sideName(base.owner)} 보급 거점 생산 효율이 ${Math.round(base.efficiency * 100)}%로 떨어졌습니다.`);
 
-  if (isArtilleryUnit(attacker)) {
-    base.efficiency *= raidEfficiencyFactor;
+  if (!collateral && isArtilleryUnit(attacker) && applyBaseEfficiencyLoss(base, raidEfficiencyFactor)) {
     addLog(`${unitLabel(attacker)} 포격으로 보급 시설 피해가 한 번 더 누적되었습니다.`);
   }
+}
+
+// 하한에 닿았으면 아무 일도 안 일어난다. 이때 로그까지 찍으면 "떨어졌습니다"가
+// 매 턴 쌓이면서 실제로는 멀쩡한 거점을 무너지는 중인 것처럼 읽히게 만든다.
+function applyBaseEfficiencyLoss(base, factor) {
+  const next = Math.max(baseEfficiencyFloor, base.efficiency * factor);
+  if (next >= base.efficiency) return false;
+  base.efficiency = next;
+  return true;
 }
 
 // 두절 지속 턴에 따른 누진 피해. 선형이면 보병(체력 10)이 녹는 데 20턴 가까이 걸려
@@ -3373,8 +3426,12 @@ function captureBase(unit) {
     addLog(`${sideName(unit.owner)}이 (${unit.x}, ${unit.y}) 무주공산 보급 거점을 온전히 접수했습니다. 생산 효율 ${Math.round(base.efficiency * 100)}%.`);
     return;
   }
-  base.efficiency *= raidEfficiencyFactor;
-  addLog(`${sideName(unit.owner)}이 (${unit.x}, ${unit.y}) 보급 거점을 장악했습니다. 전투 피해로 생산 효율이 ${Math.round(base.efficiency * 100)}%가 되었습니다.`);
+  // 예전에는 여기서 무조건 raidEfficiencyFactor를 한 번 더 곱했다. 이중청구였다 —
+  // 거점을 부순 것은 방금 그 부대를 없앤 공격들이고, 그 값은 attack()의 부수 피해에서
+  // 이미 받았다. 점령은 부수는 행위가 아니라 부순 뒤에 들어가 앉는 행위다.
+  // 값을 두 번 매기면 뺏은 거점이 껍데기가 되고, 부수기만 하는 쪽이 언제나 이긴다.
+  applyBaseEfficiencyLoss(base, captureEfficiencyLoss);
+  addLog(`${sideName(unit.owner)}이 (${unit.x}, ${unit.y}) 보급 거점을 장악했습니다. 전투 피해로 생산 효율은 ${Math.round(base.efficiency * 100)}%입니다.`);
 }
 
 function missionObjectives() {
@@ -4171,6 +4228,9 @@ function bestRaidTarget(unit, owner) {
 // 깎이므로 바닥 근처에서는 한 턴을 온전히 써도 생산이 0.01 줄어드는 식이다.
 // 그 한 턴은 밟으러 가는 데 쓰는 것이 낫다.
 function raidIsWorthIt(base) {
+  // 하한에 닿은 거점은 더 이상 깎이지 않는다. 이걸 안 보면 AI는 아무것도
+  // 일어나지 않는 포격에 매 턴을 갈아 넣는다.
+  if (base.efficiency <= baseEfficiencyFloor) return false;
   return baseProduction(base) * (1 - raidEfficiencyFactor) >= 0.25;
 }
 
