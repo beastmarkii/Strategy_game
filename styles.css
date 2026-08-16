@@ -1268,32 +1268,25 @@ h1 {
    칸을 검게 덮지 않는 것은 의도다 — 강과 고지가 안 보이면 그건 안개가 아니라
    지도를 빼앗는 것이고, 작전 계획 자체가 서질 않는다.
 
-   안개막은 가상 요소가 아니라 진짜 자식 요소로 깐다. 철도(.tile.rail::after)와
-   초토화 효과가 이미 ::after를 쓰고 있어서, 가상 요소로 그리면 안개 낀 철도 칸에서
-   둘 중 하나가 통째로 사라진다 — 보급권 표시(.supply-wash)를 자식으로 뺀 것과 같은
-   이유다. */
-.fog-veil {
+   안개막은 칸마다 한 장씩이 아니라 판 전체에 한 장을 덮는다. 칸마다 덮으면 안개가
+   칸 모서리를 따라 계단처럼 각져서, 안개가 아니라 모자이크로 보였다.
+
+   어디를 얼마나 덮을지는 game.js가 그린다(applyFogBlanket). 칸을 한 변 12점으로
+   잘게 나눠 칠한 다음 경계만 번지게 흐리므로, 칸 한가운데는 예전과 똑같이 완전히
+   맑거나 완전히 흐리다. 규칙은 그대로 칸 단위고 바뀐 것은 그림뿐이다.
+
+   덤으로, 안 보이는 칸이 200개가 넘던 화면에서 뒷배경을 흐리는 막이 200장에서
+   0장으로 줄어 판 다시 그리기가 여덟 배 가까이 빨라졌다. */
+.fog-blanket {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+
+  /* 칸(z-index 2)보다는 위, 부대(z-index 8)와 목격 실루엣(5)보다는 아래.
+     칸마다 덮던 시절의 순서를 그대로 지킨다 — 안개는 땅을 가리고 사람은 가리지 않는다. */
   z-index: 3;
-  background: rgb(16 24 38 / 42%);
-  backdrop-filter: saturate(35%) brightness(85%);
-}
-
-/* 지도 모드는 위성사진 위라 같은 농도로는 티가 안 난다. 조금 더 짙게 깐다. */
-.battlefield.map-enabled .fog-veil {
-  background: rgb(12 18 30 / 52%);
-}
-
-/* 이동·공격 표시가 걸린 칸은 안개를 걷는다. 지금 명령을 고르는 중인 칸이
-   흐려 보이면 선택 자체가 어려워진다. */
-.tile.reachable .fog-veil,
-.tile.attackable .fog-veil,
-.tile.raidable .fog-veil,
-.tile.selected .fog-veil {
-  background: rgb(16 24 38 / 14%);
-  backdrop-filter: none;
 }
 
 /* 마지막으로 본 자리. "지금 거기 있다"가 아니라 "거기서 봤다"는 뜻이라

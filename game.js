@@ -1396,6 +1396,82 @@ function makeId() {
   return `unit-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+// ─── 전장 안개 한 장으로 그리기 ───────────────────────────────────────────
+// 예전에는 안 보이는 칸마다 유리막을 한 장씩 덮었다. 규칙대로는 맞지만 안개가
+// 칸 모서리를 따라 계단처럼 각져서, 안개가 아니라 모자이크로 보였다.
+//
+// 규칙은 그대로 칸 단위다 — 보이면 보이고 안 보이면 안 보인다. 바꾼 것은 그림뿐이다.
+// 칸을 한 변 12점으로 잘게 나눠 칠한 뒤 경계만 번지게 흐린다. 칸 한가운데는 예전과
+// 똑같이 완전히 맑거나 완전히 흐리고, 흐려지는 곳은 칸 경계 앞뒤 반 칸뿐이다.
+// 그래서 "여기까지 보인다"는 판단은 예전과 같은 정확도로 할 수 있다.
+//
+// 처음에는 예전처럼 뒷배경을 흐리는 막(backdrop-filter) 한 장에 본을 오려 씌워 봤다.
+// 본은 정확히 맞았지만, 경계가 부드러운 본을 씌우면 크롬이 뒷배경 흐리기를 판 전체에
+// 발라 버려서 지도 색이 통째로 허옇게 떴다. 그래서 막을 씌우는 대신 안개를 직접 칠한다 —
+// 어느 점을 얼마나 덮을지 우리가 정하니 브라우저마다 다르게 나올 일이 없다.
+const FOG_CELL_DOTS = 12; // 한 칸을 몇 점으로 나눠 그리는가
+// 번지는 폭. 여기 적는 값은 반지름이 아니라 표준편차라, 실제로는 이 값의 세 배쯤
+// 퍼진다. 0.18이면 경계 앞뒤로 약 반 칸 — 눈에는 부드럽고, "이 칸이 보이는 칸인가"는
+// 여전히 칸 한가운데만 보면 바로 안다. 더 키우면 안개가 두 칸 너머까지 스며서
+// 보이는 칸까지 덩달아 흐려진다.
+const FOG_BLUR_CELLS = 0.18;
+const FOG_INK = "12 18 30"; // 안개 색. 칸마다 덮던 시절과 같은 푸른 회색
+const FOG_DENSITY = 0.44; // 보통 판에서의 짙기
+const FOG_DENSITY_MAP = 0.54; // 위성 지도 위에서는 같은 짙기로는 티가 안 난다
+let fogBlanketEl = null;
+let fogStepCanvas = null;
+
+// 판 바깥으로 한 칸 넓게 그린 뒤 가운데만 잘라 쓴다. 그러지 않으면 판 가장자리에서
+// 안개가 바깥의 빈 곳과 섞여 저 혼자 옅어진다.
+function paintFogBlanket(alphaByCell, cols, rows) {
+  const dots = FOG_CELL_DOTS;
+  const padW = (cols + 2) * dots;
+  const padH = (rows + 2) * dots;
+  if (!fogStepCanvas) fogStepCanvas = document.createElement("canvas");
+  if (fogStepCanvas.width !== padW || fogStepCanvas.height !== padH) {
+    fogStepCanvas.width = padW;
+    fogStepCanvas.height = padH;
+  }
+  if (fogBlanketEl.width !== cols * dots || fogBlanketEl.height !== rows * dots) {
+    fogBlanketEl.width = cols * dots;
+    fogBlanketEl.height = rows * dots;
+  }
+
+  const density = mapConfig.enabled ? FOG_DENSITY_MAP : FOG_DENSITY;
+  const stepCtx = fogStepCanvas.getContext("2d");
+  stepCtx.clearRect(0, 0, padW, padH);
+  for (let y = -1; y <= rows; y += 1) {
+    for (let x = -1; x <= cols; x += 1) {
+      const alpha = alphaByCell[clamp(y, 0, rows - 1) * cols + clamp(x, 0, cols - 1)];
+      if (alpha <= 0) continue;
+      stepCtx.fillStyle = `rgb(${FOG_INK} / ${(alpha * density).toFixed(3)})`;
+      stepCtx.fillRect((x + 1) * dots, (y + 1) * dots, dots, dots);
+    }
+  }
+
+  const ctx = fogBlanketEl.getContext("2d");
+  ctx.clearRect(0, 0, fogBlanketEl.width, fogBlanketEl.height);
+  ctx.filter = `blur(${(dots * FOG_BLUR_CELLS).toFixed(2)}px)`;
+  // 흐림은 판 바깥까지 그려 둔 그림 위에서 돌리고, 가운데 판만 잘라 온다.
+  ctx.drawImage(fogStepCanvas, -dots, -dots);
+  ctx.filter = "none";
+}
+
+function applyFogBlanket(alphaByCell, cols, rows) {
+  if (!alphaByCell.some((alpha) => alpha > 0)) {
+    fogBlanketEl?.remove();
+    return;
+  }
+  if (!fogBlanketEl) {
+    fogBlanketEl = document.createElement("canvas");
+    fogBlanketEl.className = "fog-blanket";
+    fogBlanketEl.setAttribute("aria-hidden", "true");
+  }
+  paintFogBlanket(alphaByCell, cols, rows);
+  // 판을 다시 그릴 때마다 자식이 통째로 날아가므로 매번 다시 얹는다.
+  boardEl.appendChild(fogBlanketEl);
+}
+
 function render() {
   boardEl.innerHTML = "";
   boardEl.classList.toggle("map-enabled", mapConfig.enabled);
@@ -1415,6 +1491,10 @@ function render() {
   staleContacts("player").forEach((memo) => {
     if (!ghosts.has(posKey(memo.x, memo.y))) ghosts.set(posKey(memo.x, memo.y), memo);
   });
+
+  // 안개는 칸마다 유리막을 한 장씩 덮는 대신, 판 전체를 덮는 한 장으로 그린다.
+  // 칸별 짙기만 여기 모아 두고, 판을 다 그린 뒤 한 번에 번지게 한다(applyFogBlanket).
+  const fogAlpha = new Array(width * height).fill(0);
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -1473,12 +1553,14 @@ function render() {
       const lit = !fogOfWar || seen.has(posKey(x, y));
       if (!lit) {
         cell.classList.add("fogged");
-        // 안개막은 가상 요소가 아니라 자식 한 장으로 깐다 — 철도·초토화 표시가
-        // 이미 ::after를 쓰고 있어서, 가상 요소로 그리면 둘 중 하나가 사라진다.
-        const veil = document.createElement("span");
-        veil.className = "fog-veil";
-        veil.setAttribute("aria-hidden", "true");
-        cell.appendChild(veil);
+        // 지금 명령을 고르는 중인 칸은 안개를 걷는다. 흐려 보이면 선택 자체가
+        // 어려워진다. 완전히 걷지 않고 3분의 1만 남겨 "여기도 안 보이는 곳"은 알린다.
+        const picking =
+          cell.classList.contains("reachable") ||
+          cell.classList.contains("attackable") ||
+          cell.classList.contains("raidable") ||
+          cell.classList.contains("selected");
+        fogAlpha[y * width + x] = picking ? 0.33 : 1;
       }
 
       const construction = getConstructionAt(x, y);
@@ -1507,6 +1589,7 @@ function render() {
     }
   }
 
+  applyFogBlanket(fogAlpha, width, height);
   updatePanel();
   localizeRenderedText();
   const moveAnimationDelay = playUnitMoveAnimations();
