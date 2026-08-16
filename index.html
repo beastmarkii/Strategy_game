@@ -15,28 +15,10 @@
           <h1>1944 전선 사령부</h1>
         </div>
 
-        <div class="status-grid">
-          <div>
-            <span>작전일</span>
-            <strong id="turnLabel">1</strong>
-          </div>
-          <div>
-            <span>주도권</span>
-            <strong id="phaseLabel">연합군</strong>
-          </div>
-          <div>
-            <span>보급품</span>
-            <strong id="resourceLabel">8</strong>
-          </div>
-          <div>
-            <span>다음 보급</span>
-            <strong id="baseLabel">0</strong>
-          </div>
-          <div>
-            <span>전투 정원</span>
-            <strong id="forceLabel">0 / 0</strong>
-          </div>
-        </div>
+        <!-- 예전에는 여기에도 작전일·주도권·보급품·다음 보급·전투 정원 다섯 칸이 있었다.
+             지도 위 상황판(.operation-hud)에 똑같은 다섯 칸이 그대로 있어서, 같은 숫자를
+             두 번 읽느라 화면 250px을 버리고 있었다. 한 화면에 다 넣기 위해 여기서 뺀다.
+             정보가 사라진 것이 아니라, 눈이 가는 곳(지도 바로 위) 한 곳으로 모은 것이다. -->
 
         <div class="unit-card" id="selectedCard">
           <span class="muted">부대를 선택하십시오.</span>
@@ -55,21 +37,24 @@
               <button id="recruitBattalionHQ" type="button">대대 사령부 투입 <span>6</span></button>
             </div>
           </details>
-          <details id="navyCommandMenu" class="command-menu" open>
+          <!-- 해군·공군·AI는 아직 전부 "준비 중"이라 눌러도 아무 일이 없다.
+               펼쳐 두면 못 쓰는 버튼 여섯 개가 화면 230px을 차지한다. 접어 두면
+               제목 줄만 남아서, 나중에 이 병과가 필요한 임무를 만들 때 열면 된다. -->
+          <details id="navyCommandMenu" class="command-menu">
             <summary>해군</summary>
             <div class="command-menu-grid">
               <button type="button" disabled>상륙정 준비 중</button>
               <button type="button" disabled>구축함 준비 중</button>
             </div>
           </details>
-          <details id="airCommandMenu" class="command-menu" open>
+          <details id="airCommandMenu" class="command-menu">
             <summary>공군</summary>
             <div class="command-menu-grid">
               <button type="button" disabled>정찰기 준비 중</button>
               <button type="button" disabled>전술폭격 준비 중</button>
             </div>
           </details>
-          <details id="aiCommandMenu" class="command-menu" open>
+          <details id="aiCommandMenu" class="command-menu">
             <summary>AI</summary>
             <div class="command-menu-grid">
               <button type="button" disabled>자동 편제 준비 중</button>
@@ -80,8 +65,9 @@
           <button id="buildDepot" type="button">보급창고 건설 <span>3일</span></button>
           <button id="buildRail" type="button">철도 부설 <span>2일</span></button>
           <button id="toggleTow" type="button">트럭 견인</button>
-          <button id="endDeploy" type="button" class="primary" hidden>배치 완료</button>
-          <button id="endTurn" type="button" class="primary">턴 종료</button>
+          <!-- 턴 종료·배치 완료는 지도 위 상황판으로 옮겼다(아래 .hud-actions).
+               매 턴 누르는 단 하나의 버튼이 긴 명령 목록 맨 아래에 있어서, 부대를
+               고를 때마다 목록이 길어지면 화면 밖으로 밀려났기 때문이다. -->
           <button id="restart" type="button">새 작전</button>
         </div>
 
@@ -119,6 +105,8 @@
           <div class="hud-actions">
             <button id="focusCommandPanel" type="button">정보</button>
             <button id="toggleEditorPanel" type="button" aria-controls="editorPanel" aria-expanded="false">수치 편집</button>
+            <button id="endDeploy" type="button" class="primary" hidden>배치 완료</button>
+            <button id="endTurn" type="button" class="primary">턴 종료</button>
           </div>
         </div>
         <div class="legend">

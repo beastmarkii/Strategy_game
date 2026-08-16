@@ -178,6 +178,8 @@ function applyScenario(scenario) {
   // CSS가 20x16을 박아두고 있으면 다른 크기 지도가 찌그러진다. 격자는 JS가 알려준다.
   boardEl?.style.setProperty("--map-cols", String(width));
   boardEl?.style.setProperty("--map-rows", String(height));
+  // 지도 크기가 바뀌면 눕힌 판의 높이도 바뀐다. 다시 화면에 맞춘다.
+  scheduleBoardFit();
 }
 
 const unitTypes = {
@@ -602,6 +604,9 @@ function handleMapWheel(event) {
   battlefieldWrapEl.dataset.zoom = String(Math.round(mapZoom * 100));
 
   requestAnimationFrame(() => {
+    // 확대·축소하면 눕힌 판의 빈 자리 크기도 달라진다. 여백을 다시 잡아 준다.
+    // 여기서는 판을 화면에 다시 맞추지 않는다 — 확대는 일부러 크게 보려는 것이다.
+    trimBoardBox();
     const nextBoardRect = boardEl.getBoundingClientRect();
     const nextBoardLeftInContent = battlefieldWrapEl.scrollLeft + nextBoardRect.left - wrapRect.left;
     const targetContentX = nextBoardLeftInContent + nextBoardRect.width * pointerBoardRatioX;
@@ -613,6 +618,90 @@ function handleMapWheel(event) {
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
+
+// ─── 한 화면 맞추기 ───────────────────────────────────────────────────────
+// 지도판은 눕혀 놓았기 때문에(rotateX 58도) 브라우저가 잡아 두는 자리와 실제로
+// 그려지는 자리가 다르다. 20x16 판을 재 보면 자리는 808px인데 그림은 578px만
+// 쓰고, 위에 187px 아래에 44px이 빈 채로 남는다. 그 빈 자리 때문에 화면이 넘쳐
+// 스크롤이 생겼다. 각도와 원근이 고정값이라 비율로 계산하면 지도 크기가 바뀔 때
+// 틀어지므로, 눕히기 전후를 직접 재서 빈 만큼만 걷어낸다.
+function measureBoardBox() {
+  const keep = boardEl.style.transform;
+  boardEl.style.transform = "none";
+  const flat = boardEl.getBoundingClientRect();
+  boardEl.style.transform = keep;
+  return { flat, tilted: boardEl.getBoundingClientRect() };
+}
+
+// 위아래 빈 자리를 음수 여백으로 걷어낸다. 그림은 그대로 두고 자리만 줄인다.
+function trimBoardBox() {
+  if (!boardEl || !battlefieldWrapEl) return null;
+  boardEl.style.marginTop = "0px";
+  boardEl.style.marginBottom = "0px";
+  battlefieldWrapEl.style.setProperty("--map-lift", "0px");
+  const { flat, tilted } = measureBoardBox();
+  const lift = Math.max(0, Math.round(tilted.top - flat.top));
+  boardEl.style.marginTop = `${-lift}px`;
+  boardEl.style.marginBottom = `${-Math.max(0, Math.round(flat.bottom - tilted.bottom))}px`;
+  // 판을 끌어올린 만큼 소실점도 따라 올려야 보는 각도가 그대로 유지된다.
+  battlefieldWrapEl.style.setProperty("--map-lift", `${-lift}px`);
+  return { flat, tilted };
+}
+
+// 빈 자리를 걷어내고도 화면보다 길면, 판을 그만큼 줄여서 스크롤을 없앤다.
+// 글자는 건드리지 않는다 — 줄이는 것은 지도판 하나뿐이다.
+function fitBoardToScreen() {
+  if (!boardEl || !battlefieldWrapEl) return;
+  // 좁은 화면(가로 860 이하)에서는 판이 정보칸 아래로 내려가는 세로 배치가 된다.
+  // 거기서는 애초에 한 화면에 넣을 수 없으므로 손대지 않는다.
+  if (window.innerWidth <= 860) {
+    battlefieldWrapEl.style.removeProperty("--map-fit-scale");
+    battlefieldWrapEl.style.removeProperty("--map-lift");
+    boardEl.style.marginTop = "";
+    boardEl.style.marginBottom = "";
+    return;
+  }
+
+  battlefieldWrapEl.style.setProperty("--map-fit-scale", "1");
+  battlefieldWrapEl.style.setProperty("--map-lift", "0px");
+  boardEl.style.marginTop = "0px";
+  boardEl.style.marginBottom = "0px";
+
+  const { flat, tilted } = measureBoardBox();
+  // 판을 뺀 나머지(임무 띠·상황판·범례·안쪽 여백)가 이미 먹고 있는 높이
+  const chrome = battlefieldWrapEl.offsetHeight - flat.height;
+  const room = window.innerHeight - battlefieldWrapEl.getBoundingClientRect().top - 16 - chrome;
+  let fit = 1;
+  if (room > 120 && tilted.height > room) fit = room / tilted.height;
+  // 가로도 본다. 판을 눕히면 앞쪽(아래쪽) 변이 원근 때문에 뒤쪽보다 넓게 벌어져서,
+  // 1440 폭 화면에서는 맨 아랫줄 양쪽 끝 한 칸씩이 화면 밖으로 잘려 나가고 있었다.
+  // 판 전체의 네모 칸이 아니라 실제로 칸이 그려진 폭을 재야 필요한 만큼만 줄인다.
+  const cells = boardEl.querySelectorAll(".tile");
+  if (cells.length) {
+    let left = Infinity;
+    let right = -Infinity;
+    cells.forEach((cell) => {
+      const r = cell.getBoundingClientRect();
+      if (r.left < left) left = r.left;
+      if (r.right > right) right = r.right;
+    });
+    const span = right - left;
+    const widthRoom = battlefieldWrapEl.clientWidth - 8;
+    if (widthRoom > 200 && span > widthRoom) fit = Math.min(fit, widthRoom / span);
+  }
+  if (fit < 1) battlefieldWrapEl.style.setProperty("--map-fit-scale", clamp(fit, 0.55, 1).toFixed(3));
+  trimBoardBox();
+}
+
+let boardFitTimer = 0;
+function scheduleBoardFit() {
+  window.clearTimeout(boardFitTimer);
+  // requestAnimationFrame은 창이 가려져 있으면 아예 돌지 않는다. 배경 탭에서
+  // 열어 둔 판이 맞춰지지 않은 채로 남으므로, 타이머로만 미룬다.
+  boardFitTimer = window.setTimeout(fitBoardToScreen, 60);
+}
+
+window.addEventListener("resize", scheduleBoardFit);
 
 // ─── 소리 ────────────────────────────────────────────────────────────────
 // 예전에는 여기서 소리를 합성했다. 사인파와 잡음으로 만든 총성은 어떻게 손을 봐도
@@ -2351,10 +2440,12 @@ function turnDisplay() {
 }
 
 function updatePanel() {
-  turnLabelEl.textContent = turnDisplay();
-  phaseLabelEl.textContent = phaseDisplayName();
-  resourceLabelEl.textContent = formatNumber(state.resources);
-  baseLabelEl.textContent = formatNumber(projectedIncome("player"));
+  // 왼쪽 판의 다섯 칸은 지도 위 상황판과 겹쳐서 지웠다. 나중에 되살릴 수도 있으니
+  // 참조는 남겨 두되, 없어도 그냥 넘어가게 한다.
+  if (turnLabelEl) turnLabelEl.textContent = turnDisplay();
+  if (phaseLabelEl) phaseLabelEl.textContent = phaseDisplayName();
+  if (resourceLabelEl) resourceLabelEl.textContent = formatNumber(state.resources);
+  if (baseLabelEl) baseLabelEl.textContent = formatNumber(projectedIncome("player"));
   if (forceLabelEl) forceLabelEl.textContent = forceDisplay("player");
   updateOperationHud();
   renderSelectedCard();
