@@ -2,6 +2,12 @@
 # 저장소에 넣어두면 원본과 배포본이 따로 늙는다 — 실제로 그랬다.
 dist/
 
+# 소리의 생성 원본. 게임에 실리는 것은 assets/audio 아래의 완성본뿐이고,
+# 원본이 필요하면 tools/audio 스크립트로 다시 받으면 된다. 저장소 이력이 이미
+# 무거워서 두 벌을 다 넣을 이유가 없다.
+assets/audio/raw/
+assets/audio/_work/
+
 node_modules/
 *.log
 .DS_Store

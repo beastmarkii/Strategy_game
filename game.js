@@ -515,7 +515,8 @@ let pendingUnitMoves = [];
 let pendingCombatEvents = [];
 let audioContext;
 let lastUiSoundAt = 0;
-const soundVolume = 3.8;
+// 소리는 전부 녹음된 파일(assets/audio)이다. 코드는 고르고 재생하는 일만 한다.
+const soundVolume = 0.95;
 
 const boardEl = document.querySelector("#battlefield");
 const battlefieldWrapEl = document.querySelector(".battlefield-wrap");
@@ -613,8 +614,84 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function audioNow() {
-  return audioContext?.currentTime ?? 0;
+// ─── 소리 ────────────────────────────────────────────────────────────────
+// 예전에는 여기서 소리를 합성했다. 사인파와 잡음으로 만든 총성은 어떻게 손을 봐도
+// 총성이 되지 않아서, 전부 녹음된 파일로 갈아치웠다. 무전 특유의 대역 제한과 압축은
+// 파일에 이미 구워져 있으므로 재생할 때 필터를 세우지 않는다 — 그래프를 만드는
+// 시간만큼 첫 소리가 늦어지면 클릭에 대한 "대답"으로 들리지 않는다.
+const audioBasePath = "assets/audio/";
+
+// 무슨 소리를 낼지는 병종이 정한다. 클릭 응답은 병종마다 목소리가 다르고,
+// 이동·공격·파괴는 "무엇이 움직이고 무엇이 터지는가"로 묶인다 — 공병대는 걸어서
+// 이동하고, 자주포는 궤도로 굴러가므로 각각 보병·전차 소리를 나눠 쓴다.
+// 변주를 둘씩 둔 것은 같은 소리가 연달아 나면 귀가 금방 지치기 때문이다.
+const soundBank = {
+  select: {
+    infantry: ["infantry_select_1", "infantry_select_2", "infantry_select_3"],
+    armor: ["armor_select_1", "armor_select_2", "armor_select_3"],
+    artillery: ["artillery_select_1", "artillery_select_2", "artillery_select_3"],
+    spArtillery: ["spArtillery_select_1", "spArtillery_select_2", "spArtillery_select_3"],
+    engineer: ["engineer_select_1", "engineer_select_2", "engineer_select_3"],
+    battalionHQ: ["battalionHQ_select_1", "battalionHQ_select_2", "battalionHQ_select_3"],
+  },
+  move: {
+    infantry: ["move_infantry_1", "move_infantry_2"],
+    engineer: ["move_infantry_1", "move_infantry_2"],
+    armor: ["move_armor_1", "move_armor_2"],
+    spArtillery: ["move_armor_1", "move_armor_2"],
+    artillery: ["move_artillery_1"],
+    battalionHQ: ["move_artillery_1"],
+  },
+  attack: {
+    infantry: ["attack_rifle_1", "attack_rifle_2"],
+    engineer: ["attack_rifle_1", "attack_rifle_2"],
+    battalionHQ: ["attack_rifle_1", "attack_rifle_2"],
+    armor: ["attack_tank_1", "attack_tank_2"],
+    artillery: ["attack_howitzer_1", "attack_howitzer_2"],
+    spArtillery: ["attack_howitzer_1", "attack_howitzer_2"],
+  },
+  destroy: {
+    infantry: ["destroy_infantry_1", "destroy_infantry_2"],
+    engineer: ["destroy_infantry_1", "destroy_infantry_2"],
+    battalionHQ: ["destroy_infantry_1", "destroy_infantry_2"],
+    armor: ["destroy_vehicle_1", "destroy_vehicle_2"],
+    artillery: ["destroy_vehicle_1", "destroy_vehicle_2"],
+    spArtillery: ["destroy_vehicle_1", "destroy_vehicle_2"],
+  },
+};
+
+// 종류별 크기. 무전 응답은 말을 알아들어야 하므로 가장 크고, 이동은 한 턴에 여러
+// 부대가 동시에 움직여 겹치므로 가장 작다.
+const soundLevels = { select: 1, move: 0.42, attack: 0.7, destroy: 0.85, notice: 0.95, ui: 0.3 };
+const noticeSounds = ["work_complete", "unit_ready"];
+const uiSounds = ["ui_click", "map_tap"];
+
+const sampleData = new Map();
+const sampleBuffers = new Map();
+const samplePending = new Map();
+const lastVariantPick = new Map();
+const channelSources = new Map();
+
+function allSoundNames() {
+  const names = new Set([...noticeSounds, ...uiSounds]);
+  Object.values(soundBank).forEach((group) => {
+    Object.values(group).forEach((list) => list.forEach((name) => names.add(name)));
+  });
+  return [...names];
+}
+
+// 파일은 첫 클릭 전에 미리 받아 둔다. 브라우저는 사용자가 화면을 건드리기 전에는
+// 소리를 내주지 않지만, 내려받는 데는 그런 제약이 없다. 이걸 안 해두면 첫 클릭에서만
+// 대답이 늦게 온다.
+function prefetchSounds() {
+  allSoundNames().forEach((name) => {
+    fetch(`${audioBasePath}${name}.mp3`)
+      .then((response) => (response.ok ? response.arrayBuffer() : null))
+      .then((data) => {
+        if (data) sampleData.set(name, data);
+      })
+      .catch(() => {});
+  });
 }
 
 function ensureAudio() {
@@ -625,8 +702,73 @@ function ensureAudio() {
   return audioContext;
 }
 
-function soundGain(gain) {
-  return Math.min(0.45, gain * soundVolume);
+// decodeAudioData는 넘겨받은 데이터를 비워버린다. 재시도할 수 있게 사본을 넘긴다.
+function loadSample(name) {
+  if (sampleBuffers.has(name)) return Promise.resolve(sampleBuffers.get(name));
+  if (samplePending.has(name)) return samplePending.get(name);
+  const context = ensureAudio();
+  if (!context) return Promise.resolve(null);
+  const raw = sampleData.has(name)
+    ? Promise.resolve(sampleData.get(name))
+    : fetch(`${audioBasePath}${name}.mp3`).then((response) => {
+        if (!response.ok) throw new Error(`${name} ${response.status}`);
+        return response.arrayBuffer();
+      });
+  const pending = raw
+    .then((data) => context.decodeAudioData(data.slice(0)))
+    .then((buffer) => {
+      sampleBuffers.set(name, buffer);
+      return buffer;
+    })
+    .catch(() => {
+      samplePending.delete(name);
+      return null;
+    });
+  samplePending.set(name, pending);
+  return pending;
+}
+
+// channel을 주면 그 채널에서 나던 앞 소리를 끊는다. 부대를 연달아 클릭했을 때
+// 무전 응답 두 개가 겹치면 둘 다 못 알아듣는다.
+function playSample(name, { level = 1, channel = null } = {}) {
+  if (!name) return;
+  const context = ensureAudio();
+  if (!context) return;
+  markSound(name);
+  loadSample(name).then((buffer) => {
+    if (!buffer || !audioContext) return;
+    const source = audioContext.createBufferSource();
+    const volume = audioContext.createGain();
+    source.buffer = buffer;
+    volume.gain.value = clamp(level * soundVolume, 0, 1.6);
+    source.connect(volume).connect(audioContext.destination);
+    if (channel) {
+      try {
+        channelSources.get(channel)?.stop();
+      } catch (error) {
+        // 이미 끝난 소리를 끊으려 한 것뿐이다.
+      }
+    }
+    source.start();
+    if (channel) {
+      channelSources.set(channel, source);
+      source.onended = () => {
+        if (channelSources.get(channel) === source) channelSources.delete(channel);
+      };
+    }
+  });
+}
+
+// 같은 변주가 연달아 나오지 않게 직전에 쓴 것을 후보에서 뺀다. 무작위로만 뽑으면
+// 같은 부대를 세 번 눌렀을 때 같은 대사가 세 번 나오는 일이 실제로 생긴다.
+function pickVariant(key, options) {
+  if (!options || !options.length) return null;
+  if (options.length === 1) return options[0];
+  const previous = lastVariantPick.get(key);
+  const pool = options.filter((name) => name !== previous);
+  const choice = pool[Math.floor(Math.random() * pool.length)] ?? options[0];
+  lastVariantPick.set(key, choice);
+  return choice;
 }
 
 function markSound(name) {
@@ -637,145 +779,57 @@ function markSound(name) {
   };
 }
 
-function playTone({ frequency = 440, duration = 0.08, type = "sine", gain = 0.04, when = null, detune = 0, name = "tone" }) {
-  const context = ensureAudio();
-  if (!context) return;
-  const startAt = when ?? context.currentTime + 0.005;
-  const actualGain = soundGain(gain);
-  const oscillator = context.createOscillator();
-  const volume = context.createGain();
-  oscillator.type = type;
-  oscillator.frequency.setValueAtTime(frequency, startAt);
-  oscillator.detune.setValueAtTime(detune, startAt);
-  volume.gain.setValueAtTime(0.0001, startAt);
-  volume.gain.exponentialRampToValueAtTime(actualGain, startAt + 0.01);
-  volume.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-  oscillator.connect(volume).connect(context.destination);
-  oscillator.start(startAt);
-  oscillator.stop(startAt + duration + 0.02);
-  markSound(name);
-}
-
-function playNoise({ duration = 0.08, gain = 0.05, when = null, filter = 900, type = "bandpass", name = "noise" }) {
-  const context = ensureAudio();
-  if (!context) return;
-  const startAt = when ?? context.currentTime + 0.005;
-  const actualGain = soundGain(gain);
-  const sampleCount = Math.max(1, Math.floor(context.sampleRate * duration));
-  const buffer = context.createBuffer(1, sampleCount, context.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < sampleCount; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / sampleCount);
-  const source = context.createBufferSource();
-  const filterNode = context.createBiquadFilter();
-  const volume = context.createGain();
-  source.buffer = buffer;
-  filterNode.type = type;
-  filterNode.frequency.value = filter;
-  volume.gain.setValueAtTime(actualGain, startAt);
-  volume.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-  source.connect(filterNode).connect(volume).connect(context.destination);
-  source.start(startAt);
-  markSound(name);
-}
-
-function playThump({ frequency = 80, duration = 0.08, gain = 0.06, when = null, name = "thump" }) {
-  const context = ensureAudio();
-  if (!context) return;
-  const startAt = when ?? context.currentTime + 0.005;
-  const oscillator = context.createOscillator();
-  const volume = context.createGain();
-  oscillator.type = "sine";
-  oscillator.frequency.setValueAtTime(frequency, startAt);
-  oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, frequency * 0.45), startAt + duration);
-  volume.gain.setValueAtTime(0.0001, startAt);
-  volume.gain.exponentialRampToValueAtTime(soundGain(gain), startAt + 0.006);
-  volume.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-  oscillator.connect(volume).connect(context.destination);
-  oscillator.start(startAt);
-  oscillator.stop(startAt + duration + 0.02);
-  markSound(name);
-}
-
 function playUiSound() {
   const context = ensureAudio();
   if (!context) return;
   const now = context.currentTime;
+  // 연타로 소리가 겹치면 지저분하다. 사람이 두 번 눌렀다고 느끼는 간격만 통과시킨다.
   if (now - lastUiSoundAt < 0.055) return;
   lastUiSoundAt = now;
-  playNoise({ duration: 0.026, gain: 0.055, when: now + 0.005, filter: 2600, type: "highpass", name: "ui-paper-tap" });
-  playThump({ frequency: 130, duration: 0.035, gain: 0.025, when: now + 0.008, name: "ui-soft-thump" });
+  playSample("ui_click", { level: soundLevels.ui });
 }
 
 function handleGlobalPointerSound(event) {
   if (event.target.closest("button, summary, label, input, select, textarea")) playUiSound();
 }
 
-function playTerrainSound(x, y) {
-  const key = getTerrainKey(x, y);
-  const map = {
-    P: { filter: 850, gain: 0.045 },
-    C: { filter: 620, gain: 0.05 },
-    F: { filter: 420, gain: 0.055 },
-    H: { filter: 300, gain: 0.06 },
-    W: { filter: 1100, gain: 0.04 },
-    B: { filter: 1500, gain: 0.055 },
-  };
-  const sound = map[key] ?? map.P;
-  playNoise({ duration: 0.05, gain: sound.gain, filter: sound.filter, type: "bandpass", name: `terrain-${key}` });
-  playThump({ frequency: key === "H" ? 70 : 95, duration: 0.035, gain: 0.018, name: `terrain-body-${key}` });
+// 지도의 빈 칸을 짚었을 때. 예전에는 지형마다 다른 잡음을 냈지만 그 차이는 아무도
+// 알아듣지 못했다. 지금은 지도 위를 짚는 소리 하나로 통일한다.
+function playMapTapSound() {
+  const context = ensureAudio();
+  if (!context) return;
+  const now = context.currentTime;
+  if (now - lastUiSoundAt < 0.055) return;
+  lastUiSoundAt = now;
+  playSample("map_tap", { level: soundLevels.ui });
 }
 
 function playUnitSound(unitOrMove, action) {
   const type = unitOrMove?.type;
   if (!type) return;
-  const context = ensureAudio();
-  if (!context) return;
-  const now = context.currentTime;
-
-  if (action === "select") {
-    playNoise({ duration: 0.035, gain: 0.055, when: now + 0.005, filter: type === "battalionHQ" ? 1800 : 1250, type: "bandpass", name: `select-cloth-${type}` });
-    if (type === "battalionHQ") playNoise({ duration: 0.045, gain: 0.035, when: now + 0.035, filter: 2400, type: "highpass", name: "select-radio-click" });
-    return;
-  }
-
-  if (action === "move") {
-    if (type === "infantry" || type === "engineer") {
-      playThump({ frequency: 72, duration: 0.11, gain: 0.055, when: now + 0.005, name: `move-boot-thump-${type}` });
-      playNoise({ duration: 0.1, gain: 0.075, when: now + 0.012, filter: 210, type: "lowpass", name: `move-boot-body-${type}` });
-      playThump({ frequency: 68, duration: 0.1, gain: 0.048, when: now + 0.27, name: `move-boot-thump-${type}` });
-      playNoise({ duration: 0.095, gain: 0.064, when: now + 0.278, filter: 230, type: "lowpass", name: `move-boot-body-${type}` });
-      if (type === "engineer") playNoise({ duration: 0.07, gain: 0.035, when: now + 0.14, filter: 760, type: "bandpass", name: "move-tool-heavy-rattle" });
-    } else if (type === "armor" || type === "spArtillery") {
-      playThump({ frequency: 42, duration: 0.34, gain: 0.095, when: now + 0.005, name: `move-heavy-body-${type}` });
-      playNoise({ duration: 0.48, gain: 0.12, when: now + 0.012, filter: 150, type: "lowpass", name: `move-track-rumble-${type}` });
-      playNoise({ duration: 0.26, gain: 0.045, when: now + 0.06, filter: 520, type: "bandpass", name: `move-track-clank-${type}` });
-    } else if (type === "artillery") {
-      playThump({ frequency: 58, duration: 0.16, gain: 0.065, when: now + 0.005, name: "move-artillery-heavy-wheel" });
-      playNoise({ duration: 0.2, gain: 0.075, when: now + 0.012, filter: 190, type: "lowpass", name: "move-artillery-wheel-body" });
-      playNoise({ duration: 0.06, gain: 0.03, when: now + 0.17, filter: 680, type: "bandpass", name: "move-artillery-metal" });
-    } else {
-      playThump({ frequency: 62, duration: 0.16, gain: 0.055, when: now + 0.005, name: `move-heavy-${type}` });
-      playNoise({ duration: 0.2, gain: 0.065, when: now + 0.012, filter: 220, type: "lowpass", name: `move-${type}` });
-    }
-    return;
-  }
-
-  if (action === "attack") {
-    if (type === "infantry" || type === "engineer" || type === "battalionHQ") {
-      playNoise({ duration: 0.035, gain: 0.18, when: now + 0.005, filter: 2400, type: "bandpass", name: `attack-rifle-crack-${type}` });
-      playNoise({ duration: 0.09, gain: 0.07, when: now + 0.018, filter: 650, type: "lowpass", name: `attack-rifle-body-${type}` });
-      playNoise({ duration: 0.032, gain: 0.15, when: now + 0.12, filter: 2200, type: "bandpass", name: `attack-rifle-crack-${type}` });
-    } else if (type === "armor") {
-      playNoise({ duration: 0.045, gain: 0.17, when: now + 0.005, filter: 1350, type: "bandpass", name: "attack-tank-blast" });
-      playThump({ frequency: 48, duration: 0.28, gain: 0.12, when: now + 0.018, name: "attack-tank-thump" });
-      playNoise({ duration: 0.32, gain: 0.09, when: now + 0.04, filter: 360, type: "lowpass", name: "attack-tank-smoke" });
-    } else if (type === "artillery" || type === "spArtillery") {
-      playNoise({ duration: 0.055, gain: 0.19, when: now + 0.005, filter: 980, type: "bandpass", name: `attack-artillery-blast-${type}` });
-      playThump({ frequency: 38, duration: 0.36, gain: 0.16, when: now + 0.02, name: `attack-artillery-thump-${type}` });
-      playNoise({ duration: 0.46, gain: 0.095, when: now + 0.06, filter: 300, type: "lowpass", name: `attack-artillery-tail-${type}` });
-    }
-  }
+  const group = soundBank[action];
+  if (!group) return;
+  const name = pickVariant(`${action}:${type}`, group[type]);
+  if (!name) return;
+  // 무전 응답은 한 번에 하나만 나가야 한다. 나머지는 전장에서 동시에 나는 소리이므로
+  // 겹쳐도 상관없다 — 오히려 겹쳐야 여러 부대가 함께 움직이는 것으로 들린다.
+  playSample(name, { level: soundLevels[action] ?? 1, channel: action === "select" ? "voice" : null });
 }
+
+// 파괴는 양쪽 다 들린다. 지도 위에서 터지는 것은 누구 부대든 보이기 때문이다.
+function playDestroySound(unit) {
+  const type = unit?.type;
+  const options = soundBank.destroy[type] ?? soundBank.destroy.infantry;
+  playSample(pickVariant(`destroy:${type}`, options), { level: soundLevels.destroy });
+}
+
+// 무전으로 넘어오는 알림. 내 쪽 소식만 들린다 — 적의 공사 완료를 우리 무전병이
+// 알려줄 리 없다.
+function playNoticeSound(name) {
+  playSample(name, { level: soundLevels.notice, channel: "voice" });
+}
+
+prefetchSounds();
 
 function applyLocale() {
   if (!activePack) return;
@@ -2859,7 +2913,7 @@ function finishDeployment() {
 }
 
 function inspectTile(x, y) {
-  playTerrainSound(x, y);
+  playMapTapSound();
   state.selectedId = null;
   state.inspectedId = null;
   state.inspectedTile = { x, y };
@@ -2936,6 +2990,7 @@ function recruit(type) {
   state.resources -= spec.cost;
   state.units.push(createUnit("player", type, spawn.x, spawn.y));
   addLog(`${unitLabel("player", type)} 증원이 전선에 도착했습니다.`);
+  playNoticeSound("unit_ready");
   render();
 }
 
@@ -2971,6 +3026,8 @@ function engineerBuild(type) {
     engineer.acted = true;
     state.selectedId = null;
     addLog(`공병대가 (${water.x}, ${water.y}) 하천에 임시 교량을 완성했습니다.`);
+    // 교량만 그 자리에서 끝난다. 나머지 공사는 completeConstruction에서 알린다.
+    playNoticeSound("work_complete");
     render();
     return;
   }
@@ -3173,6 +3230,7 @@ function completeConstruction(construction) {
     state.improvements.push({ type: construction.type, owner: construction.owner, x: construction.x, y: construction.y });
   }
   addLog(`${sideName(construction.owner)} ${constructionName(construction.type)} 공사가 완료되었습니다.`);
+  if (construction.owner === "player") playNoticeSound("work_complete");
 }
 
 // 자세별 목표 편성비. 숫자는 "몇 기"가 아니라 "몇 할"이다 — 정원이 늘면 함께 는다.
@@ -3364,6 +3422,9 @@ function attack(attacker, defender) {
   if (baseUnderDefender?.owner === defender.owner) damageBaseProduction(baseUnderDefender, attacker, { collateral: true });
 
   if (defender.hp <= 0) {
+    // 격파음은 공격음보다 조금 늦게 깔아야 "쏘고 나서 터졌다"로 들린다.
+    // 사격과 동시에 터지면 둘이 한 덩어리로 뭉개진다.
+    window.setTimeout(() => playDestroySound(defender), 260);
     state.units = state.units.filter((unit) => unit.id !== defender.id);
     addLog(`${sideUnitLabel(defender)}가 전투 불능이 되었습니다.`);
     return;
@@ -3439,6 +3500,7 @@ function resolveCounterattack(attacker, defender) {
   addLog(`${sideUnitLabel(defender)}가 반격해 ${unitLabel(attacker)}에 ${damage} 피해를 입혔습니다.`);
 
   if (attacker.hp <= 0) {
+    window.setTimeout(() => playDestroySound(attacker), 260);
     state.units = state.units.filter((unit) => unit.id !== attacker.id);
     addLog(`${sideUnitLabel(attacker)}가 반격으로 전투 불능이 되었습니다.`);
   }
@@ -3555,6 +3617,9 @@ function applySupplyAttrition(owner) {
   const destroyed = state.units.filter((unit) => unit.owner === owner && unit.hp <= 0);
   if (destroyed.length) {
     destroyed.forEach((unit) => addLog(`${sideUnitLabel(unit)}가 보급 붕괴로 전투 불능이 되었습니다.`));
+    // 한 턴에 여러 부대가 함께 무너져도 소리는 한 번만 낸다. 겹쳐 울리면
+    // 개수가 늘수록 커지는 잡음이 될 뿐이다.
+    playDestroySound(destroyed[0]);
     state.units = state.units.filter((unit) => unit.hp > 0);
   }
 }
