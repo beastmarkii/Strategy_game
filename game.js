@@ -566,6 +566,15 @@ document.querySelector("#buildRail").addEventListener("click", () => engineerBui
 document.querySelector("#toggleTow")?.addEventListener("click", toggleArtilleryTow);
 document.querySelector("#toggleCommandPanel")?.addEventListener("click", toggleCommandPanel);
 document.querySelector("#focusCommandPanel")?.addEventListener("click", openCommandPanel);
+document.querySelector("#panelScrim")?.addEventListener("click", closeCommandPanel);
+
+// 좁은 화면에서 부대 카드를 누르면 나머지 항목까지 펴 본다. 카드가 지도 위에
+// 떠 있기 때문에, 늘 열아홉 줄을 펴 두면 전장 절반이 가려진다.
+selectedCardEl?.addEventListener("click", () => {
+  if (window.innerWidth > 860) return;
+  if (!selectedCardEl.querySelector(".unit-stats")) return;
+  selectedCardEl.classList.toggle("expanded");
+});
 document.querySelector("#toggleEditorPanel")?.addEventListener("click", toggleEditorPanel);
 battlefieldWrapEl?.addEventListener("wheel", handleMapWheel, { passive: false });
 document.addEventListener("pointerdown", handleGlobalPointerSound, true);
@@ -652,17 +661,76 @@ function trimBoardBox() {
   return { flat, tilted };
 }
 
+// ─── 좁은 화면에서 판 키우기 ─────────────────────────────────────────────
+// 휴대폰 화면은 세로로 길고 판은 가로로 넓다(20:16). 판을 화면 폭에 맞추면
+// 한 칸이 16px — 손가락으로 짚을 수 없는 크기가 되고, 그러고도 세로로 300px이
+// 그냥 남는다. 그래서 반대로 한다. 남는 세로를 다 쓸 만큼 판을 키우고, 화면
+// 밖으로 나간 가로는 손가락으로 밀어서 본다. 전략게임의 지도는 원래 그렇게 본다.
+// 다만 화면 두 배까지만 키운다 — 그보다 넓어지면 전선 전체가 한눈에 안 들어온다.
+let phoneMapCentered = false;
+
+// 판을 키운 뒤 처음 한 번은 아군이 있는 쪽을 보여 준다. 20칸짜리 전선에서 판이
+// 화면보다 넓으면, 가운데를 보여 줬을 때 아군 부대가 통째로 화면 왼쪽 밖에 있다 —
+// 게임을 켰는데 내 부대가 하나도 안 보이는 화면이 된다.
+function centerPhoneMapOnOwnForces(stage) {
+  const max = Math.max(0, stage.scrollWidth - stage.clientWidth);
+  const own = boardEl.querySelectorAll(".unit.player");
+  if (!own.length) {
+    stage.scrollLeft = max / 2;
+    return false;
+  }
+  const stageLeft = stage.getBoundingClientRect().left;
+  let sum = 0;
+  own.forEach((el) => {
+    const r = el.getBoundingClientRect();
+    sum += r.left + r.width / 2 - stageLeft + stage.scrollLeft;
+  });
+  stage.scrollLeft = clamp(sum / own.length - stage.clientWidth / 2, 0, max);
+  return true;
+}
+
+function fitBoardToPhone() {
+  const stage = document.querySelector("#mapStage");
+  if (!stage || !boardEl || !battlefieldWrapEl) return;
+
+  battlefieldWrapEl.style.setProperty("--map-fit-scale", "1");
+  battlefieldWrapEl.style.setProperty("--map-layout-width", "100%");
+  battlefieldWrapEl.style.setProperty("--map-lift", "0px");
+  boardEl.style.marginTop = "0px";
+  boardEl.style.marginBottom = "0px";
+
+  const room = stage.clientHeight;
+  if (room > 120) {
+    // 판을 키우면 눕힌 높이가 키운 배율만큼만 커지지 않는다 — 원근 때문에 앞쪽이
+    // 더 크게 벌어져서 계산보다 늘 더 높아진다. 그래서 한 번에 맞히지 않고,
+    // 재고 고치기를 몇 번 되풀이해 무대 높이에 붙인다. 0.97은 마지막 한두 픽셀이
+    // 잘려 나가지 않게 두는 여유다.
+    let grow = 1;
+    for (let pass = 0; pass < 5; pass += 1) {
+      battlefieldWrapEl.style.setProperty("--map-layout-width", `${(grow * 100).toFixed(1)}%`);
+      const { tilted } = measureBoardBox();
+      if (tilted.height < 40) break;
+      const ratio = (room * 0.97) / tilted.height;
+      if (Math.abs(ratio - 1) < 0.02) break;
+      const next = clamp(grow * ratio, 1, 2);
+      if (next === grow) break;
+      grow = next;
+    }
+  }
+
+  // 키운 뒤에 눕힌 판의 위아래 빈 자리를 걷어내고, 아군이 있는 쪽을 보여 준다.
+  requestAnimationFrame(() => {
+    trimBoardBox();
+    if (!phoneMapCentered) phoneMapCentered = centerPhoneMapOnOwnForces(stage);
+  });
+}
+
 // 빈 자리를 걷어내고도 화면보다 길면, 판을 그만큼 줄여서 스크롤을 없앤다.
 // 글자는 건드리지 않는다 — 줄이는 것은 지도판 하나뿐이다.
 function fitBoardToScreen() {
   if (!boardEl || !battlefieldWrapEl) return;
-  // 좁은 화면(가로 860 이하)에서는 판이 정보칸 아래로 내려가는 세로 배치가 된다.
-  // 거기서는 애초에 한 화면에 넣을 수 없으므로 손대지 않는다.
   if (window.innerWidth <= 860) {
-    battlefieldWrapEl.style.removeProperty("--map-fit-scale");
-    battlefieldWrapEl.style.removeProperty("--map-lift");
-    boardEl.style.marginTop = "";
-    boardEl.style.marginBottom = "";
+    fitBoardToPhone();
     return;
   }
 
@@ -2804,22 +2872,33 @@ function operationAlertText() {
   return parts.length ? parts.join(" · ") : "전장 이상 없음";
 }
 
-function toggleCommandPanel() {
-  const collapsed = document.body.classList.toggle("command-collapsed");
+// 좁은 화면에서 지휘칸은 아래에서 올라오는 서랍이다. 넓은 화면에서는 예전처럼
+// 왼쪽에 접었다 폈다 하는 칸이다. 여닫는 상태는 두 경우 모두 command-collapsed
+// 한 가지로 나타내고, 여기서 막(scrim)만 같이 켜고 끈다.
+function syncCommandPanelState() {
+  const collapsed = document.body.classList.contains("command-collapsed");
   const button = document.querySelector("#toggleCommandPanel");
   if (button) {
     button.setAttribute("aria-expanded", String(!collapsed));
-    button.textContent = collapsed ? "열기" : "정보";
+    button.textContent = collapsed ? "열기" : "닫기";
   }
+  const scrim = document.querySelector("#panelScrim");
+  if (scrim) scrim.hidden = collapsed || window.innerWidth > 860;
+}
+
+function toggleCommandPanel() {
+  document.body.classList.toggle("command-collapsed");
+  syncCommandPanelState();
 }
 
 function openCommandPanel() {
   document.body.classList.remove("command-collapsed");
-  const button = document.querySelector("#toggleCommandPanel");
-  if (button) {
-    button.setAttribute("aria-expanded", "true");
-    button.textContent = "정보";
-  }
+  syncCommandPanelState();
+}
+
+function closeCommandPanel() {
+  document.body.classList.add("command-collapsed");
+  syncCommandPanelState();
 }
 
 function toggleEditorPanel() {
@@ -2951,6 +3030,10 @@ function renderUnitCardVisual(unit, spec) {
 }
 
 function renderSelectedCard() {
+  // 좁은 화면에서 부대 카드는 지도 위에 떠 있고, 처음에는 핵심 몇 줄만 보인다.
+  // 새 부대를 고를 때마다 다시 접어 둔다 — 안 그러면 앞 부대에서 펴 둔 상태가
+  // 그대로 남아 지도를 계속 가린다.
+  selectedCardEl.classList.remove("expanded");
   const unit = selectedUnit() ?? inspectedUnit();
   if (!unit && state.inspectedTile) {
     renderTileCard(state.inspectedTile.x, state.inspectedTile.y);
@@ -2973,18 +3056,18 @@ function renderSelectedCard() {
       <span>방어 보정 <strong>+${coverAt(unit.x, unit.y)}</strong></span>
       ${getBaseAt(unit.x, unit.y) && baseDefenseBonus ? `<span>거점 엄폐 <strong>+${baseDefenseBonus}</strong></span>` : ""}
       <span>지형 특성 <strong>${terrainTraitText(unit.x, unit.y)}</strong></span>
-      <span>전투력 <strong>${unit.hp}/${spec.hp}</strong></span>
-      <span>기동력 <strong>${effectiveMove(unit)}</strong></span>
-      <span>사거리 <strong>${spec.range}</strong></span>
+      <span class="key">전투력 <strong>${unit.hp}/${spec.hp}</strong></span>
+      <span class="key">기동력 <strong>${effectiveMove(unit)}</strong></span>
+      <span class="key">사거리 <strong>${spec.range}</strong></span>
       ${spec.defense ? `<span>부대 방어 <strong>+${spec.defense}</strong></span>` : ""}
-      <span>사기 <strong>${effectiveMorale(unit)}%</strong></span>
+      <span class="key">사기 <strong>${effectiveMorale(unit)}%</strong></span>
       <span>중첩 <strong>${stack.length}/${maxStackSize}</strong></span>
       <span>지휘관 <strong>${commanderFor(unit.owner).name.split(" ").at(-1)}</strong></span>
       ${commanderFor(unit.owner).move ? `<span>장군 이동 <strong>${signedStat(commanderFor(unit.owner).move)}</strong></span>` : ""}
       ${commanderFor(unit.owner).supply ? `<span>장군 보급 <strong>${signedStat(commanderFor(unit.owner).supply)}</strong></span>` : ""}
       ${unit.type === "artillery" ? `<span>상태 <strong>${unit.towed ? "견인" : "전개"}</strong></span>` : ""}
-      <span>행동 <strong>${unit.acted ? "완료" : unit.moved ? "이동 완료 / 공격 가능" : "가능"}</strong></span>
-      <span>보급 <strong>${supply.label}</strong></span>
+      <span class="key">행동 <strong>${unit.acted ? "완료" : unit.moved ? "이동 완료 / 공격 가능" : "가능"}</strong></span>
+      <span class="key">보급 <strong>${supply.label}</strong></span>
       <span>보급선 <strong>${formatSupplyDistance(supply)}</strong></span>
       <span>소모 <strong>${spec.supplyUse}/턴</strong></span>
       ${(unit.hqOutTurns ?? 0) ? `<span>두절 지속 <strong>${unit.hqOutTurns}턴</strong></span>` : ""}
@@ -6588,6 +6671,16 @@ function addLog(message) {
   state.log.unshift(message);
   state.log = state.log.slice(0, 12);
 }
+
+// 범례는 넓은 화면에서만 펴 둔다. 좁은 화면에서는 접힌 채로 두어 그 자리를 지도에 준다.
+const legendFold = document.getElementById("legendFold");
+const wideScreen = window.matchMedia("(min-width: 861px)").matches;
+if (legendFold) legendFold.open = wideScreen;
+
+// 좁은 화면에서 지휘칸은 아래에서 올라오는 서랍이다. 처음에는 닫아 두고 전장을
+// 먼저 보여 준다 — 게임을 켜서 맨 처음 봐야 할 것은 증원 목록이 아니라 전선이다.
+if (!wideScreen) document.body.classList.add("command-collapsed");
+syncCommandPanelState();
 
 loadSavedDefaultBalance();
 startGame();

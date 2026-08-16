@@ -640,8 +640,6 @@ h1 {
   padding: 18px;
   overflow-x: auto;
   overflow-y: visible;
-  perspective: 1750px;
-  perspective-origin: 50% 270px;
   border-radius: 10px;
   background:
     radial-gradient(circle at 22% 14%, rgb(255 250 218 / 22%), transparent 24%),
@@ -652,10 +650,27 @@ h1 {
   background-size: auto, auto, 38px 38px, 38px 38px, auto;
 }
 
-.legend {
+/* 지휘 서랍 뒤를 덮는 막. 좁은 화면에서만 쓴다. */
+.panel-scrim {
+  display: none;
+}
+
+/* 판이 밀리는 창. 넓은 화면에서는 판이 다 들어오므로 그냥 상자다. */
+.map-stage {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 눕힌 각도(원근)를 만드는 상자. 예전에는 이 일을 .battlefield-wrap 이 했는데,
+   같은 상자가 좌우로 밀리기까지 하면 밀 때마다 소실점이 따라와 판이 일그러진다. */
+.map-plane {
+  min-width: 0;
+  perspective: 1750px;
+  perspective-origin: 50% 270px;
+}
+
+.legend {
   color: #283220;
   font-size: 14px;
   font-weight: 700;
@@ -666,7 +681,24 @@ h1 {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 45%);
 }
 
-.legend span {
+.legend > summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+}
+
+.legend[open] > summary {
+  margin-bottom: 8px;
+}
+
+.legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.legend-items span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -3569,8 +3601,290 @@ h1 {
     min-height: auto;
   }
 
+  /* ── 좁은 화면: 지휘 화면 한 장 ───────────────────────────────
+     예전 화면은 임무줄·계기 다섯 칸·경보·범례·부대 카드·증원 목록·건설 버튼·
+     지휘관 명단·전투 기록이 위에서 아래로 1420px짜리 두루마리처럼 쌓여 있었다.
+     전장을 보려면 굴려 내려가고, 명령을 내리려면 또 굴려 내려가고, 결과를 보려면
+     다시 올라와야 했다. 발표 자료를 넘기는 화면이지 게임 화면이 아니었다.
+
+     이제 화면은 딱 한 장이고, 페이지는 아예 굴러가지 않는다.
+       맨 위   임무 한 줄
+       그 아래 계기 한 띠 (작전일·주도권·보급품·다음 보급·정원)
+       가운데  전장 — 남는 세로를 전부 가져간다
+       그 아래 고른 부대와 명령 안내
+       맨 아래 붙박이 명령 바 (지휘 · 수치 편집 · 턴 종료)
+
+     증원·건설·지휘관 명단·전투 기록은 '지휘' 버튼을 누르면 아래에서 올라오는
+     서랍으로 옮겼다. 매 턴 보는 것이 아니라 필요할 때 여는 것들이기 때문이다.
+     글자 크기는 하나도 줄이지 않았다 — 없앤 것은 빈 자리와 굴리는 거리다. */
+
+  html {
+    height: 100%;
+  }
+
+  body {
+    height: 100dvh;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  .shell {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    margin: 0;
+  }
+
+  /* 전장 칸이 화면 전체다. 테두리와 둥근 모서리를 없애 화면 끝까지 쓴다. */
+  .battlefield-wrap {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-self: stretch;
+    gap: 4px;
+    min-height: 0;
+    padding: 4px 4px calc(58px + env(safe-area-inset-bottom));
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .mission-bar {
+    order: 1;
+  }
+
   .operation-hud {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    order: 2;
+  }
+
+  .map-stage {
+    order: 3;
+  }
+
+  .unit-card {
+    order: 4;
+  }
+
+  .action-hint {
+    order: 5;
+  }
+
+  .legend {
+    order: 6;
+  }
+
+  /* 전장은 남는 세로를 전부 가져간다. 판이 화면보다 넓어지면 여기서 밀린다 —
+     20칸짜리 전선을 320px 폭에 욱여넣으면 한 칸이 16px이 되어 손가락으로
+     짚을 수가 없다. 판을 키우고 옆으로 미는 쪽이 전략게임답다. */
+  .map-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    border-radius: 6px;
+    box-shadow:
+      inset 0 0 0 1px rgb(8 10 6 / 45%),
+      inset 0 10px 22px rgb(0 0 0 / 32%);
+    scrollbar-width: none;
+  }
+
+  .map-stage::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 판이 세로로 남으면 가운데에 놓는다. */
+  .map-plane {
+    margin-block: auto;
+  }
+
+  .command-panel > div:first-of-type {
+    display: none;
+  }
+
+  /* 임무는 한 줄이면 된다. 자세한 내용은 서랍 안 전투 기록에 남는다. */
+  .mission-bar {
+    flex: 0 0 auto;
+    padding: 5px 10px;
+  }
+
+  /* 임무 내용은 두 줄까지 보인다. 이기는 조건을 못 읽으면 게임이 안 된다. */
+  .mission-bar span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  /* 계기는 한 띠다. 라벨 위에 숫자를 얹는 대신 나란히 놓아 칸 높이를 48px에서
+     34px로 낮췄다. 글자는 그대로고, 낮아진 것은 글자 위아래의 빈 자리다. */
+  .operation-hud {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .hud-stat {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 34px;
+    padding: 4px 9px;
+  }
+
+  .hud-stat span,
+  .hud-stat strong {
+    display: inline;
+    margin-top: 0;
+    white-space: nowrap;
+  }
+
+  .hud-alerts {
+    flex: 1 0 100%;
+    min-height: 30px;
+    padding: 3px 9px;
+  }
+
+  /* 고른 부대는 지도 '위에' 떠서 지도 아랫단을 덮는다. 줄 세워 놓으면 부대 정보
+     열아홉 줄이 펼쳐지는 순간 지도가 150px로 눌려서, 정작 어디로 갈지 볼 수가
+     없다. 떠 있으면 지도의 크기는 늘 그대로다 — 전략게임이 다 이렇게 한다.
+     내용이 길면 이 칸 안에서만 구른다. */
+  .unit-card {
+    position: absolute;
+    right: 4px;
+    bottom: calc(99px + env(safe-area-inset-bottom));
+    left: 4px;
+    z-index: 20;
+    min-height: 0;
+    max-height: 46dvh;
+    padding: 8px 10px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow:
+      0 -2px 0 rgb(8 10 6 / 55%),
+      0 -14px 26px rgb(0 0 0 / 45%);
+  }
+
+  /* 부대 정보는 열아홉 줄이다. 그걸 다 펴면 지도 절반이 가려진다.
+     처음에는 싸울 때 실제로 보는 여섯 줄(전투력·기동력·사거리·사기·행동·보급)만
+     보여 주고, 카드를 누르면 나머지가 펴진다. 글자는 그대로다. */
+  .unit-card:not(.expanded) .unit-stats > span:not(.key) {
+    display: none;
+  }
+
+  .unit-card:has(.unit-stats)::after {
+    display: block;
+    margin-top: 6px;
+    color: var(--engrave-dim);
+    font-size: 13px;
+    font-weight: 800;
+    text-align: right;
+    content: "자세히 ▾";
+  }
+
+  .unit-card.expanded::after {
+    content: "접기 ▴";
+  }
+
+  .action-hint {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 6px 10px;
+  }
+
+  /* 범례는 처음 한 번 보는 표다. 칸이 26px로 커져 지형이 그대로 보이는 지금,
+     매 턴 화면 40px을 계속 차지할 이유가 없다. 그 자리는 전장이 가져간다.
+     (넓은 화면에서는 그대로 펼쳐져 있다.) */
+  .legend {
+    display: none;
+  }
+
+  /* 매 턴 누르는 버튼은 엄지가 늘 닿는 화면 맨 아래에 붙박이로 둔다. */
+  .hud-actions {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 45;
+    display: flex;
+    gap: 5px;
+    padding: 5px 6px calc(5px + env(safe-area-inset-bottom));
+    border-top: 1px solid rgb(8 10 6 / 70%);
+    background: linear-gradient(180deg, #343a2d, #1b1f17);
+    box-shadow: 0 -6px 18px rgb(0 0 0 / 45%);
+  }
+
+  .hud-actions button {
+    flex: 1 1 0;
+    min-height: 44px;
+    padding-inline: 4px;
+  }
+
+  /* ── 지휘 서랍 ─────────────────────────────────────────────────
+     증원·건설·지휘관·전투 기록. 아래에서 올라오고, 막을 누르면 닫힌다. */
+  .command-panel {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    max-width: none;
+    max-height: 82dvh;
+    gap: 10px;
+    padding: 8px 10px calc(62px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 14px 14px 0 0;
+    transform: translateY(101%);
+    transition: transform 240ms ease;
+  }
+
+  body:not(.command-collapsed) .command-panel {
+    transform: translateY(0);
+  }
+
+  body.command-collapsed .command-panel {
+    max-width: none;
+    min-height: auto;
+    padding: 8px 10px calc(62px + env(safe-area-inset-bottom));
+  }
+
+  /* 넓은 화면에서는 접힌 칸의 내용을 숨기지만, 여기서는 서랍이 통째로 내려가
+     있으므로 숨길 이유가 없다. 숨겨 두면 다시 열 때 내용이 늦게 나타난다. */
+  body.command-collapsed .command-panel > *:not(.panel-toggle) {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .panel-toggle-left,
+  body.command-collapsed .panel-toggle-left {
+    align-self: stretch;
+    min-height: 40px;
+    margin: 0;
+    padding: 8px;
+    writing-mode: horizontal-tb;
+  }
+
+  .panel-scrim:not([hidden]) {
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    display: block;
+    background: rgb(6 8 5 / 62%);
+  }
+
+  /* 수치 편집 창은 서랍과 막보다 위에 온다. */
+  .balance-editor {
+    z-index: 60;
   }
 
   .operation-dialog {
@@ -3581,11 +3895,6 @@ h1 {
   .commander-choice-list,
   .scenario-choice-list {
     grid-template-columns: 1fr;
-  }
-
-  .hud-alerts,
-  .hud-actions {
-    grid-column: span 2;
   }
 
   /* 칸을 minmax(14px, 1fr)로 잡았더니, 칸 안에 놓인 부대 말이 세로로 37px이라
@@ -4180,6 +4489,9 @@ body {
 .battlefield-wrap {
   --map-fit-scale: 1;
   --map-lift: 0px;
+}
+
+.map-plane {
   perspective-origin: 50% calc(270px + var(--map-lift));
 }
 
@@ -4187,21 +4499,12 @@ body {
   width: calc(var(--map-layout-width) * var(--map-fit-scale));
 }
 
-/* 좁은 화면에서는 위아래로 쌓이는 배치라 한 화면에 넣을 수 없다.
-   거기서는 원래대로 되돌린다 — 억지로 욱여넣으면 둘 다 못 쓴다. */
+/* 좁은 화면은 이제 화면 한 장으로 짜여 있다(위쪽 좁은 화면 배치 참고).
+   높이는 거기서 정하므로 여기서 되돌리지 않는다. 서랍 안에서 전투 기록만
+   따로 구른다. */
 @media (max-width: 860px) {
-  .shell {
-    height: auto;
-    min-height: calc(100vh - 32px);
-  }
-
-  .command-panel {
-    max-height: none;
-    overflow: visible;
-  }
-
   .log {
-    max-height: 260px;
+    max-height: 240px;
   }
 }
 
