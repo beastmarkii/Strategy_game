@@ -1,4 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1600">
+  <!-- 1944년 노르망디 작전지도.
+       종이 색(paper 그라디언트), 선 굵기, 투명도, 테두리는 예전 그림 그대로다.
+       바뀐 것은 세 가지뿐이다.
+       1) 바다를 아래에서 위로 옮겼다. 노르망디는 북쪽이 영불해협이라 해안선이
+          판 위쪽에 있어야 방향 감각이 맞는다. 곡선 자체는 예전 것을 y축으로
+          뒤집기만 했다 — 그리는 맛은 하나도 안 바뀐다.
+       2) 바다에만 아주 옅은 찬 기운을 넣었다. 예전에는 바다와 뭍이 똑같은
+          미색이라 해안선이 어디인지 알 수 없었다.
+       3) 지명과 국기. 예전에는 현대 우크라이나 지도(RUSSIA·UKRAINE·KYIV)에
+          현대 국기 두 개가 얹혀 있었다. 1944년 이야기와 맞지 않아 노르망디
+          지명으로 바꾸고, 국기 자리에는 방위 표시를 넣었다. -->
   <defs>
     <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0" stop-color="#e6d37a"/>
@@ -12,13 +23,16 @@
   </defs>
 
   <rect width="2000" height="1600" fill="url(#paper)"/>
-  <path d="M-120 1090 C230 1020 480 1038 765 1124 C1035 1205 1264 1152 1550 1058 C1725 1000 1886 1010 2110 1096 L2110 1720 L-120 1720 Z" fill="#eef1df" opacity="0.76"/>
-  <path d="M-120 1090 C230 1020 480 1038 765 1124 C1035 1205 1264 1152 1550 1058 C1725 1000 1886 1010 2110 1096" fill="none" stroke="#829c9c" stroke-width="6" opacity="0.62"/>
+
+  <!-- 영불해협. 예전 해안선 곡선을 위아래로 뒤집은 것이다. -->
+  <path d="M-120 208 C230 278 480 260 765 174 C1035 93 1264 146 1550 240 C1725 298 1886 288 2110 202 L2110 -120 L-120 -120 Z" fill="#e3ece9" opacity="0.82"/>
+  <path d="M-120 208 C230 278 480 260 765 174 C1035 93 1264 146 1550 240 C1725 298 1886 288 2110 202" fill="none" stroke="#829c9c" stroke-width="6" opacity="0.62"/>
 
   <path d="M-40 630 C120 585 260 610 418 560 C585 508 664 384 824 370 C1014 354 1124 492 1280 520 C1464 553 1635 472 2070 470" fill="none" stroke="#889da0" stroke-width="5" opacity="0.58"/>
   <path d="M90 720 C196 688 310 706 444 670 C575 636 676 548 812 558 C1000 572 1115 706 1282 724 C1450 742 1610 676 1995 690" fill="none" stroke="#9aa69a" stroke-width="3" opacity="0.34"/>
   <path d="M-60 1250 C190 1200 382 1226 574 1272 C785 1324 960 1375 1164 1310 C1392 1238 1596 1180 2070 1244" fill="none" stroke="#b6a779" stroke-width="4" opacity="0.32"/>
 
+  <!-- 강 -->
   <path d="M350 185 C446 256 418 330 516 382 C628 441 718 418 790 500 C858 577 835 682 930 752 C1010 810 1128 795 1195 880" fill="none" stroke="#617f88" stroke-width="4" opacity="0.52"/>
   <path d="M1410 185 C1374 310 1436 396 1376 512 C1305 648 1140 686 1105 824 C1072 954 1170 1075 1114 1212" fill="none" stroke="#617f88" stroke-width="3" opacity="0.34"/>
 
@@ -29,30 +43,34 @@
   </g>
 
   <g font-family="Arial, Helvetica, sans-serif" fill="#1e2a32" opacity="0.72">
-    <text x="200" y="740" font-size="36" font-weight="700" letter-spacing="3">BELARUS</text>
-    <text x="1262" y="392" font-size="42" font-weight="700" letter-spacing="3">RUSSIA</text>
-    <text x="1005" y="1395" font-size="68" font-weight="800" letter-spacing="4">UKRAINE</text>
-    <text x="610" y="1065" font-size="38" font-weight="700">KYIV</text>
-    <text x="1284" y="710" font-size="26">Belgorod</text>
-    <text x="1508" y="838" font-size="26">Kharkiv</text>
-    <text x="1648" y="1065" font-size="26">Dnipro</text>
-    <text x="1820" y="1260" font-size="26">Zaporizhzhia</text>
+    <text x="700" y="112" font-size="44" font-weight="700" letter-spacing="7">LA MANCHE</text>
+    <text x="200" y="760" font-size="36" font-weight="700" letter-spacing="3">COTENTIN</text>
+    <text x="1240" y="660" font-size="36" font-weight="700" letter-spacing="3">PAYS D'AUGE</text>
+    <text x="1005" y="1395" font-size="68" font-weight="800" letter-spacing="4">NORMANDIE</text>
+    <text x="610" y="1065" font-size="38" font-weight="700">CAEN</text>
+    <text x="228" y="1092" font-size="26">Saint-Lô</text>
+    <text x="452" y="944" font-size="26">Bayeux</text>
+    <text x="1284" y="880" font-size="26">Lisieux</text>
+    <text x="1508" y="1010" font-size="26">Falaise</text>
+    <text x="1648" y="1180" font-size="26">Argentan</text>
+    <text x="1780" y="1372" font-size="26">Alençon</text>
   </g>
 
   <g fill="#21323b" opacity="0.78">
     <circle cx="620" cy="1032" r="8"/>
-    <circle cx="1270" cy="682" r="7"/>
-    <circle cx="1490" cy="812" r="7"/>
-    <circle cx="1628" cy="1034" r="7"/>
-    <circle cx="1800" cy="1228" r="7"/>
+    <circle cx="216" cy="1064" r="7"/>
+    <circle cx="440" cy="916" r="7"/>
+    <circle cx="1270" cy="852" r="7"/>
+    <circle cx="1490" cy="984" r="7"/>
+    <circle cx="1628" cy="1152" r="7"/>
+    <circle cx="1762" cy="1344" r="7"/>
   </g>
 
-  <g filter="url(#softShadow)" opacity="0.9">
-    <path d="M1250 305 l86 -5 l2 54 l-86 5 z" fill="#ffffff"/>
-    <path d="M1250 323 l87 -5 l1 18 l-87 5 z" fill="#2453a6"/>
-    <path d="M1251 341 l87 -5 l1 18 l-87 5 z" fill="#c83a32"/>
-    <path d="M1055 1262 l92 -8 l2 56 l-92 8 z" fill="#f5d23a"/>
-    <path d="M1055 1262 l92 -8 l1 28 l-92 8 z" fill="#2354a3"/>
+  <!-- 방위 표시. 예전 국기 두 개가 있던 자리다. -->
+  <g filter="url(#softShadow)" opacity="0.4" fill="#21323b" transform="translate(-1080 1120)">
+    <path d="M1806 196 l30 96 l-30 -22 l-30 22 z"/>
+    <rect x="1802" y="292" width="8" height="70" rx="3"/>
+    <text x="1806" y="168" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" text-anchor="middle">N</text>
   </g>
 
   <rect x="0" y="0" width="2000" height="1600" fill="none" stroke="#d7bf65" stroke-width="18" opacity="0.28"/>
