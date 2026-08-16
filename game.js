@@ -92,6 +92,12 @@ let enemyScreenRange = 3;
 // 그렇다고 앞장서면 반격 한 방에 진영 전체가 무너진다. 이 숫자가 그 사이의 거리다.
 // 0으로 두면 사령부가 주력과 같이 붙어 다닌다.
 let hqTrailDistance = 2;
+// 사령부가 자리 지키기를 그만두고 살길을 찾기 시작하는 거리(칸). 이 안쪽에 적이 들어오면
+// 사령부는 "주력 뒤"라는 평소의 자리를 버리고 참호(보급 거점)로 향한다. 사령부는 이동 1이라
+// 발로 도망쳐서는 이동 2~3짜리 추격을 절대 못 뿌리친다 — 살길은 뛰는 것이 아니라 들어앉는 것이다.
+// 기본 3인 이유는 이동 2 / 사거리 1짜리 보병이 다음 턴에 닿는 거리가 정확히 3이라서다.
+// 0으로 두면 예전처럼 끝까지 자리만 지키다 잡힌다.
+let hqPanicRange = 3;
 // 전방 방어 거리(칸). 수비의 자리는 지킬 칸 위가 아니라 그 앞이다. 지켜야 할 칸을
 // 밟고 서 있으면 적이 도달한 시점에 그 칸은 이미 전장이 되어 있다. 위협 방향으로
 // 이만큼 나가 맞이한다. 0으로 두면 목표 위에 그대로 눌러앉는다.
@@ -238,6 +244,7 @@ const defaultBalance = {
     enemyTowDistance,
     enemyScreenRange,
     hqTrailDistance,
+    hqPanicRange,
     enemyForwardDefense,
     // 이 넷은 balanceSnapshot과 ruleEditorFields에는 있는데 여기에만 빠져 있었다.
     // 에디터에서 만질 수는 있지만 "초기값 복원"이 되돌려 주지 않는다는 뜻이다.
@@ -312,6 +319,7 @@ const ruleEditorFields = [
   ["enemyTowDistance", "적 야포 견인 거리", 0, 14, 1],
   ["enemyScreenRange", "적 보병 엄호 반경", 0, 8, 1],
   ["hqTrailDistance", "사령부 추종 거리", 0, 8, 1],
+  ["hqPanicRange", "사령부 위기 감지 거리", 0, 8, 1],
   ["enemyForwardDefense", "적 전방 방어 거리", 0, 6, 1],
   ["baseLossGraceTurns", "거점 상실 패배 유예 턴 (0=즉시)", 0, 20, 1],
   ["baseDefenseBonus", "거점 안 부대 방어 버프", 0, 8, 1],
@@ -1995,6 +2003,8 @@ function balanceSnapshot() {
       enemyTowDistance,
       enemyScreenRange,
       hqTrailDistance,
+      hqPanicRange,
+    hqPanicRange,
       enemyForwardDefense,
       baseLossGraceTurns,
       baseDefenseBonus,
@@ -2045,6 +2055,7 @@ function ruleValue(key) {
     enemyTowDistance,
     enemyScreenRange,
     hqTrailDistance,
+    hqPanicRange,
     enemyForwardDefense,
     baseLossGraceTurns,
     baseDefenseBonus,
@@ -2094,6 +2105,7 @@ function setRuleValue(key, value) {
   if (key === "enemyTowDistance") enemyTowDistance = value;
   if (key === "enemyScreenRange") enemyScreenRange = value;
   if (key === "hqTrailDistance") hqTrailDistance = value;
+  if (key === "hqPanicRange") hqPanicRange = value;
   if (key === "enemyForwardDefense") enemyForwardDefense = value;
   if (key === "baseLossGraceTurns") baseLossGraceTurns = value;
   if (key === "baseDefenseBonus") baseDefenseBonus = value;
@@ -3058,6 +3070,17 @@ function enemyRecruitChoice(combat, limit, flush) {
 function maybeEnemyRecruit() {
   // 격턴 제한은 자원이 빠듯할 때의 절약책이다. 창고가 늘어 보급품이 쌓이는데도
   // 이 제한을 지키면 적은 돈을 쌓아두고 굶는다.
+  // 사령부가 없으면 증원도 없다. 플레이어와 같은 규칙이다. 한 번만 적어 준다 —
+  // 매 턴 적으면 로그가 같은 문장으로 도배된다.
+  if (!battalionHQs("enemy").length) {
+    if (!state.enemyRecruitHalted) {
+      state.enemyRecruitHalted = true;
+      addLog(`${sideName("enemy")} 대대 사령부가 사라져 예비대 편성이 중단되었습니다.`);
+    }
+    return;
+  }
+  state.enemyRecruitHalted = false;
+
   const flush = state.enemyResources >= enemyRecruitSurplus;
   if (!flush && state.turn % 2 !== 0) return;
 
@@ -5362,7 +5385,14 @@ function bestSafeHQStep(hq) {
   const best = scored[0];
   if (!best) return null;
   const currentScore = hqSafetyScore(hq, hq.x, hq.y);
-  return best.score > currentScore + 0.25 ? best : null;
+  // 제자리에 붙는 값. 집결지는 주력의 무게중심이라 아군이 한 칸만 움직여도 같이
+  // 흔들리는데, 문턱이 0.25면 사령부는 그 미세한 떨림을 매 턴 쫓아 한 칸씩 오간다.
+  // 그게 "여기저기 방황"의 절반이다.
+  // 반 걸음(한 걸음 값 1.5의 절반)으로 잡는다. 부대 다섯이면 하나가 한 칸 움직여도
+  // 무게중심은 0.2칸만 밀리므로 그 떨림은 여기서 걸러지고, 진짜로 한 걸음 뒤처지면
+  // 이득이 1.5라 문턱을 넘어 따라붙는다. 문턱을 한 걸음 값에 딱 맞추면 안 된다 —
+  // 이득과 문턱이 같아져서 사령부가 영원히 전진하지 않는다.
+  return best.score > currentScore + 0.75 ? best : null;
 }
 
 // 사령부가 서 있어야 할 자리. 우산은 비를 따라가야 우산이다 — 보급의 중심이
@@ -5387,11 +5417,31 @@ function hqStation(hq) {
   };
 }
 
+// 궁지에 몰린 사령부가 향할 곳. 평소의 집결지는 "주력 뒤"지만 그건 안전할 때 우산을
+// 펴는 자리다. 쫓기는 중에 필요한 건 참호이고, 이 판에서 참호는 보급 거점이다 —
+// 방어 3짜리 사령부가 거점에 들어앉으면 거점 버프가 얹혀 6이 되어 정면으로는
+// 좀처럼 뚫리지 않는다. 이동 1로 이동 3짜리 추격을 뿌리치는 건 불가능하니
+// 사령부의 살길은 뛰는 것이 아니라 들어앉는 것이다.
+// 적이 이미 올라앉았거나 붙어 있는 거점은 참호가 아니라 함정이라 뺀다.
+function hqRefuge(hq) {
+  const shelters = state.bases.filter(
+    (base) => base.owner === hq.owner && nearestOpposingDistance(hq.owner, base.x, base.y) > 1,
+  );
+  if (!shelters.length) return null;
+  return shelters
+    .slice()
+    .sort((a, b) => routeCostFrom(hq, a, hq.x, hq.y) - routeCostFrom(hq, b, hq.x, hq.y))[0];
+}
+
 function hqSafetyScore(hq, x, y) {
   const enemyDistances = state.units
     .filter((unit) => unit.owner !== hq.owner)
     .map((unit) => distance({ x, y }, unit));
   const nearestThreat = enemyDistances.length ? Math.min(...enemyDistances) : 99;
+  // 지금 쫓기고 있는가. 기준은 사령부가 선 자리이지 후보 칸이 아니다 — 후보마다
+  // 따로 판정하면 위험한 칸만 "위기"로 읽혀 도망 규칙과 자리 규칙이 뒤섞이고,
+  // 사령부는 두 자를 번갈아 대며 제자리에서 왔다 갔다 한다. 그게 그 방황의 정체다.
+  const cornered = hqPanicRange > 0 && nearestOpposingDistance(hq.owner, hq.x, hq.y) <= hqPanicRange;
   const guards = hqGuardCount(hq, x, y);
   const commandCoverage = state.units.filter((unit) =>
     unit.owner === hq.owner &&
@@ -5403,10 +5453,20 @@ function hqSafetyScore(hq, x, y) {
     unit.id !== hq.id &&
     distance({ x, y }, unit) <= effectiveHQSupplyRange(hq)
   ).length;
-  const station = hqStation(hq);
+  // 쫓기는 중이면 목적지를 갈아탄다. 계속 "주력 뒤"를 향하면 사령부는 추격자와
+  // 집결지 사이에 끼여 한 칸씩 오가다 잡힌다 — 주력이 앞으로 나가는 중이면
+  // 그 집결지는 대개 추격자 쪽에 있다.
+  const station = (cornered ? hqRefuge(hq) : null) ?? hqStation(hq);
 
   let score = 0;
   score += Math.min(nearestThreat, 5) * 4;
+  // 거점은 사령부의 방공호다 — 단, 쫓길 때만. 이 항이 없어서 AI는 거점을 그냥
+  // 개활지로 읽었고, 발밑의 참호를 두고 들판으로 걸어 나갔다.
+  // 평시 가중치가 0인 것은 실수가 아니다. 안전할 때도 엄폐를 세면 사령부는 거점 위에
+  // 눌러앉아 버린다 — 엄폐 3에 1.5만 곱해도 4.5라, 주력을 따라 한 걸음 나가는 이득
+  // 1.5를 언제나 이긴다. 그러면 "우산은 비를 따라가야 우산이다"가 다시 깨지고
+  // 야전 부대가 제 발로 보급 밖으로 걸어 나간다. 참호는 비 올 때만 참호다.
+  score += coverAt(x, y) * (cornered ? 4 : 0);
   score += guards * 8;
   score += commandCoverage * 3;
   score += supplyCoverage;
@@ -5447,13 +5507,19 @@ function nearestEnemy(unit, owner) {
     .sort((a, b) => distance(unit, a) - distance(unit, b))[0];
 }
 
+// 증원이 나오는 곳은 대대 사령부다 — 어느 쪽이든 그렇다. 예전에는 적만 보급 거점에서
+// 부대를 뽑았고, 그래서 사령부를 지켜야 하는 쪽은 플레이어뿐이었다. 적 사령부는 잡아도
+// 예비대가 계속 나왔으니, 사령부를 노리는 것 자체가 플레이어에게만 손해인 규칙이었다.
+// 이제 사령부를 잃은 쪽은 양쪽 다 증원이 끊긴다.
 function findSpawn(owner, type) {
-  const ownedBases = state.bases.filter((base) => base.owner === owner);
-  const probe = { owner, type };
-  for (const base of ownedBases) {
-    const candidates = [base, ...neighbors(base.x, base.y)];
-    const open = candidates.find((spot) => canOccupy(probe, spot.x, spot.y) && Number.isFinite(traversalCostForUnit(probe, spot.x, spot.y)));
-    if (open) return open;
+  // 사령부가 여럿이면 전선에서 먼 쪽에서 뽑는다. 갓 나온 부대가 나오자마자
+  // 반격당하지 않게 하는 것이 후방 편성의 뜻이다.
+  const hqs = battalionHQs(owner)
+    .slice()
+    .sort((a, b) => nearestOpposingDistance(owner, b.x, b.y) - nearestOpposingDistance(owner, a.x, a.y));
+  for (const hq of hqs) {
+    const spot = findHQSpawn(hq, type);
+    if (spot) return spot;
   }
   return null;
 }
