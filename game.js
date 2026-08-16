@@ -1472,10 +1472,159 @@ function applyFogBlanket(alphaByCell, cols, rows) {
   boardEl.appendChild(fogBlanketEl);
 }
 
+// ─── 물줄기 한 장으로 그리기 ─────────────────────────────────────────────
+// 예전에는 하천과 강변을 칸마다 한 장씩 칠했다. 그랬더니 강이 강으로 안 보이고
+// 네모 도장을 나란히 찍어 놓은 것처럼 보였다 — 칸마다 물결 무늬가 똑같이 반복되고,
+// 칸과 칸 사이에 종이색 실금이 남았기 때문이다.
+//
+// 안개와 같은 방법을 쓴다. 칸을 잘게 나눠 칠한 뒤 경계만 번지게 흐려서 한 줄기로
+// 잇는다. 규칙은 그대로 칸 단위다 — 못 건너는 칸은 여전히 그 칸이고, 바뀐 것은
+// 그림뿐이다.
+//
+// 흐린 그림을 두 번 겹쳐 그린다. 한 번은 넓게, 한 번은 좁게. 겹치는 한가운데가
+// 저절로 진해지고 가장자리는 옅게 풀려서, 색연필로 물길을 칠한 것처럼 강기슭이 생긴다.
+const RIBBON_CELL_DOTS = 20; // 한 칸을 몇 점으로 나눠 그리는가
+// 흐리는 폭. 반지름이 아니라 표준편차라 실제로는 세 배쯤 퍼진다.
+const RIBBON_BLUR_TIGHT = 0.05;
+const RIBBON_BLUR_SOFT = 0.2;
+// 하천은 못 건너는 유일한 지형이라 가장 세게 보여야 한다. 종이 지도의 강처럼
+// 잉크빛 파랑으로 간다 — 판 위쪽 바다(아주 옅은 찬 미색)와도, 모래빛 강변과도 겹치지 않는다.
+const RIVER_INK = "46 96 134";
+const RIVER_ALPHA = 0.45;
+const RIVER_WIDTH = 0.62; // 칸 너비의 몇 할로 물길을 그을 것인가
+// 강기슭. 물길을 따라 넓게 한 번 더 깔아 주는 모래빛 그림자다.
+const SHORE_INK = "124 102 56";
+const SHORE_ALPHA = 0.13;
+const SHORE_WIDTH = 1.05;
+// 접근로는 물이 아니라 길이다. 가늘게 그어야 길로 보인다.
+const TRACK_ALPHA = 0.34;
+const TRACK_WIDTH = 0.2;
+let waterRibbonEl = null;
+let ribbonStepCanvas = null;
+
+// 칸 한가운데를 조금씩 밀어 주는 값. 좌표만으로 계산하므로 같은 지도는 언제나
+// 같은 굽이가 나온다. 최대 0.32칸이라 밀려도 제 칸 밖으로는 안 나간다 —
+// 규칙(못 건너는 칸)과 그림이 어긋나지 않아야 하기 때문이다.
+function ribbonDrift(x, y) {
+  return {
+    dx: 0.22 * Math.sin(y * 1.17 + x * 0.41) + 0.1 * Math.sin(y * 2.63 + 1.7),
+    dy: 0.22 * Math.sin(x * 1.31 + y * 0.37) + 0.1 * Math.sin(x * 2.11 + 0.6),
+  };
+}
+
+// 이웃한 칸의 한가운데끼리 이어서 한 줄기로 긋는다. 네모를 나란히 칠하는 대신
+// 선으로 긋기 때문에 굽이도 생기고, 칸 경계에 각진 계단도 안 남는다.
+// 대각선 이웃까지 잇는 이유는 강이 한 칸씩 비껴 흐르기 때문이다.
+// 판 바깥으로 한 칸 넓게 그린 뒤 가운데만 잘라 쓴다 — 그러지 않으면 판
+// 가장자리에서 물줄기가 저 혼자 옅어져 끊긴다.
+function strokeRibbonPath(ctx, cells, cols, rows, ink, alpha, widthCells, blur) {
+  const dots = RIBBON_CELL_DOTS;
+  const at = (x, y) => cells[clamp(y, 0, rows - 1) * cols + clamp(x, 0, cols - 1)];
+  const px = (x, y) => {
+    const d = ribbonDrift(x, y);
+    return [(x + 1.5 + d.dx) * dots, (y + 1.5 + d.dy) * dots];
+  };
+  const stepCtx = ribbonStepCanvas.getContext("2d");
+  stepCtx.clearRect(0, 0, ribbonStepCanvas.width, ribbonStepCanvas.height);
+  // 겹친 자리가 두 번 진해지지 않도록 모든 선을 한 붓에 담아 한 번만 긋는다.
+  stepCtx.beginPath();
+  let painted = false;
+  for (let y = -1; y <= rows; y += 1) {
+    for (let x = -1; x <= cols; x += 1) {
+      if (!at(x, y)) continue;
+      painted = true;
+      const a = px(x, y);
+      // 이웃이 없는 외톨이 칸도 점 하나로 남도록 제자리에 아주 짧게 긋는다.
+      stepCtx.moveTo(a[0], a[1]);
+      stepCtx.lineTo(a[0] + 0.01, a[1]);
+      for (const [ox, oy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
+        if (!at(x + ox, y + oy)) continue;
+        const b = px(x + ox, y + oy);
+        stepCtx.moveTo(a[0], a[1]);
+        stepCtx.lineTo(b[0], b[1]);
+      }
+    }
+  }
+  if (!painted) return;
+  stepCtx.strokeStyle = `rgb(${ink} / ${alpha})`;
+  stepCtx.lineWidth = dots * widthCells;
+  stepCtx.lineCap = "round";
+  stepCtx.lineJoin = "round";
+  stepCtx.stroke();
+
+  ctx.filter = `blur(${(dots * blur).toFixed(2)}px)`;
+  ctx.drawImage(ribbonStepCanvas, -dots, -dots);
+  ctx.filter = "none";
+}
+
+function applyWaterRibbon(riverCells, bankCells, cols, rows) {
+  const any = riverCells.some(Boolean) || bankCells.some(Boolean);
+  if (!mapConfig.enabled || !any) {
+    waterRibbonEl?.remove();
+    return;
+  }
+  if (!waterRibbonEl) {
+    waterRibbonEl = document.createElement("canvas");
+    waterRibbonEl.className = "water-ribbon";
+    waterRibbonEl.setAttribute("aria-hidden", "true");
+  }
+  if (!ribbonStepCanvas) ribbonStepCanvas = document.createElement("canvas");
+  const dots = RIBBON_CELL_DOTS;
+  ribbonStepCanvas.width = (cols + 2) * dots;
+  ribbonStepCanvas.height = (rows + 2) * dots;
+  waterRibbonEl.width = cols * dots;
+  waterRibbonEl.height = rows * dots;
+
+  // 강변/접근로(C)는 한 지형인데 하는 일이 둘이다. 물에 잇닿아 있으면 강기슭이고,
+  // 물에서 떨어져 있으면 도하 지점으로 이어지는 길이다. 도하 돌파 지도에서는
+  // 이 칸이 판을 가로지르는 줄로 깔려 있어서, 전부 모래빛으로 칠하면 지도에
+  // 굵은 띠 세 줄이 그어진다. 길은 길답게 가늘게 긋는다.
+  const shore = new Array(cols * rows).fill(false);
+  const track = new Array(cols * rows).fill(false);
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < cols; x += 1) {
+      if (!bankCells[y * cols + x]) continue;
+      let touchesWater = false;
+      for (let oy = -1; oy <= 1 && !touchesWater; oy += 1) {
+        for (let ox = -1; ox <= 1; ox += 1) {
+          const nx = x + ox;
+          const ny = y + oy;
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+          if (riverCells[ny * cols + nx]) { touchesWater = true; break; }
+        }
+      }
+      (touchesWater ? shore : track)[y * cols + x] = true;
+    }
+  }
+
+  const ctx = waterRibbonEl.getContext("2d");
+  ctx.clearRect(0, 0, waterRibbonEl.width, waterRibbonEl.height);
+  // 아래에서부터: 강기슭(넓고 흐리게) → 물길(좁고 또렷하게) → 길(가늘게).
+  strokeRibbonPath(ctx, riverCells, cols, rows, SHORE_INK, SHORE_ALPHA, SHORE_WIDTH, RIBBON_BLUR_SOFT);
+  strokeRibbonPath(ctx, shore, cols, rows, SHORE_INK, SHORE_ALPHA, SHORE_WIDTH, RIBBON_BLUR_SOFT);
+  strokeRibbonPath(ctx, riverCells, cols, rows, RIVER_INK, RIVER_ALPHA, RIVER_WIDTH, RIBBON_BLUR_TIGHT);
+  strokeRibbonPath(ctx, track, cols, rows, SHORE_INK, TRACK_ALPHA, TRACK_WIDTH, RIBBON_BLUR_TIGHT);
+  // 칸(z-index 2)과 같은 층이되 먼저 얹으므로 부대와 이동 표시는 물 위에 그려진다.
+  boardEl.appendChild(waterRibbonEl);
+}
+
 function render() {
   boardEl.innerHTML = "";
   boardEl.classList.toggle("map-enabled", mapConfig.enabled);
   if (mapConfig.enabled) renderMapUnderlay();
+  // 물줄기는 칸을 그리기 전에 깔아야 부대와 이동 표시가 그 위에 온다.
+  {
+    const river = new Array(width * height).fill(false);
+    const bank = new Array(width * height).fill(false);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const key = getTerrainKey(x, y);
+        if (key === "W") river[y * width + x] = true;
+        else if (key === "C") bank[y * width + x] = true;
+      }
+    }
+    applyWaterRibbon(river, bank, width, height);
+  }
   const highlights = getHighlights();
   // 클릭한 사령부/거점의 보급권. 지도 한 장에 한 번만 계산한다 — 칸마다 BFS를 다시 돌리면
   // 320칸을 그리는 동안 320번을 돈다.

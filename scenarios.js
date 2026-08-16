@@ -129,23 +129,28 @@ const scenarios = [
     // 마옌 강이 판 한가운데를 세로로 흐르는 라발 일대로 옮긴다. 바다 0칸이고,
     // 지도에 보이는 강줄기와 규칙상의 강이 같은 방향으로 흐른다.
     map: { enabled: true, centerLat: 48.3, centerLon: -0.7, zoom: 10, radius: 2 },
+    // 강줄기가 9열에 자로 잰 듯 곧게 서 있었다. 규칙으로는 멀쩡하지만 지도로는
+    // 강이 아니라 판을 반으로 자른 금이었다. 열을 8~10 사이로 비껴 흐르게 바꾼다.
+    // 한 칸씩 어긋나도 이동은 상하좌우뿐이라 막는 힘은 그대로다 — 비껴 있는
+    // 두 칸 사이로 빠져나가려면 결국 강 칸을 밟아야 한다.
+    // 도하 지점은 예전 그대로 3·8·13행 셋이고, 그 행의 강 칸도 그 자리에 맞춰 옮겼다.
     terrain: [
       "PPFFPPPPPWPPHHPPPPPP",
       "PPFFPPPPPWPPHHPPPPBP",
-      "PPPPPPPPPWPPPHPPPPPP",
+      "PPPPPPPPPPWPPHPPPPPP",
       "CCCCCCCCCCCCCCPPPPPP",
-      "PPPPPPPPPWPPPPFFPPPP",
-      "PPPFFPPPPWPPPPFFPPPP",
+      "PPPPPPPPPPWPPPFFPPPP",
+      "PPPFFPPPPPWPPPFFPPPP",
       "PPPFFPPPPWPPPPPPPHHP",
       "PPPPPPPPPWPPPPPPPHHP",
       "CCCCCCCCCCCCCPPPPPPP",
-      "PPPPPPPPPWPPPBPPPPPP",
-      "PPPPHHPPPWPPPPPPPPPP",
+      "PPPPPPPPWPPPPBPPPPPP",
+      "PPPPHHPPWPPPPPPPPPPP",
       "PPPPHHPPPWPPFFPPPPPP",
       "PPPPPPPPPWPPFFPPPPPP",
       "CCCCCCCCCCCCCCCPPPPP",
-      "PBPPPPPPPWPPPPPPPPPP",
-      "PPPPPBPPPWPPPPPPPPPP",
+      "PBPPPPPPPPWPPPPPPPPP",
+      "PPPPPBPPPPWPPPPPPPPP",
     ],
     hillDefense: [
       "............WW......",

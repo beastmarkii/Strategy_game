@@ -880,16 +880,12 @@ h1 {
    그래도 표시는 한다 — 하천 옆의 어느 칸이 "건널 수 있는 물가"인지 지도에서 바로 보여야
    도하 지점을 고를 수 있기 때문이다. 다만 규칙상 이득이 없으므로 아주 옅게만 깐다.
    하천과 헷갈리면 안 되므로 색(모래빛 ↔ 물빛)과 모양(점 ↔ 물결선)을 둘 다 갈라 놓았다. */
-/* 색은 모래빛 그대로 두되 바탕보다 어둡게 간다. 원래는 밝은 모래빛(198 176 118)을
-   20%로 얹었는데, 작전지도 종이 자체가 같은 모래빛이라 67칸이 통째로 안 보였다.
-   같은 계열에서 명도만 낮추면 종이의 색조를 안 건드리고도 "여기는 다른 땅"이 읽힌다.
-   푸른빛으로 가지 않는 이유는 하천(못 건넘)과 헷갈리면 뜻이 정반대가 되기 때문이다. */
+/* 강변은 칸마다 칠하지 않는다. 물줄기 한 장(.water-ribbon)에 하천과 함께 그려서
+   칸 경계 없이 이어 붙인다 — game.js의 applyWaterRibbon을 보라.
+   여기서는 칸을 비워 둔다. 칸마다 칠하면 그 위에 네모 도장이 한 번 더 찍힌다. */
 .battlefield.map-enabled .tile.coast {
   --tile-image: none;
-  background:
-    url("assets/terrain/mark-coast.svg") center / 86% 86% no-repeat,
-    rgb(132 110 62 / 30%);
-  background-blend-mode: normal;
+  background: transparent;
 }
 
 .tile.forest {
@@ -957,17 +953,25 @@ h1 {
   cursor: not-allowed;
 }
 
-/* 하천. 지형 중 유일하게 통과 불가라 가장 세게 보여야 한다.
-   지도 모드에서 이 칸이 완전히 투명이던 탓에, 강을 사이에 둔 시나리오에서 못 건너는 칸이
-   개활지와 똑같이 보였다. 다리를 놓기 전에는 지나갈 수 없다는 것이 지도에서 읽혀야 한다.
-   물빛은 반투명으로 얹는다. 그래야 밑에 그려진 강줄기와 지명이 비쳐 보여서
-   종이 지도에 색연필로 칠한 것처럼 남고, 지도의 인상을 깨지 않는다. */
+/* 하천도 칸마다 칠하지 않는다. 칸마다 칠하면 똑같은 물결 무늬가 칸 수만큼 반복되고
+   칸 사이에 종이색 실금이 남아서, 강이 아니라 네모 도장을 나란히 찍은 것으로 보인다.
+   물줄기 한 장(.water-ribbon)에 한 줄기로 이어 그린다 — game.js의 applyWaterRibbon.
+   통과 불가라는 사실은 커서로도 계속 알려 준다(.tile.water { cursor: not-allowed }). */
 .battlefield.map-enabled .tile.water {
   --tile-image: none;
-  background:
-    url("assets/terrain/mark-water.svg") center / 100% 100% no-repeat,
-    rgb(108 158 176 / 42%);
-  background-blend-mode: normal;
+  background: transparent;
+}
+
+/* 하천과 강변을 칸 경계 없이 한 줄기로 그린 그림. 어디를 어떻게 칠할지는
+   game.js가 정한다(applyWaterRibbon). 칸(z-index 2)과 같은 층에 두되 칸보다 먼저
+   얹으므로, 부대·이동 표시·보급권은 물 위에 그려지고 안개(z-index 3)는 물을 덮는다. */
+.water-ribbon {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .tile.bridge {
@@ -3570,10 +3574,23 @@ h1 {
     grid-column: span 2;
   }
 
+  /* 칸을 minmax(14px, 1fr)로 잡았더니, 칸 안에 놓인 부대 말이 세로로 37px이라
+     줄 높이를 저 혼자 밀어 올렸다. 그래서 폭 315px짜리 판의 칸이 가로 14px에
+     세로 40px — 정사각형이어야 할 칸이 세로로 세 배 늘어난 기둥이 됐고, 판도
+     제 비율(20:16)을 잃고 세로로 길쭉해졌다.
+
+     minmax(0, 1fr)로 바꾸면 칸이 말 크기에 끌려가지 않는다. 말은 칸 밖으로
+     넘쳐 그려질 뿐(.tile { overflow: visible }) 판의 격자는 제 비율을 지킨다.
+     칸 사이 틈도 3px에서 1px로 좁힌다 — 지형은 이제 칸마다 칠하지 않고
+     한 줄기로 그리므로(.water-ribbon) 틈을 벌려 둘 이유가 없다. */
   .battlefield {
-    grid-template-columns: repeat(var(--map-cols), minmax(14px, 1fr));
-    grid-template-rows: repeat(var(--map-rows), minmax(14px, 1fr));
-    gap: 3px;
+    grid-template-columns: repeat(var(--map-cols), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--map-rows), minmax(0, 1fr));
+    /* 판은 aspect-ratio로 20:16을 잡아 뒀지만, 넘치는 것을 안 자르는 상자는
+       "내용이 들어갈 만큼"이 최소 높이가 된다. 말 하나가 37px이니 그 최소가
+       16줄치로 불어나 비율을 이겼다. 0으로 풀어야 적어 둔 비율이 실제로 쓰인다. */
+    min-height: 0;
+    gap: 1px;
     transform: rotateX(36deg) rotateZ(-0.6deg) scale(var(--map-visual-scale));
   }
 
