@@ -1329,6 +1329,8 @@ function startGame(config = {}) {
     selectedId: null,
     inspectedId: null,
     inspectedTile: null,
+    // 방금 "왜 못 쳤는지". 못 치는 적을 누른 순간에만 채워지고, 다른 것을 누르면 지워진다.
+    attackNotice: null,
     gameOver: false,
     // 거점을 전부 잃은 시점의 턴. 되찾으면 다시 null로 지워진다. baseLossCollapsed 참고.
     baseLossSince: { player: null, enemy: null },
@@ -1796,9 +1798,14 @@ function paintRibbon(ctx, cells, cols, rows, layers, blur) {
   }
   const px = (x, y) => nodes.get(nodeKey(x, y)) ?? home(x, y);
   const stepCtx = ribbonStepCanvas.getContext("2d");
-  stepCtx.clearRect(0, 0, ribbonStepCanvas.width, ribbonStepCanvas.height);
-  // 겹친 자리가 두 번 진해지지 않도록 모든 선을 한 붓에 담아 한 번만 긋는다.
-  stepCtx.beginPath();
+  // 물길을 칸 한가운데끼리 잇는 선으로만 그리면, 물이 한 줄로 흐를 때는 강이 되지만
+  // 물(또는 강변)이 두 칸 이상 두께로 퍼진 자리에서는 선과 선 사이가 뚫린 채로 남아
+  // 그물이 된다. 「총력전」의 5·6행처럼 강변이 두 줄로 이어진 곳이 그랬다 —
+  // 강물이 아니라 어망을 펼쳐 놓은 그림이었다.
+  // 그래서 잇는 선과 함께, 네 칸이 통째로 물인 자리는 그 네 마디를 꼭짓점으로 하는
+  // 면을 만들어 안쪽을 메운다. 한 줄로 흐르는 강에는 그런 자리가 없으므로 지금
+  // 모습 그대로고, 넓게 퍼진 물만 속이 꽉 찬다.
+  const path = new Path2D();
   let painted = false;
   for (let y = -1; y <= rows; y += 1) {
     for (let x = -1; x <= cols; x += 1) {
@@ -1806,29 +1813,45 @@ function paintRibbon(ctx, cells, cols, rows, layers, blur) {
       painted = true;
       const a = px(x, y);
       // 이웃이 없는 외톨이 칸도 점 하나로 남도록 제자리에 아주 짧게 긋는다.
-      stepCtx.moveTo(a[0], a[1]);
-      stepCtx.lineTo(a[0] + 0.01, a[1]);
+      path.moveTo(a[0], a[1]);
+      path.lineTo(a[0] + 0.01, a[1]);
       for (const [ox, oy] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
         if (!at(x + ox, y + oy)) continue;
         const b = px(x + ox, y + oy);
-        stepCtx.moveTo(a[0], a[1]);
-        stepCtx.lineTo(b[0], b[1]);
+        path.moveTo(a[0], a[1]);
+        path.lineTo(b[0], b[1]);
       }
+      // 오른쪽·아래·오른쪽 아래까지 넷이 다 물이면 그 사이를 메운다.
+      if (!at(x + 1, y) || !at(x, y + 1) || !at(x + 1, y + 1)) continue;
+      const b = px(x + 1, y);
+      const c = px(x + 1, y + 1);
+      const d = px(x, y + 1);
+      path.moveTo(a[0], a[1]);
+      path.lineTo(b[0], b[1]);
+      path.lineTo(c[0], c[1]);
+      path.lineTo(d[0], d[1]);
+      path.closePath();
     }
   }
   if (!painted) return;
   stepCtx.lineCap = "round";
   stepCtx.lineJoin = "round";
-  // 길 하나에 붓을 바꿔 가며 여러 번 긋는다. 넓은 겹을 먼저 깔고 좁은 겹을 그 위에
-  // 얹으므로, 가장자리에는 첫 겹만 남고 한복판에는 네 겹이 모두 쌓인다.
+  // 한 겹씩 따로 그린다. 메우기와 긋기는 붓질이 두 번이라, 둘을 같은 판에 반투명으로
+  // 겹치면 만나는 자리만 두 번 진해져 얼룩이 진다. 그래서 겹마다 판을 비우고 불투명
+  // 으로 칠한 뒤, 판째로 지정한 만큼 흐리게 얹는다. 넓고 어두운 겹을 먼저 깔고 좁고
+  // 밝은 겹을 그 위에 얹으므로, 가장자리는 어둡고 한복판이 밝은 물빛이 된다.
   for (const layer of layers) {
-    stepCtx.strokeStyle = `rgb(${layer.ink} / ${layer.alpha})`;
+    stepCtx.clearRect(0, 0, ribbonStepCanvas.width, ribbonStepCanvas.height);
+    stepCtx.fillStyle = `rgb(${layer.ink})`;
+    stepCtx.strokeStyle = `rgb(${layer.ink})`;
     stepCtx.lineWidth = dots * layer.width;
-    stepCtx.stroke();
+    stepCtx.fill(path);
+    stepCtx.stroke(path);
+    ctx.globalAlpha = layer.alpha;
+    ctx.filter = `blur(${(dots * blur).toFixed(2)}px)`;
+    ctx.drawImage(ribbonStepCanvas, -dots, -dots);
   }
-
-  ctx.filter = `blur(${(dots * blur).toFixed(2)}px)`;
-  ctx.drawImage(ribbonStepCanvas, -dots, -dots);
+  ctx.globalAlpha = 1;
   ctx.filter = "none";
 }
 
@@ -3200,6 +3223,14 @@ function updateActionPanel() {
       : `배치 단계입니다. 부대를 클릭한 뒤 배치할 칸을 클릭하십시오. (조정 반경 ${deployRange}칸)`;
     return;
   }
+  // 못 치는 적을 눌렀다면 그 이유가 먼저다. 이 줄이 없던 동안, 사거리 밖이든 호위에
+  // 가렸든 화면은 똑같이 아무 말도 하지 않았고 플레이어에게는 그게 고장으로 보였다.
+  if (state.attackNotice) {
+    hint.textContent = state.attackNotice;
+    hint.classList.add("hint-blocked");
+    return;
+  }
+  hint.classList.remove("hint-blocked");
   if (!selected) hint.textContent = "부대를 클릭하면 가능한 기능이 표시됩니다.";
   else if (selected.owner !== "player") hint.textContent = "적 부대는 정보만 확인할 수 있습니다.";
   else if (isHQ) hint.textContent = "대대사령부 기능: 증원과 투입을 지휘합니다.";
@@ -3468,6 +3499,10 @@ function handleTileClick(x, y) {
   }
   if (state.phase !== "player") return;
 
+  // "왜 못 쳤는지" 안내는 그 클릭 한 번에만 붙는다. 다음에 무엇을 누르든 먼저 지우고
+  // 시작해야, 이미 해결된 이유가 화면에 남아 사람을 헷갈리게 하지 않는다.
+  state.attackNotice = null;
+
   const clickedUnit = getSelectableUnitAt(x, y, "player");
   const clickedEnemy = getTargetUnitAt(x, y, "enemy");
   const clickedBase = getBaseAt(x, y);
@@ -3492,6 +3527,8 @@ function handleTileClick(x, y) {
 
   if (clickedEnemy && (!selected || selected.acted)) {
     playUnitSound(clickedEnemy, "select");
+    // 이미 할 일을 마친 부대를 쥔 채로 적을 눌렀다면, 그것도 "왜 안 되는지"에 해당한다.
+    if (selected) state.attackNotice = attackBlockReason(selected, clickedEnemy);
     state.selectedId = null;
     state.inspectedId = clickedEnemy.id;
     state.inspectedTile = null;
@@ -3520,6 +3557,11 @@ function handleTileClick(x, y) {
     playUnitSound(clickedEnemy, "select");
     state.inspectedId = clickedEnemy.id;
     state.inspectedTile = null;
+    // 칠 수 없는 적을 눌렀다. 조용히 정보만 띄우면 플레이어는 화면이 고장 났다고
+    // 생각한다. 왜 안 되는지, 무엇을 해야 되는지를 지도 밑에 적어 준다.
+    const reason = attackBlockReason(selected, clickedEnemy);
+    state.attackNotice = reason;
+    if (reason) addLog(reason);
     render();
     return;
   }
@@ -4600,6 +4642,14 @@ function objectParticle(word) {
   return (code - 0xac00) % 28 === 0 ? "를" : "을";
 }
 
+// 같은 이유로 "은/는"도 코드가 골라야 한다. 부대 이름은 편성마다 달라서
+// ("M7 프리스트 자주포", "셔먼 전차") 한쪽으로 못 박으면 반드시 틀린 쪽이 나온다.
+function topicParticle(word) {
+  const code = String(word).trimEnd().slice(-1).charCodeAt(0);
+  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return "은";
+  return (code - 0xac00) % 28 === 0 ? "는" : "은";
+}
+
 function completionMessage(objective) {
   if (objective.kind === "destroy") {
     const target = `${objective.label}${objectParticle(objective.label)}`;
@@ -5205,6 +5255,33 @@ function canAttack(attacker, defender) {
   if (!unitVisibleTo(defender, attacker.owner)) return false;
   if (!hasObservation(attacker, defender)) return false;
   return distance(attacker, defender) <= unitTypes[attacker.type].range && !ridgeBlocksFire(attacker, defender);
+}
+
+// 못 치는 이유를 한 줄로 알려준다. 여태 못 치는 적을 누르면 아무 일도 일어나지
+// 않고 정보만 떴다 — 플레이어가 보기에는 "버튼이 고장 난 화면"이다. 규칙이
+// 아무리 그럴듯해도 화면이 말해 주지 않으면 그건 규칙이 아니라 버그로 읽힌다.
+// 순서는 canAttack이 막는 순서와 똑같이 둔다. 그래야 알려 준 이유를 없애면
+// 실제로 칠 수 있게 된다.
+function attackBlockReason(attacker, defender) {
+  if (!attacker || !defender || attacker.owner === defender.owner) return null;
+  const spec = unitTypes[attacker.type];
+  // 행동을 마친 부대는 canAttack이 따지지 않는다(그건 사거리·시야를 보는 함수다).
+  // 대신 클릭이 공격까지 가지 못하고 되돌아 나오므로, 이 이유가 가장 먼저다.
+  if (attacker.acted) {
+    const label = unitLabel(attacker);
+    return `${label}${topicParticle(label)} 이번 턴에 할 일을 이미 마쳤습니다.`;
+  }
+  if (canAttack(attacker, defender)) return null;
+  if (isScreenedHQ(defender)) return "적 사령부는 옆에 붙은 호위 부대를 먼저 걷어내야 칠 수 있습니다.";
+  if (attacker.type === "artillery" && attacker.moved) return "야포는 움직인 턴에는 쏘지 못합니다. 자리를 잡고 다음 턴에 쏘십시오. 자주포는 움직인 턴에도 쏩니다.";
+  if (isTowedArtillery(attacker)) return "야포가 트럭에 걸린 채입니다. 전개해야 쏩니다.";
+  if (supplyStatus(attacker).level === "isolated" && spec.range > 1) return "보급이 끊겨 포탄이 없습니다. 보급이 닿는 곳으로 물러나야 다시 쏩니다.";
+  if (!unitVisibleTo(defender, attacker.owner)) return "아직 눈으로 확인하지 못한 적입니다. 가까이 가서 봐야 칠 수 있습니다.";
+  if (!hasObservation(attacker, defender)) return "그 자리를 보고 있는 아군이 없습니다. 앞에 부대를 세워 봐 줘야 멀리 쏠 수 있습니다.";
+  const gap = distance(attacker, defender);
+  if (gap > spec.range) return `사거리 밖입니다. ${gap}칸 떨어져 있고 이 부대는 ${spec.range}칸까지 닿습니다.`;
+  if (ridgeBlocksFire(attacker, defender)) return "사이의 능선이 사선을 막습니다. 옆으로 돌아가거나 붙어서 치십시오.";
+  return "지금은 이 적을 칠 수 없습니다.";
 }
 
 function canRaidBase(attacker, base) {
