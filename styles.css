@@ -3525,10 +3525,18 @@ h1 {
 }
 
 @media (max-width: 860px) {
+  /* 좁은 화면에서 지도판의 크기를 정하는 것은 오직 화면 폭이다. 여기서 20px를
+     비워 두고 지도 상자가 또 10px를 비우면, 지도가 쓸 수 있는 폭에서 30px가
+     그냥 사라진다 — 320px짜리 화면에서 열에 한 칸을 버리는 셈이다.
+     양쪽 여백을 최소로 줄여 그 폭을 전부 지도에 준다.
+
+     100vw 가 아니라 100% 로 재는 이유가 있다. 100vw 는 세로 스크롤 막대가
+     차지하는 폭까지 포함한 값이라, 그대로 쓰면 화면보다 15px쯤 넓은 상자가 되어
+     페이지 아래에 가로 스크롤 막대가 하나 더 생긴다. */
   .shell {
     grid-template-columns: 1fr;
-    width: min(100vw - 20px, 680px);
-    margin: 10px auto;
+    width: min(100% - 6px, 680px);
+    margin: 4px auto;
   }
 
   .command-panel {
@@ -3537,7 +3545,7 @@ h1 {
 
   .battlefield-wrap {
     order: 1;
-    padding: 10px;
+    padding: 4px;
   }
 
   .balance-editor {
@@ -3591,7 +3599,11 @@ h1 {
        16줄치로 불어나 비율을 이겼다. 0으로 풀어야 적어 둔 비율이 실제로 쓰인다. */
     min-height: 0;
     gap: 1px;
-    transform: rotateX(36deg) rotateZ(-0.6deg) scale(var(--map-visual-scale));
+    /* 눕힌 각도가 클수록 판은 세로로 납작해진다. 36도로 눕히면 세로가 8할로
+       줄어드는데, 좁은 화면에서는 판 아래에 쓰지도 않는 빈 자리가 남아 있었다.
+       28도로 조금 세워 그 빈 자리를 판이 쓰게 한다. 작전 탁자를 내려다보는
+       느낌은 그대로 두되, 칸은 그만큼 커진다. */
+    transform: rotateX(28deg) rotateZ(-0.6deg) scale(var(--map-visual-scale));
   }
 
   h1 {
