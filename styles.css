@@ -876,9 +876,15 @@ h1 {
   --tile-image: url("assets/terrain/coast.svg");
 }
 
+/* 강변/접근로. 이동 비용도 방어 보정도 개활지와 똑같다(terrain.C = terrain.P).
+   그래도 표시는 한다 — 하천 옆의 어느 칸이 "건널 수 있는 물가"인지 지도에서 바로 보여야
+   도하 지점을 고를 수 있기 때문이다. 다만 규칙상 이득이 없으므로 아주 옅게만 깐다.
+   하천과 헷갈리면 안 되므로 색(모래빛 ↔ 물빛)과 모양(점 ↔ 물결선)을 둘 다 갈라 놓았다. */
 .battlefield.map-enabled .tile.coast {
   --tile-image: none;
-  background: transparent;
+  background:
+    url("assets/terrain/mark-coast.svg") center / 86% 86% no-repeat,
+    rgb(198 176 118 / 20%);
   background-blend-mode: normal;
 }
 
@@ -886,9 +892,12 @@ h1 {
   --tile-image: url("assets/terrain/forest.svg");
 }
 
+/* 삼림. 이동 비용 2배에 방어 +1이라 "여기 들어가면 느려지고 대신 버틴다"가 보여야 한다. */
 .battlefield.map-enabled .tile.forest {
   --tile-image: none;
-  background: transparent;
+  background:
+    url("assets/terrain/mark-forest.svg") center / 88% 88% no-repeat,
+    rgb(104 132 74 / 22%);
   background-blend-mode: normal;
 }
 
@@ -896,9 +905,13 @@ h1 {
   --tile-image: url("assets/terrain/hill.svg");
 }
 
+/* 고지. 방어 +2에 시야 +2로 지형 중 이득이 가장 크다. 등고선으로 높이를 보여준다.
+   능선 방향(.tile.ridge-shield)은 그 위에 따로 그려지므로 여기서는 겹치지 않게 옅게 깐다. */
 .battlefield.map-enabled .tile.hill {
   --tile-image: none;
-  background: transparent;
+  background:
+    url("assets/terrain/mark-hill.svg") center / 92% 92% no-repeat,
+    rgb(164 128 62 / 20%);
   background-blend-mode: normal;
 }
 
@@ -940,9 +953,16 @@ h1 {
   cursor: not-allowed;
 }
 
+/* 하천. 지형 중 유일하게 통과 불가라 가장 세게 보여야 한다.
+   지도 모드에서 이 칸이 완전히 투명이던 탓에, 강을 사이에 둔 시나리오에서 못 건너는 칸이
+   개활지와 똑같이 보였다. 다리를 놓기 전에는 지나갈 수 없다는 것이 지도에서 읽혀야 한다.
+   물빛은 반투명으로 얹는다. 그래야 밑에 그려진 강줄기와 지명이 비쳐 보여서
+   종이 지도에 색연필로 칠한 것처럼 남고, 지도의 인상을 깨지 않는다. */
 .battlefield.map-enabled .tile.water {
   --tile-image: none;
-  background: transparent;
+  background:
+    url("assets/terrain/mark-water.svg") center / 100% 100% no-repeat,
+    rgb(108 158 176 / 42%);
   background-blend-mode: normal;
 }
 

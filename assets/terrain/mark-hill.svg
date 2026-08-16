@@ -1,0 +1,14 @@
+<!-- 고지 표식. 지형도의 등고선이다. 안쪽으로 갈수록 높다는 뜻이 한눈에 읽히고,
+     이 게임에서 고지는 방어 +2에 시야 +2라 "여기 올라가면 유리하다"가 보여야 한다.
+     능선 방향 표시(.tile.ridge-shield)는 따로 있으므로 여기서는 높이만 그린다. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <g fill="none" stroke="#6f5a30" stroke-linecap="round" opacity="0.66">
+    <path d="M6 34c4-9 11-14 18-14s14 5 18 14" stroke-width="1.8"/>
+    <path d="M12 35c3.2-6.6 7-10 12-10s8.8 3.4 12 10" stroke-width="1.6"/>
+    <path d="M18 36c2-3.8 4-5.8 6-5.8s4 2 6 5.8" stroke-width="1.5"/>
+  </g>
+  <!-- 사면 방향 눈금. 등고선만 있으면 접시인지 언덕인지 모른다. -->
+  <g stroke="#6f5a30" stroke-width="1.1" opacity="0.42" stroke-linecap="round">
+    <path d="M9.5 35.5v3M17 37v2.6M24 37.8v2.8M31 37v2.6M38.5 35.5v3"/>
+  </g>
+</svg>
