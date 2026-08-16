@@ -832,6 +832,10 @@ h1 {
   display: block;
 }
 
+/* 작전 격자. 종이 작전지도 위에 그어 둔 좌표선이고, 칸 경계와 반드시 겹쳐야 한다.
+   예전에는 여기에 5% × 6.25%가 못 박혀 있었다 — 20칸 × 16칸 지도에서만 맞는 숫자다.
+   16칸 × 12칸짜리 「고립 사령부 구조」에서는 격자가 칸과 어긋나 지도 위에 아무 데도
+   걸리지 않는 그물이 한 겹 덮였다. 칸 수는 시나리오마다 다르므로 칸 수에서 계산한다. */
 .battlefield.map-enabled::after {
   z-index: 1;
   background:
@@ -839,7 +843,7 @@ h1 {
     linear-gradient(rgb(255 255 255 / 12%) 0 1px, transparent 1px),
     linear-gradient(90deg, rgb(30 38 28 / 8%) 0 1px, transparent 1px),
     linear-gradient(rgb(30 38 28 / 7%) 0 1px, transparent 1px);
-  background-size: 5% 6.25%;
+  background-size: calc(100% / var(--map-cols)) calc(100% / var(--map-rows));
 }
 
 .tile {
@@ -1015,12 +1019,18 @@ h1 {
   cursor: pointer;
 }
 
+/* 교량은 하천 칸 위에 놓인 시설이라, 그 칸의 물은 물줄기 그림(.water-ribbon)이
+   이미 그려 놓았다. 예전에는 여기서 var(--water)로 칸을 한 번 더 칠했다 —
+   물줄기 위에 물빛 네모가 한 장 덧대져서, 강 한복판에 하늘색 각목이 놓인 꼴이었다.
+   바닥은 비우고 상판(가로 널)과 난간(세로 두 줄)만 얹는다. 물 위에 놓인 것으로
+   보이도록 상판 아래로 그림자를 한 겹 깐다. */
 .battlefield.map-enabled .tile.bridge {
   background:
-    linear-gradient(90deg, transparent 0 14%, #5b3d25 14% 25%, transparent 25% 75%, #5b3d25 75% 86%, transparent 86%),
-    repeating-linear-gradient(0deg, transparent 0 7px, rgb(85 56 32 / 72%) 7px 10px),
-    var(--tile-image),
-    var(--water);
+    linear-gradient(90deg, transparent 0 14%, #6b4a2c 14% 24%, transparent 24% 76%, #6b4a2c 76% 86%, transparent 86%),
+    repeating-linear-gradient(0deg, rgb(122 86 52 / 88%) 0 3px, rgb(78 52 30 / 88%) 3px 5px),
+    none;
+  box-shadow: inset 0 0 0 1px rgb(48 32 18 / 45%);
+  filter: drop-shadow(0 2px 2px rgb(20 32 44 / 55%));
 }
 
 .tile.rail::after {
@@ -4640,4 +4650,696 @@ body {
    잘려 나가고 있었다. 판을 가운데로 옮기면 좌우가 똑같이 벌어져 다 들어온다. */
 .battlefield {
   margin-inline: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   야전 콘솔 마감 — 2차
+   ─────────────────────────────────────────────────────────────────────
+   1차에서 색과 그림자로 강판 느낌은 냈지만, 화면을 멀리서 보면 여전히
+   "네모 상자에 글자를 넣은 것"이었다. 상자들이 전부 같은 크기, 같은 모서리,
+   같은 무게라서 눈이 어디를 먼저 봐야 할지 정하지 못했기 때문이다.
+   발표 자료가 그렇게 생겼다.
+
+   여기서 하는 일은 세 가지다.
+     1) 무게를 나눈다 — 숫자는 크고 빛나게, 이름표는 작고 어둡게.
+        읽는 순서가 눈에 보이면 그때부터 계기판이다.
+     2) 재질을 나눈다 — 명령판은 놋쇠, 계기는 유리창, 스위치는 베이클라이트,
+        지도는 그 안에 끼워진 유리 상판. 전부 같은 재질이면 상자일 뿐이다.
+     3) 장비처럼 보이게 하는 흔적을 넣는다 — 나사, 눈금, 표시등, 각인 번호.
+
+   지도판의 색은 한 군데도 건드리지 않는다. 틀만 두른다.
+   글자는 어느 것도 줄이지 않는다. 숫자는 오히려 키운다.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* 계기 글자용 서체. 윈도우의 Bahnschrift(DIN 계열)와 안드로이드의
+     Roboto Condensed는 둘 다 기기 계기판에서 쓰는 좁고 곧은 글자다.
+     한글에는 적용되지 않으므로(한글 폰트로 넘어간다) 숫자와 영문에만 걸린다 —
+     그래서 이름표는 한글 그대로 두고 숫자만 계기 글자가 된다. */
+  --tech: "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  /* 도장이 벗겨진 금속 모서리. 판과 판이 만나는 자리에 한 줄 넣으면 두께가 생긴다. */
+  --plate-edge: rgb(226 232 214 / 14%);
+  --plate-dark: rgb(6 8 5 / 78%);
+  /* 지휘 계통을 나타내는 붉은 띠. 명령판과 실행 스위치에만 쓴다. */
+  --command-red: #a8332b;
+}
+
+/* 나사 한 개. 어디에든 붙일 수 있게 배경 조각으로 만들어 둔다.
+   가운데 홈이 파인 십자 나사처럼 보이도록 밝은 위, 어두운 아래. */
+@supports (background: radial-gradient(red, blue)) {
+  .console-screw {
+    background:
+      linear-gradient(135deg, transparent 44%, rgb(0 0 0 / 55%) 44% 56%, transparent 56%),
+      radial-gradient(circle at 38% 32%, rgb(236 240 226 / 42%), rgb(120 126 108 / 30%) 52%, rgb(0 0 0 / 50%) 100%);
+  }
+}
+
+/* ── 1. 콘솔 본체 ─────────────────────────────────────────────────
+   전장 칸은 이제 화면 전체다. 가장자리를 두껍게 어둡게 만들고 위쪽에만
+   조명 반사를 남기면, 화면이 "종이"가 아니라 "장비의 앞판"이 된다. */
+.battlefield-wrap {
+  position: relative;
+  isolation: isolate;
+}
+
+/* 네 귀퉁이 나사와 가장자리 그늘. 판 위에 얹는 것이라 눌리지 않게 통과시킨다. */
+.battlefield-wrap::after {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  background:
+    linear-gradient(135deg, transparent 44%, rgb(0 0 0 / 50%) 44% 56%, transparent 56%) 9px 9px / 11px 11px no-repeat,
+    radial-gradient(circle at 38% 32%, rgb(236 240 226 / 40%), rgb(120 126 108 / 28%) 52%, rgb(0 0 0 / 48%) 100%) 9px 9px / 11px 11px no-repeat,
+    linear-gradient(135deg, transparent 44%, rgb(0 0 0 / 50%) 44% 56%, transparent 56%) calc(100% - 9px) 9px / 11px 11px no-repeat,
+    radial-gradient(circle at 38% 32%, rgb(236 240 226 / 40%), rgb(120 126 108 / 28%) 52%, rgb(0 0 0 / 48%) 100%) calc(100% - 9px) 9px / 11px 11px no-repeat,
+    radial-gradient(120% 74% at 50% 42%, transparent 58%, rgb(0 0 0 / 34%) 100%);
+  pointer-events: none;
+  content: "";
+}
+
+/* ── 2. 작전 명령판 ───────────────────────────────────────────────
+   임무는 사령부에서 내려온 명령서다. 왼쪽에 붉은 지휘 띠를 세우고
+   작전명을 각인 글자로 키워서, 화면에서 가장 먼저 읽히게 한다. */
+.mission-bar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-left: 4px solid var(--command-red);
+  border-radius: 3px 6px 6px 3px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 10%), transparent 34%),
+    linear-gradient(180deg, #4a4a37, #2e3126 70%, #24271d);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 16%),
+    inset 4px 0 8px rgb(168 51 43 / 22%),
+    0 2px 5px rgb(0 0 0 / 45%);
+}
+
+.mission-bar strong {
+  color: #f4ead0;
+  letter-spacing: 1.6px;
+  text-shadow:
+    0 -1px 0 rgb(0 0 0 / 70%),
+    0 1px 0 rgb(255 255 255 / 10%);
+}
+
+.mission-bar span {
+  color: #a9b09a;
+}
+
+/* ── 3. 계기창 ────────────────────────────────────────────────────
+   숫자는 유리창 안에서 켜진 불이다. 창을 더 깊게 파고, 위쪽에 눈금 한 줄을
+   긋고, 숫자를 키워서 이름표보다 확실히 무겁게 만든다.
+   이름표는 크기를 줄이지 않고 색만 낮춘다 — 줄이면 못 읽는다. */
+.hud-stat {
+  position: relative;
+  overflow: hidden;
+  border-radius: 5px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 6%) 0 1px, transparent 1px),
+    linear-gradient(196deg, rgb(226 232 214 / 8%) 0 34%, transparent 34%),
+    linear-gradient(180deg, #0d1009, #171b11 60%, #10130b);
+  box-shadow:
+    inset 0 3px 7px rgb(0 0 0 / 80%),
+    inset 0 -1px 0 rgb(226 232 214 / 12%),
+    0 1px 0 rgb(255 255 255 / 7%);
+}
+
+/* 창 위쪽의 눈금자. 계기라는 것을 말없이 알려주는 한 줄이다. */
+.hud-stat::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, rgb(240 200 106 / 26%) 0 1px, transparent 1px 6px);
+  content: "";
+}
+
+.hud-stat span {
+  color: #7e876f;
+  letter-spacing: 1.1px;
+}
+
+.hud-stat strong {
+  color: var(--readout);
+  font-family: var(--tech);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  text-shadow:
+    0 0 12px rgb(240 200 106 / 50%),
+    0 0 2px rgb(240 200 106 / 80%);
+}
+
+/* ── 4. 경보등 ────────────────────────────────────────────────────
+   이상이 없으면 초록불이 조용히 켜져 있고, 뭔가 뜨면 호박색이 숨쉬듯
+   깜빡인다. 글자를 읽기 전에 불빛만 보고 알아채라는 뜻이다. */
+.hud-alerts {
+  border-radius: 5px;
+  background:
+    linear-gradient(196deg, rgb(226 232 214 / 7%) 0 34%, transparent 34%),
+    linear-gradient(180deg, #0d1009, #171b11);
+  box-shadow:
+    inset 0 3px 7px rgb(0 0 0 / 78%),
+    inset 0 -1px 0 rgb(226 232 214 / 10%);
+}
+
+.hud-alerts::before {
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgb(0 0 0 / 60%);
+  box-shadow:
+    0 0 10px var(--lamp-on),
+    0 0 22px rgb(134 214 143 / 40%),
+    inset 0 -3px 4px rgb(0 0 0 / 45%),
+    inset 0 2px 3px rgb(255 255 255 / 45%);
+}
+
+.hud-alerts.alert::before {
+  animation: lampPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes lampPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 8px var(--lamp-warn),
+      inset 0 -3px 4px rgb(0 0 0 / 45%),
+      inset 0 2px 3px rgb(255 255 255 / 40%);
+  }
+
+  50% {
+    box-shadow:
+      0 0 18px var(--lamp-warn),
+      0 0 34px rgb(232 161 63 / 55%),
+      inset 0 -3px 4px rgb(0 0 0 / 45%),
+      inset 0 2px 3px rgb(255 255 255 / 40%);
+  }
+}
+
+/* 움직이는 것을 싫어하는 설정이면 깜빡이지 않는다. 색만으로도 구분된다. */
+@media (prefers-reduced-motion: reduce) {
+  .hud-alerts.alert::before {
+    animation: none;
+  }
+}
+
+/* ── 5. 지도 상판 ─────────────────────────────────────────────────
+   지도는 콘솔에 끼워진 유리 상판이다. 틀을 두껍게 두르고 안쪽 그늘을 넣어
+   '판에 박혀 있다'는 느낌을 준다. 지도 자체의 색은 건드리지 않는다 —
+   덮개도 색유리도 씌우지 않고, 테두리만 두른다. */
+.map-stage {
+  position: relative;
+  border: 1px solid rgb(0 0 0 / 78%);
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 2px rgb(58 64 50 / 90%),
+    inset 0 0 0 3px rgb(0 0 0 / 60%),
+    inset 0 14px 26px rgb(0 0 0 / 38%),
+    inset 0 -10px 20px rgb(0 0 0 / 30%),
+    0 2px 0 rgb(226 232 214 / 8%);
+}
+
+/* ── 6. 야전 카드 ─────────────────────────────────────────────────
+   고른 부대는 참모가 건네주는 카드 한 장이다. 위쪽에 부대명을 박은 띠를
+   두르고, 항목은 두 칸짜리 서식처럼 정렬한다. 카드가 지도 위에 떠 있으므로
+   가장자리에 그림자를 진하게 주어 '얹혀 있다'는 것을 분명히 한다. */
+.unit-card {
+  border-radius: 4px;
+  background:
+    linear-gradient(196deg, rgb(226 232 214 / 6%) 0 30%, transparent 30%),
+    linear-gradient(180deg, #191d13, #12150d);
+  box-shadow:
+    inset 0 1px 0 rgb(226 232 214 / 14%),
+    inset 0 -2px 6px rgb(0 0 0 / 55%),
+    0 -2px 0 rgb(8 10 6 / 60%),
+    0 -16px 30px rgb(0 0 0 / 50%);
+}
+
+.unit-card h2 {
+  border-bottom: 1px solid rgb(226 232 214 / 16%);
+  padding-bottom: 6px;
+  color: #f4ead0;
+  letter-spacing: 0.6px;
+}
+
+/* 항목 이름과 값 사이는 서식지처럼 점선으로 잇는다. 값이 어디까지가
+   어느 항목인지 눈으로 따라갈 수 있어야 한 손으로 읽힌다. */
+.unit-stats > span {
+  position: relative;
+  padding-bottom: 4px;
+  border-bottom: 1px dotted rgb(226 232 214 / 16%);
+}
+
+/* ── 7. 조작 데크 ─────────────────────────────────────────────────
+   매 턴 누르는 스위치들. 위가 밝고 아래가 어두운 두꺼운 캡에, 눌리면
+   실제로 내려앉는다. 실행 스위치(턴 종료)만 불이 들어와 있다. */
+.hud-actions {
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 3%) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #3d4436, #262a20 42%, #15180f);
+  box-shadow:
+    inset 0 1px 0 rgb(226 232 214 / 18%),
+    0 -8px 22px rgb(0 0 0 / 50%);
+}
+
+.hud-actions button {
+  border-radius: 5px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 16%), transparent 42%),
+    linear-gradient(180deg, #4c5442, #2b3025);
+  letter-spacing: 1px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 24%),
+    inset 0 -3px 0 rgb(0 0 0 / 45%),
+    0 3px 0 rgb(0 0 0 / 55%),
+    0 5px 10px rgb(0 0 0 / 40%);
+}
+
+/* 실행 스위치. 붉은 지휘 띠를 머리에 두르고 초록 불이 들어와 있다. */
+.hud-actions .primary {
+  border-top: 2px solid rgb(168 51 43 / 70%);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 18%), transparent 40%),
+    linear-gradient(180deg, #478752, #235030);
+  color: #f4fbee;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 55%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 28%),
+    inset 0 -3px 0 rgb(0 0 0 / 42%),
+    0 3px 0 rgb(0 0 0 / 55%),
+    0 0 20px rgb(94 168 110 / 38%);
+}
+
+.hud-actions button:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 3px 7px rgb(0 0 0 / 65%),
+    0 0 0 rgb(0 0 0 / 0%);
+}
+
+/* ── 8. 안내 한 줄 ────────────────────────────────────────────────
+   명령 안내는 무전으로 들어온 짧은 지시다. 앞에 신호 표시를 붙여
+   '기계가 말하고 있다'는 것을 알린다. */
+.action-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgb(0 0 0 / 55%);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgb(0 0 0 / 36%), rgb(0 0 0 / 22%));
+  color: #9aa38a;
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 50%);
+}
+
+.action-hint::before {
+  flex: 0 0 auto;
+  color: var(--readout);
+  font-family: var(--tech);
+  font-weight: 700;
+  letter-spacing: 1px;
+  opacity: 0.75;
+  content: "▸";
+}
+
+/* ── 9. 좁은 화면에서의 무게 배분 ─────────────────────────────────
+   손에 들고 보는 화면에서는 숫자가 작으면 계기가 아니라 글줄이 된다.
+   이름표는 그대로 두고 숫자만 19px에서 23px로 키운다. */
+@media (max-width: 860px) {
+  .hud-stat {
+    padding: 7px 10px 5px;
+  }
+
+  .hud-stat span {
+    font-size: 12px;
+  }
+
+  .hud-stat strong {
+    font-size: 23px;
+    line-height: 1;
+  }
+
+  .hud-alerts {
+    font-size: 14px;
+  }
+
+  .mission-bar {
+    padding: 6px 10px 6px 11px;
+  }
+
+  .mission-bar strong {
+    font-size: 16px;
+  }
+
+  .unit-card h2 {
+    font-size: 19px;
+  }
+
+  .hud-actions button {
+    font-size: 15px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   작전 명령서 — 시작 화면 마감
+   ------------------------------------------------------------------
+   이 창이 게임을 켜고 맨 처음 보는 화면인데, 여태 밝은 종이 위에 라디오
+   버튼이 줄지어 선 설문지였다. 카드 여덟 장이 전부 같은 모서리, 같은
+   두께, 같은 밝기로 놓여 있으면 무엇이 중요한지 눈이 고를 수가 없고,
+   그것이 발표 자료처럼 보이는 이유다.
+
+   그래서 명령서로 바꾼다. 바뀌는 것은 네 가지다.
+     1) 제목줄에 문서 번호와 붉은 기밀 도장이 찍힌다.
+     2) 항목마다 앞에 스텐실 번호가 박히고 붉은 지휘 띠가 선다.
+     3) 고른 항목만 불이 들어온다 — 나머지는 어둡게 가라앉는다.
+     4) 개시 서명(작전 개시)만 불이 켜진 스위치가 된다.
+
+   고르는 내용은 한 줄도 바뀌지 않았고, 글자는 오히려 커졌다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 뒤를 더 눌러 준다. 창이 떠 있는 동안 지도가 반쯤 살아 있으면 눈이 둘로 갈린다. */
+.operation-modal {
+  padding: 12px;
+  background: rgb(9 11 7 / 74%);
+}
+
+/* 명령서 자체 — 강판 위에 얹은 서류철. 윗면이 밝고 아래가 어둡다. */
+.operation-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgb(0 0 0 / 82%);
+  border-top: 3px solid var(--command-red);
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 rgb(226 232 214 / 18%),
+    inset 0 -2px 8px rgb(0 0 0 / 60%),
+    0 26px 70px rgb(0 0 0 / 68%);
+}
+
+/* ── 제목줄: 문서 번호 · 표제 · 기밀 도장 ───────────────────────── */
+.operation-dialog-header {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 12px 16px 11px;
+  border-bottom: 1px solid rgb(0 0 0 / 70%);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 10%), transparent 40%),
+    linear-gradient(180deg, #4a5140, #2c3126);
+  box-shadow: inset 0 -1px 0 rgb(226 232 214 / 12%);
+}
+
+/* 문서 번호는 작고 어둡게, 표제는 크고 밝게. 이 둘의 무게 차이가 곧 서열이다. */
+.operation-dialog .eyebrow {
+  order: 1;
+  flex: 1 0 100%;
+  margin: 0;
+  color: #8e9880;
+  font-family: var(--tech);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2.4px;
+}
+
+.operation-dialog h2 {
+  order: 2;
+  color: #f4ead0;
+  font-size: 27px;
+  letter-spacing: 1.4px;
+  text-shadow:
+    0 -1px 0 rgb(0 0 0 / 70%),
+    0 1px 0 rgb(255 255 255 / 8%);
+}
+
+/* 도장. 비뚤게 찍혀야 도장으로 보인다 — 반듯하면 그냥 빨간 상자다. */
+.dialog-stamp {
+  order: 3;
+  margin-left: auto;
+  padding: 3px 11px 2px;
+  border: 2px solid rgb(168 51 43 / 82%);
+  border-radius: 3px;
+  color: rgb(203 84 74 / 92%);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  opacity: 0.9;
+  transform: rotate(-6deg);
+}
+
+/* ── 본문: 여기만 구른다 ─────────────────────────────────────────
+   예전에는 창 전체가 굴렀다. 그러면 굴리는 순간 표제와 개시 단추가 같이
+   사라져서, 무엇을 고르는 창인지도 어디서 끝나는지도 알 수 없게 된다. */
+.operation-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px 16px 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 26%), transparent 40px),
+    linear-gradient(180deg, #262b20, #1a1e15);
+}
+
+/* ── 항목: 스텐실 번호 + 붉은 지휘 띠 ──────────────────────────── */
+.operation-dialog .scenario-section {
+  position: relative;
+  margin: 0 0 16px;
+  padding-left: 34px;
+}
+
+.operation-dialog .scenario-section::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 23px;
+  color: var(--readout);
+  font-family: var(--tech);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-align: center;
+  opacity: 0.72;
+  content: attr(data-order);
+}
+
+/* 번호 아래로 내려긋는 세로줄. 항목이 어디서 끝나는지 눈으로 잡아 준다. */
+.operation-dialog .scenario-section::after {
+  position: absolute;
+  top: 22px;
+  bottom: 4px;
+  left: 11px;
+  width: 1px;
+  background: linear-gradient(180deg, rgb(240 200 106 / 26%), transparent);
+  content: "";
+}
+
+.operation-dialog h3 {
+  margin-bottom: 9px;
+  padding-bottom: 5px;
+  padding-left: 8px;
+  border-bottom: 1px solid rgb(226 232 214 / 14%);
+  border-left: 3px solid var(--command-red);
+  font-size: 17px;
+  letter-spacing: 1.2px;
+}
+
+/* ── 고를 수 있는 칸들 ───────────────────────────────────────────
+   안 고른 칸은 가라앉고, 고른 칸만 불이 들어온다. 여덟 장이 다 같은
+   밝기로 놓여 있던 것이 설문지처럼 보이던 첫 번째 이유였다. */
+.side-choice label,
+.commander-choice,
+.scenario-choice,
+.difficulty-choice {
+  position: relative;
+  border: 1px solid rgb(0 0 0 / 62%);
+  border-radius: 3px;
+  background:
+    linear-gradient(196deg, rgb(226 232 214 / 5%) 0 30%, transparent 30%),
+    linear-gradient(180deg, #1e2318, #14180f);
+  box-shadow:
+    inset 0 1px 0 rgb(226 232 214 / 9%),
+    inset 0 -2px 5px rgb(0 0 0 / 45%);
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.commander-choice:has(input:checked),
+.side-choice label:has(input:checked),
+.scenario-choice:has(input:checked),
+.difficulty-choice:has(input:checked) {
+  border-color: rgb(134 214 143 / 62%);
+  background:
+    linear-gradient(196deg, rgb(226 232 214 / 8%) 0 30%, transparent 30%),
+    linear-gradient(180deg, #2a3d2a, #1c281c);
+  box-shadow:
+    inset 0 1px 0 rgb(226 232 214 / 18%),
+    inset 0 0 0 1px rgb(134 214 143 / 22%),
+    0 0 16px rgb(94 168 110 / 26%);
+}
+
+/* 고른 칸 왼쪽에 켜지는 초록 불. 라디오 동그라미보다 멀리서 보인다. */
+.scenario-choice:has(input:checked)::before,
+.difficulty-choice:has(input:checked)::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--lamp-on);
+  box-shadow: 0 0 10px rgb(134 214 143 / 70%);
+  content: "";
+}
+
+/* 글자는 키운다. 한 번 읽고 고르는 창이라 빽빽할 이유가 없다. */
+.scenario-choice-body strong,
+.commander-choice-body strong,
+.difficulty-choice-body strong {
+  font-size: 16px;
+  letter-spacing: 0.4px;
+}
+
+.scenario-choice-body span,
+.commander-choice-body span,
+.difficulty-choice-body span {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.scenario-choice-meta,
+.difficulty-choice-meta {
+  font-family: var(--tech);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.4px;
+}
+
+/* ── 상대 참모부(난이도) ─────────────────────────────────────────
+   네 칸을 한 줄에 늘어놓으면 "설정 항목"이 되고, 세로로 쌓으면 "등급표"가
+   된다. 위에서 아래로 갈수록 세지는 표라서 세로로 쌓는다. */
+.difficulty-choice-list {
+  display: grid;
+  gap: 8px;
+}
+
+.difficulty-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 10px 9px 13px;
+  cursor: pointer;
+}
+
+.difficulty-choice input {
+  margin-top: 4px;
+  accent-color: #86d68f;
+}
+
+.difficulty-choice-body {
+  min-width: 0;
+}
+
+.difficulty-choice-body strong,
+.difficulty-choice-body span {
+  display: block;
+}
+
+.difficulty-choice-body strong {
+  color: #f0e6c8;
+}
+
+.difficulty-choice-body span {
+  color: var(--engrave-dim);
+}
+
+.difficulty-choice-meta {
+  color: var(--readout) !important;
+}
+
+/* ── 개시 서명줄 ─────────────────────────────────────────────────
+   창 맨 아래에 붙박이로 남는다. 본문을 굴려도 사라지지 않는다. */
+.operation-dialog-actions {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgb(0 0 0 / 70%);
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 3%) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #3d4436, #22261c);
+  box-shadow: inset 0 1px 0 rgb(226 232 214 / 16%);
+}
+
+.operation-dialog-actions button {
+  min-height: 44px;
+  padding-inline: 18px;
+  border-radius: 5px;
+  font-size: 15px;
+  letter-spacing: 1px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 22%),
+    inset 0 -3px 0 rgb(0 0 0 / 45%),
+    0 3px 0 rgb(0 0 0 / 55%);
+}
+
+/* 개시만 불이 들어와 있다. 이 창에서 누를 단추는 하나다. */
+.operation-dialog-actions .primary {
+  flex: 1 1 auto;
+  border-top: 2px solid rgb(168 51 43 / 70%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 28%),
+    inset 0 -3px 0 rgb(0 0 0 / 42%),
+    0 3px 0 rgb(0 0 0 / 55%),
+    0 0 20px rgb(94 168 110 / 40%);
+}
+
+.operation-dialog-actions button:active {
+  transform: translateY(3px);
+  box-shadow: inset 0 3px 7px rgb(0 0 0 / 65%);
+}
+
+@media (min-width: 861px) {
+  .operation-dialog {
+    max-height: calc(100vh - 48px);
+  }
+
+  .difficulty-choice-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 좁은 화면: 창이 화면을 통째로 쓴다. 명령서를 손에 든 것처럼. */
+@media (max-width: 860px) {
+  .operation-modal {
+    padding: 0;
+  }
+
+  .operation-dialog {
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    border-inline: 0;
+    border-bottom: 0;
+    border-radius: 0;
+  }
+
+  .operation-dialog h2 {
+    font-size: 24px;
+  }
+
+  .scenario-choice-list,
+  .commander-choice-list {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-dialog-actions button {
+    flex: 1 1 0;
+  }
 }

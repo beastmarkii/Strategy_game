@@ -98,6 +98,78 @@ let hqTrailDistance = 2;
 // 기본 3인 이유는 이동 2 / 사거리 1짜리 보병이 다음 턴에 닿는 거리가 정확히 3이라서다.
 // 0으로 두면 예전처럼 끝까지 자리만 지키다 잡힌다.
 let hqPanicRange = 3;
+
+// ── 난이도 ────────────────────────────────────────────────────────────────
+// 난이도는 상대 참모부의 실력이다. 플레이어 쪽 규칙은 한 줄도 건드리지 않는다 —
+// 내 부대가 갑자기 약해지는 난이도는 "어려운 것"이 아니라 "속이는 것"이고,
+// 그런 판은 져도 왜 졌는지 배울 것이 없다. 바뀌는 것은 적 진영 넷뿐이다.
+//   startUnits   작전 개시 시점에 적 전선에 더 서 있는(또는 빠지는) 부대 수
+//   income       적 거점이 뽑아내는 보급품의 배율
+//   startSupply  적이 1일차에 쥐고 시작하는 보급품
+//   force        적이 세울 수 있는 전투 부대 정원의 배율
+//   recruitEvery 적이 예비대를 부르는 주기(1이면 매 턴, 3이면 사흘에 한 번)
+// 왜 이 다섯인가: 적을 세게 만드는 방법은 "한 대가 더 아프게 때린다"와
+// "한 대 더 온다" 두 가지뿐인데, 앞의 것은 무엇에 맞았는지 화면으로 알 수 없다.
+// 뒤의 것은 지도에 그대로 보인다. 그래서 전부 머릿수와 보급으로만 조인다.
+const difficultyLevels = [
+  {
+    id: "green",
+    name: "신병",
+    brief: "적 전선이 한 부대 얇고, 예비대는 사흘에 한 번 온다.",
+    startUnits: -1,
+    income: 0.75,
+    startSupply: 6,
+    force: 0.85,
+    recruitEvery: 3,
+  },
+  {
+    id: "regular",
+    name: "정규",
+    brief: "지금까지의 그 전선. 예비대는 이틀에 한 번 온다.",
+    startUnits: 0,
+    income: 1,
+    startSupply: 8,
+    force: 1,
+    recruitEvery: 2,
+  },
+  {
+    id: "veteran",
+    name: "노련",
+    brief: "적이 두 부대 더 서서 시작하고, 예비대가 매일 온다.",
+    startUnits: 2,
+    income: 1.35,
+    startSupply: 12,
+    force: 1.25,
+    recruitEvery: 1,
+  },
+  {
+    id: "elite",
+    name: "정예",
+    brief: "적이 네 부대 더 서서 시작하고, 보급이 배 가까이 들어온다.",
+    startUnits: 4,
+    income: 1.7,
+    startSupply: 18,
+    force: 1.5,
+    recruitEvery: 1,
+  },
+];
+const defaultDifficultyId = "regular";
+
+function findDifficulty(id) {
+  return difficultyLevels.find((level) => level.id === id) ?? difficultyLevels.find((level) => level.id === defaultDifficultyId);
+}
+
+// 난이도를 안 고르고 시작하는 길이 여럿 있다(에디터의 「다시 시작」, 첫 로딩).
+// 그때는 정규다. state가 없을 때도 불리므로 여기서 한 번에 막는다.
+function currentDifficulty() {
+  return findDifficulty(state?.difficulty ?? defaultDifficultyId);
+}
+
+// 난이도가 붙는 부대는 싸우는 부대뿐이다. 공병대와 사령부를 더 얹으면 적 경제와
+// 보급망이 통째로 커져서, 머릿수 하나 늘리려던 것이 판 전체를 뒤집는다.
+const difficultyReinforceOrder = ["infantry", "armor", "infantry", "artillery", "armor", "infantry"];
+
+// ── 전장 안개 ─────────────────────────────────────────────────────────────
 // 전장 안개. 1이면 부대는 누가 봐줘야 보이고, 0이면 예전처럼 지도 전체가 열린다.
 // 규칙 전체를 한 스위치로 끌 수 있게 둔 것은 안개가 이 게임의 거의 모든 판단
 // (전투·이동·적 참모부)에 얹히는 규칙이라, 밸런스를 볼 때 "안개 때문인가 아닌가"를
@@ -544,6 +616,7 @@ const balanceEditorEl = document.querySelector("#balanceEditor");
 const operationModalEl = document.querySelector("#newOperationModal");
 const operationCommanderChoicesEl = document.querySelector("#operationCommanderChoices");
 const operationScenarioChoicesEl = document.querySelector("#operationScenarioChoices");
+const operationDifficultyChoicesEl = document.querySelector("#operationDifficultyChoices");
 const missionNameLabelEl = document.querySelector("#missionNameLabel");
 const missionBriefLabelEl = document.querySelector("#missionBriefLabel");
 const bannerEl = document.createElement("div");
@@ -1071,6 +1144,7 @@ function localizeRenderedText() {
 
 function openNewOperationSetup() {
   renderOperationScenarioChoices();
+  renderOperationDifficultyChoices();
   renderOperationCommanderChoices(selectedOperationSide());
   if (operationModalEl) operationModalEl.hidden = false;
 }
@@ -1117,6 +1191,35 @@ function selectedOperationSide() {
 
 function selectedOperationDeployMode() {
   return operationModalEl?.querySelector('input[name="operationDeploy"]:checked')?.value ?? "auto";
+}
+
+function selectedOperationDifficulty() {
+  return operationModalEl?.querySelector('input[name="operationDifficulty"]:checked')?.value ?? state?.difficulty ?? defaultDifficultyId;
+}
+
+// 난이도 칸은 고를 때 무엇이 달라지는지를 그 자리에서 읽을 수 있어야 한다.
+// "쉬움/보통/어려움"만 적어 두면 무엇이 어려워지는지 알 수 없고, 그러면 고르는
+// 것이 아니라 찍는 것이 된다. 그래서 칸마다 바뀌는 숫자를 그대로 적는다.
+function renderOperationDifficultyChoices() {
+  if (!operationDifficultyChoicesEl) return;
+  const selectedId = selectedOperationDifficulty();
+  operationDifficultyChoicesEl.innerHTML = difficultyLevels
+    .map((level) => {
+      const force = level.startUnits > 0 ? `개시 병력 +${level.startUnits}` : level.startUnits < 0 ? `개시 병력 ${level.startUnits}` : "개시 병력 그대로";
+      const income = `보급 ×${level.income}`;
+      const cadence = level.recruitEvery === 1 ? "증원 매일" : `증원 ${level.recruitEvery}일마다`;
+      return `
+      <label class="difficulty-choice">
+        <input type="radio" name="operationDifficulty" value="${level.id}" ${level.id === selectedId ? "checked" : ""} />
+        <span class="difficulty-choice-body">
+          <strong>${level.name}</strong>
+          <span class="difficulty-choice-meta">${force} · ${income} · ${cadence}</span>
+          <span>${level.brief}</span>
+        </span>
+      </label>
+    `;
+    })
+    .join("");
 }
 
 function commanderSideName(side) {
@@ -1185,6 +1288,7 @@ function confirmNewOperationSetup() {
     playerSide: chosenSide,
     playerCommanderId: commanderId,
     deployMode: selectedOperationDeployMode(),
+    difficulty: selectedOperationDifficulty(),
   });
   closeNewOperationSetup();
 }
@@ -1207,9 +1311,11 @@ function startGame(config = {}) {
   // 같은 작전을 다시 시작하는 건 대개 "에디터에서 만진 숫자로 다시 해보자"는 뜻이라,
   // 그때 시나리오 기본값으로 되돌려버리면 방금 만진 값이 증발한다.
   if (scenarioChanged && Number.isFinite(scenario.turnLimit)) operationTurnLimit = scenario.turnLimit;
-  const deployment = deploymentForScenario(scenario, playerSide);
+  const difficulty = findDifficulty(config.difficulty ?? state?.difficulty ?? defaultDifficultyId);
+  const deployment = deploymentForScenario(scenario, playerSide, difficulty);
   state = {
     playerSide,
+    difficulty: difficulty.id,
     scenarioId: scenario.id,
     // 배치 방식은 작전 설정에서 고른다. 새 작전 창을 거치지 않고 다시 시작하면
     // 직전 작전에서 쓰던 방식을 이어간다 — 수동 배치를 좋아하는 사람이 매번 다시
@@ -1218,7 +1324,8 @@ function startGame(config = {}) {
     turn: 1,
     phase: "player",
     resources: 8,
-    enemyResources: 8,
+    // 플레이어의 시작 보급은 난이도와 무관하게 8이다. 바뀌는 것은 적 쪽뿐이다.
+    enemyResources: difficulty.startSupply,
     selectedId: null,
     inspectedId: null,
     inspectedTile: null,
@@ -1263,6 +1370,7 @@ function startGame(config = {}) {
   addLog(`작전 「${scenario.name}」 — ${scenario.summary}`);
   addLog(missionBriefText());
   addLog(`${sideName("enemy")} 방어선 지휘관은 ${state.commanders.enemy.name}입니다.`);
+  addLog(`상대 참모부 수준 「${difficulty.name}」 — ${difficulty.brief}`);
   addLog("공병대가 전선에 배치되었습니다. 다리는 하루 안에 놓지만, 보급창고와 철도는 며칠의 공사가 필요합니다.");
   addLog("공병대는 보병보다 빠르고 튼튼하지만 직접 전투력은 소총분대의 약 80% 수준입니다.");
   if (state.deployMode === "manual") {
@@ -1284,11 +1392,16 @@ function timeoutOutcomeFor(timeoutWinner, playerSide) {
   return timeoutWinner === scenarioSideKey(playerSide) ? "playerWin" : "playerLose";
 }
 
-function deploymentForScenario(scenario, playerSide) {
+function deploymentForScenario(scenario, playerSide, difficulty = findDifficulty(defaultDifficultyId)) {
   const playerKey = scenarioSideKey(playerSide);
   const enemyKey = playerKey === "west" ? "east" : "west";
   const playerDeployment = scenario[playerKey];
   const enemyDeployment = scenario[enemyKey];
+  const units = [
+    ...playerDeployment.units.map((entry) => createScenarioUnit("player", entry)),
+    ...enemyDeployment.units.map((entry) => createScenarioUnit("enemy", entry)),
+  ];
+  applyDifficultyToEnemyForce(units, difficulty);
   return {
     // 진영 블록 안에 적혀 있다고 다 그 진영 것은 아니다. neutral이 붙은 거점은
     // 위치만 그쪽 몫이고 소유는 아무에게도 없다 — 먼저 밟는 쪽이 가져간다.
@@ -1296,15 +1409,44 @@ function deploymentForScenario(scenario, playerSide) {
       ...playerDeployment.bases.map((base) => createBase(base.x, base.y, base.neutral ? "neutral" : "player", base.production)),
       ...enemyDeployment.bases.map((base) => createBase(base.x, base.y, base.neutral ? "neutral" : "enemy", base.production)),
     ],
-    units: [
-      ...playerDeployment.units.map((entry) => createScenarioUnit("player", entry)),
-      ...enemyDeployment.units.map((entry) => createScenarioUnit("enemy", entry)),
-    ],
+    units,
     objectives: [
       ...(playerDeployment.objectives ?? []).map((entry) => createObjective("player", entry)),
       ...(enemyDeployment.objectives ?? []).map((entry) => createObjective("enemy", entry)),
     ],
   };
+}
+
+// 난이도가 적 전선의 머릿수를 바꾼다. 자리는 여기서 정하지 않는다 — 기존 적 부대
+// 위에 겹쳐 놓기만 하면 바로 뒤에 도는 tidyAutoDeployment("enemy")가 배치 구역 안의
+// 빈 칸으로 알아서 흩어 준다. 여기서 좌표를 직접 찍으면 시나리오마다 강과 산을 다시
+// 확인해야 하고, 한 군데만 틀리면 적 한 부대가 강 속에 서서 작전을 시작한다.
+// 태그가 붙은 부대는 건드리지 않는다 — 그 부대는 목표가 가리키는 부대다.
+function applyDifficultyToEnemyForce(units, difficulty) {
+  const extra = difficulty?.startUnits ?? 0;
+  if (!extra) return;
+  const anchors = units.filter((unit) => unit.owner === "enemy" && !unit.tag && isCombatUnit(unit));
+  if (!anchors.length) return;
+  if (extra > 0) {
+    for (let i = 0; i < extra; i += 1) {
+      const type = difficultyReinforceOrder[i % difficultyReinforceOrder.length];
+      const anchor = anchors[i % anchors.length];
+      units.push(createUnit("enemy", type, anchor.x, anchor.y));
+    }
+    return;
+  }
+  // 빼는 쪽은 가장 흔한 병종에서 뺀다. 한 대뿐인 전차를 지우면 난이도를 낮춘 것이
+  // 아니라 그 작전의 성격을 지운 것이 된다. 마지막 한 부대는 남긴다.
+  for (let i = 0; i < -extra; i += 1) {
+    const pool = units.filter((unit) => unit.owner === "enemy" && !unit.tag && isCombatUnit(unit));
+    if (pool.length <= 1) return;
+    const counts = new Map();
+    pool.forEach((unit) => counts.set(unit.type, (counts.get(unit.type) ?? 0) + 1));
+    const commonest = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    const victim = pool.reverse().find((unit) => unit.type === commonest);
+    if (!victim) return;
+    units.splice(units.indexOf(victim), 1);
+  }
 }
 
 // ── 배치 ──────────────────────────────────────────────────────────────────
@@ -1561,9 +1703,22 @@ const RIBBON_BLUR_TIGHT = 0.05;
 const RIBBON_BLUR_SOFT = 0.2;
 // 하천은 못 건너는 유일한 지형이라 가장 세게 보여야 한다. 종이 지도의 강처럼
 // 잉크빛 파랑으로 간다 — 판 위쪽 바다(아주 옅은 찬 미색)와도, 모래빛 강변과도 겹치지 않는다.
-const RIVER_INK = "46 96 134";
-const RIVER_ALPHA = 0.45;
-const RIVER_WIDTH = 0.62; // 칸 너비의 몇 할로 물길을 그을 것인가
+// 물길을 한 겹으로 칠하면 파란 테이프를 붙여 놓은 것처럼 보인다. 실제 강은 가장자리가
+// 가장 어둡고(그늘진 기슭과 깊은 물), 한복판이 가장 밝다(물이 하늘을 비춘다).
+// 그래서 같은 줄기를 넓은 것부터 좁은 것 순으로 네 번 겹쳐 긋는다. 바깥일수록 어둡고
+// 안쪽일수록 밝아지므로, 선 하나가 저절로 단면(기슭 → 깊은 물 → 여울 → 물빛)이 된다.
+const RIVER_LAYERS = [
+  { ink: "26 58 86", alpha: 0.5, width: 0.74 }, // 기슭 그늘 — 물과 땅의 경계선
+  { ink: "46 96 134", alpha: 0.52, width: 0.56 }, // 깊은 물
+  { ink: "92 152 178", alpha: 0.34, width: 0.32 }, // 여울
+  { ink: "208 232 238", alpha: 0.24, width: 0.11 }, // 한복판에 앉는 물빛
+];
+// 도하 목에 덧칠하는 얕은 물. 자갈빛을 옅게 한 번, 물빛을 더 옅게 한 번 얹으면
+// 강줄기 중에서 그 목만 밝아진다 — 여기가 걸어서 건널 수 있는 자리라는 표시다.
+const FORD_LAYERS = [
+  { ink: "212 194 144", alpha: 0.48, width: 0.64 }, // 자갈 바닥
+  { ink: "240 246 240", alpha: 0.32, width: 0.3 }, // 얕아서 밝게 튀는 물
+];
 // 강기슭. 물길을 따라 넓게 한 번 더 깔아 주는 모래빛 그림자다.
 const SHORE_INK = "124 102 56";
 const SHORE_ALPHA = 0.13;
@@ -1578,9 +1733,12 @@ let ribbonStepCanvas = null;
 // 같은 굽이가 나온다. 최대 0.32칸이라 밀려도 제 칸 밖으로는 안 나간다 —
 // 규칙(못 건너는 칸)과 그림이 어긋나지 않아야 하기 때문이다.
 function ribbonDrift(x, y) {
+  // 굽이는 긴 것과 짧은 것을 겹쳐 만든다. 짧은 흔들림만 있으면 뒤에서 마디를
+  // 문지를 때(paintRibbon) 평균에 묻혀 사라지고, 지형이 곧게 뻗은 지도에서는
+  // 강이 자로 그은 직선이 된다. 긴 굽이를 크게 넣어야 문지른 뒤에도 남는다.
   return {
-    dx: 0.22 * Math.sin(y * 1.17 + x * 0.41) + 0.1 * Math.sin(y * 2.63 + 1.7),
-    dy: 0.22 * Math.sin(x * 1.31 + y * 0.37) + 0.1 * Math.sin(x * 2.11 + 0.6),
+    dx: 0.3 * Math.sin(y * 0.62 + x * 0.33) + 0.1 * Math.sin(y * 1.87 + 1.7),
+    dy: 0.3 * Math.sin(x * 0.58 + y * 0.31) + 0.1 * Math.sin(x * 1.93 + 0.6),
   };
 }
 
@@ -1589,13 +1747,54 @@ function ribbonDrift(x, y) {
 // 대각선 이웃까지 잇는 이유는 강이 한 칸씩 비껴 흐르기 때문이다.
 // 판 바깥으로 한 칸 넓게 그린 뒤 가운데만 잘라 쓴다 — 그러지 않으면 판
 // 가장자리에서 물줄기가 저 혼자 옅어져 끊긴다.
-function strokeRibbonPath(ctx, cells, cols, rows, ink, alpha, widthCells, blur) {
+function paintRibbon(ctx, cells, cols, rows, layers, blur) {
   const dots = RIBBON_CELL_DOTS;
   const at = (x, y) => cells[clamp(y, 0, rows - 1) * cols + clamp(x, 0, cols - 1)];
-  const px = (x, y) => {
+  const home = (x, y) => {
     const d = ribbonDrift(x, y);
     return [(x + 1.5 + d.dx) * dots, (y + 1.5 + d.dy) * dots];
   };
+  // 물길이 한 칸씩 비껴 흐르면(9열 → 10열 → 9열) 칸 한가운데를 곧게 이었을 때
+  // 강이 아니라 번개 표시가 된다. 그래서 잇기 전에 마디마다 이웃들의 평균 쪽으로
+  // 두 번 문질러 둔다 — 곧게 흐르는 구간은 그대로고, 꺾이는 구간만 굽이가 된다.
+  // 제 칸 한가운데에서 0.42칸 넘게는 못 벗어나게 묶어 둔다. 그림이 규칙(못 건너는
+  // 칸)보다 멀리 나가면, 눈에 보이는 강과 실제로 막히는 칸이 어긋나기 때문이다.
+  const nodeKey = (x, y) => `${x},${y}`;
+  let nodes = new Map();
+  for (let y = -1; y <= rows; y += 1) {
+    for (let x = -1; x <= cols; x += 1) {
+      if (at(x, y)) nodes.set(nodeKey(x, y), home(x, y));
+    }
+  }
+  const leash = 0.42 * dots;
+  for (let pass = 0; pass < 2; pass += 1) {
+    const eased = new Map();
+    nodes.forEach((point, id) => {
+      const [nx, ny] = id.split(",").map(Number);
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      for (let oy = -1; oy <= 1; oy += 1) {
+        for (let ox = -1; ox <= 1; ox += 1) {
+          if (!ox && !oy) continue;
+          const q = nodes.get(nodeKey(nx + ox, ny + oy));
+          if (!q) continue;
+          sx += q[0];
+          sy += q[1];
+          n += 1;
+        }
+      }
+      if (!n) { eased.set(id, point); return; }
+      const anchor = home(nx, ny);
+      const mixed = [point[0] * 0.45 + (sx / n) * 0.55, point[1] * 0.45 + (sy / n) * 0.55];
+      eased.set(id, [
+        clamp(mixed[0], anchor[0] - leash, anchor[0] + leash),
+        clamp(mixed[1], anchor[1] - leash, anchor[1] + leash),
+      ]);
+    });
+    nodes = eased;
+  }
+  const px = (x, y) => nodes.get(nodeKey(x, y)) ?? home(x, y);
   const stepCtx = ribbonStepCanvas.getContext("2d");
   stepCtx.clearRect(0, 0, ribbonStepCanvas.width, ribbonStepCanvas.height);
   // 겹친 자리가 두 번 진해지지 않도록 모든 선을 한 붓에 담아 한 번만 긋는다.
@@ -1618,15 +1817,24 @@ function strokeRibbonPath(ctx, cells, cols, rows, ink, alpha, widthCells, blur) 
     }
   }
   if (!painted) return;
-  stepCtx.strokeStyle = `rgb(${ink} / ${alpha})`;
-  stepCtx.lineWidth = dots * widthCells;
   stepCtx.lineCap = "round";
   stepCtx.lineJoin = "round";
-  stepCtx.stroke();
+  // 길 하나에 붓을 바꿔 가며 여러 번 긋는다. 넓은 겹을 먼저 깔고 좁은 겹을 그 위에
+  // 얹으므로, 가장자리에는 첫 겹만 남고 한복판에는 네 겹이 모두 쌓인다.
+  for (const layer of layers) {
+    stepCtx.strokeStyle = `rgb(${layer.ink} / ${layer.alpha})`;
+    stepCtx.lineWidth = dots * layer.width;
+    stepCtx.stroke();
+  }
 
   ctx.filter = `blur(${(dots * blur).toFixed(2)}px)`;
   ctx.drawImage(ribbonStepCanvas, -dots, -dots);
   ctx.filter = "none";
+}
+
+// 한 겹짜리(강기슭·접근로)는 예전처럼 부르게 둔다.
+function strokeRibbonPath(ctx, cells, cols, rows, ink, alpha, widthCells, blur) {
+  paintRibbon(ctx, cells, cols, rows, [{ ink, alpha, width: widthCells }], blur);
 }
 
 function applyWaterRibbon(riverCells, bankCells, cols, rows) {
@@ -1669,12 +1877,50 @@ function applyWaterRibbon(riverCells, bankCells, cols, rows) {
     }
   }
 
+  // 도하 지점. 「도하 돌파」의 3·8·13행처럼 강을 가로지르는 접근로 칸이다.
+  // 규칙으로는 건널 수 있는 칸이 맞지만, 그림에서까지 물이 뚝 끊겨서 강 한 줄기가
+  // 서너 토막으로 잘려 보였다 — 강이 아니라 물웅덩이 몇 개였다.
+  // 여기서는 물을 이어 긋되 얕게 칠한다. 규칙은 한 줄도 안 바뀌고, 대신 "어디로
+  // 건널 수 있는가"가 지도에서 바로 보인다 — 강이 옅어지는 그 목이다.
+  const ford = new Array(cols * rows).fill(false);
+  const waterNear = (x, y, axis) => {
+    for (let o = -1; o <= 1; o += 1) {
+      const nx = axis === "v" ? x + o : x;
+      const ny = axis === "v" ? y : y + o;
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+      if (riverCells[ny * cols + nx]) return true;
+    }
+    return false;
+  };
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < cols; x += 1) {
+      if (!bankCells[y * cols + x]) continue;
+      // 위아래가 다 물이면 남북으로 흐르는 강을 가로지르는 목이고, 좌우가 다 물이면
+      // 동서로 흐르는 강을 가로지르는 목이다. 한쪽만 물인 칸은 그냥 강기슭이다.
+      // 한쪽은 반드시 바로 위(또는 바로 아래)가 물이어야 한다 — 대각선만 보고 잡으면
+      // 곧게 흐르는 강에서 좌우 옆칸까지 목으로 딸려 들어와, 강 한복판에 마름모가
+      // 세 개 부풀어 오른다. 강이 비껴 흐르는 자리에서만 두 칸이 목이 된다.
+      const inLine = (dy) => y + dy >= 0 && y + dy < rows && riverCells[(y + dy) * cols + x] === true;
+      const inLineH = (dx) => x + dx >= 0 && x + dx < cols && riverCells[y * cols + (x + dx)] === true;
+      const crosses =
+        (waterNear(x, y - 1, "v") && waterNear(x, y + 1, "v") && (inLine(-1) || inLine(1))) ||
+        (waterNear(x - 1, y, "h") && waterNear(x + 1, y, "h") && (inLineH(-1) || inLineH(1)));
+      if (!crosses) continue;
+      ford[y * cols + x] = true;
+      shore[y * cols + x] = false;
+      track[y * cols + x] = false;
+    }
+  }
+  // 물줄기는 하천 칸과 도하 목을 한 줄기로 본다. 그래야 강이 끊기지 않는다.
+  const channel = riverCells.map((wet, i) => wet || ford[i]);
+
   const ctx = waterRibbonEl.getContext("2d");
   ctx.clearRect(0, 0, waterRibbonEl.width, waterRibbonEl.height);
-  // 아래에서부터: 강기슭(넓고 흐리게) → 물길(좁고 또렷하게) → 길(가늘게).
-  strokeRibbonPath(ctx, riverCells, cols, rows, SHORE_INK, SHORE_ALPHA, SHORE_WIDTH, RIBBON_BLUR_SOFT);
+  // 아래에서부터: 강기슭(넓고 흐리게) → 물길(좁고 또렷하게) → 도하 목(얕게) → 길(가늘게).
+  strokeRibbonPath(ctx, channel, cols, rows, SHORE_INK, SHORE_ALPHA, SHORE_WIDTH, RIBBON_BLUR_SOFT);
   strokeRibbonPath(ctx, shore, cols, rows, SHORE_INK, SHORE_ALPHA, SHORE_WIDTH, RIBBON_BLUR_SOFT);
-  strokeRibbonPath(ctx, riverCells, cols, rows, RIVER_INK, RIVER_ALPHA, RIVER_WIDTH, RIBBON_BLUR_TIGHT);
+  paintRibbon(ctx, channel, cols, rows, RIVER_LAYERS, RIBBON_BLUR_TIGHT);
+  paintRibbon(ctx, ford, cols, rows, FORD_LAYERS, RIBBON_BLUR_TIGHT);
   strokeRibbonPath(ctx, track, cols, rows, SHORE_INK, TRACK_ALPHA, TRACK_WIDTH, RIBBON_BLUR_TIGHT);
   // 칸(z-index 2)과 같은 층이되 먼저 얹으므로 부대와 이동 표시는 물 위에 그려진다.
   boardEl.appendChild(waterRibbonEl);
@@ -3714,11 +3960,14 @@ function isCombatUnit(unit) {
 // 생산 숫자 몇 점이 아니라 사단 하나만큼의 값어치가 된다.
 // 거점을 전부 잃은 쪽은 정원이 0이라 증원이 끊긴다. 이는 baseLossGraceTurns의
 // 붕괴 유예 창과 같은 방향이다 — 땅을 잃으면 군도 잃는다.
+// 난이도는 적 정원에만 곱한다. 정원은 화면(전투 정원 칸)에 그대로 뜨는 숫자라
+// 올림으로 맞춘다 — 「6 / 7.5」 같은 정원은 읽는 사람에게 아무 뜻이 없다.
 function forceLimitFor(owner) {
   const bases = state.bases.filter((base) => base.owner === owner);
   const depots = bases.filter((base) => base.builtByEngineer).length;
   const supplyBases = bases.length - depots;
-  return supplyBases * forcePerBase + depots * forcePerDepot;
+  const limit = supplyBases * forcePerBase + depots * forcePerDepot;
+  return owner === "enemy" ? Math.ceil(limit * currentDifficulty().force) : limit;
 }
 
 function combatCountFor(owner) {
@@ -3768,8 +4017,11 @@ function maybeEnemyRecruit() {
   }
   state.enemyRecruitHalted = false;
 
+  // 증원 주기는 난이도가 정한다. 「정규」가 예전의 격턴이고, 위로 올라가면 매 턴,
+  // 아래로 내려가면 사흘에 한 번이다. 보급품이 넘치면(flush) 주기와 상관없이 부른다.
   const flush = state.enemyResources >= enemyRecruitSurplus;
-  if (!flush && state.turn % 2 !== 0) return;
+  const recruitEvery = Math.max(1, currentDifficulty().recruitEvery);
+  if (!flush && state.turn % recruitEvery !== 0) return;
 
   // 공병대를 먼저 본다. 경제를 키우는 부대가 전투 정원에 밀려 영영 안 나오면
   // 적 생산은 첫 턴 그대로 굳는다.
@@ -4467,10 +4719,14 @@ function baseProduction(base) {
   return base.production * wartimeProductionFactor * base.efficiency;
 }
 
+// 적 수입에만 난이도 배율이 붙는다. 여기 한 곳에서 곱하는 이유는, 매 턴 들어오는
+// 실제 보급과 화면에 뜨는 「다음 보급」이 둘 다 이 함수를 쓰기 때문이다.
+// 곱하는 자리를 나누면 화면에 적힌 숫자와 실제로 들어오는 양이 어긋난다.
 function projectedIncome(owner) {
-  return state.bases
+  const raw = state.bases
     .filter((base) => base.owner === owner)
     .reduce((total, base) => total + baseProduction(base), 0);
+  return owner === "enemy" ? raw * currentDifficulty().income : raw;
 }
 
 function supplyStatus(unit) {
