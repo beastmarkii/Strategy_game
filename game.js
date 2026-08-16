@@ -24,10 +24,16 @@ let objectiveHoldTurns = 2;
 // 목표는 고정값이 아니라 하한이다 — 실제 목표는 플레이어가 지은 만큼 따라 올라간다.
 let enemyDepotGoal = 2;
 let enemyEngineerLimit = 3;
-// 적 전투 정원의 하한. 예전에는 여섯 기가 상한이자 전부였다. 그래서 플레이어가
-// 창고로 몸집을 불려도 적은 여섯 기에 묶였고, 후반이 갈수록 쉬워졌다. 이제
-// 이 값은 바닥일 뿐이고, 실제 정원은 플레이어 전투부대 수를 따라 올라간다.
-let enemyForceFloor = 6;
+// 전투 정원은 이제 땅에서 나온다. 거점 하나가 몇 개 부대를 먹여 살리는가.
+// 예전 정원은 "적 여섯 기, 플레이어 무제한"이었고, 그래서 적은 일곱 턴이면 정원을
+// 채운 뒤 보급품을 쌓아만 뒀다 — 14턴 실측에서 34를 깔고 앉아 아무것도 사지 않았다.
+// 정원을 지도에 묶으면 그 저축이 사라진다. 거점을 더 먹은 쪽이 더 큰 군을 굴리고,
+// 거점을 잃으면 군이 줄어든다. 보급 거점을 다투는 이유가 생산 숫자 하나에서
+// "몇 개 부대를 세울 수 있는가"로 바뀐다. 양 진영에 똑같이 적용된다.
+let forcePerBase = 6;
+// 공병대가 세운 보급창고 몫. 원래 거점보다 작다 — 창고는 전선을 늘리는 물건이지
+// 사단을 통째로 앉히는 자리가 아니다.
+let forcePerDepot = 3;
 // 이만큼 쌓이면 적은 격턴 제한을 풀고 매 턴 부른다. 격턴은 자원이 빠듯할 때의
 // 절약책이지, 창고가 늘어난 뒤에도 지킬 규칙이 아니다.
 let enemyRecruitSurplus = 24;
@@ -91,7 +97,10 @@ let baseEfficiencyRepair = 0.1;
 // 적이 무주공산 거점을 확보하러 나가는 반경(칸). 중립 거점을 AI가 무시하면
 // 플레이어만 주워 먹고 후반 물량이 일방적으로 기운다. 거리로 묶어 두는 이유는
 // 지도 반대편 거점을 쫓아 전선을 비우지 않게 하기 위함이다. 0이면 안 나간다.
-let enemyBaseSeekRange = 8;
+// 8은 묶는 값이 아니었다. 거리 계산이 체비쇼프라 반경 8은 17x17이고, 지도가
+// 20x16이니 사실상 전 지도였다 — 슬라이더는 있는데 아무것도 제한하지 않았다.
+// 5면 자기 전선 폭만큼이고, 그 밖의 거점은 전선을 밀어야 닿는다.
+let enemyBaseSeekRange = 5;
 const episodeLimits = {
   playerBattalionHQ: 1,
   enemyBattalionHQ: 1,
@@ -125,14 +134,22 @@ function applyScenario(scenario) {
 const unitTypes = {
   infantry: { label: "소총분대", mark: "보", domain: "land", hp: 10, move: 3, range: 1, attack: 4, cost: 3, supplyUse: 1 },
   armor: { label: "중형전차", mark: "전", domain: "land", hp: 14, move: 4, range: 1, attack: 6, cost: 5, supplyUse: 2 },
-  artillery: { label: "야포대", mark: "포", domain: "land", hp: 8, move: 1, towedMove: 4, range: 3, attack: 5, cost: 6, supplyUse: 2 },
+  // 장거리포는 지상 최속(기동 4)보다 멀리 쏴야 한다. 사거리 3이던 시절에는
+  // 보병(3)이 한 턴에 붙었고 전차·공병·자주포(4)는 붙고도 한 칸이 남았다.
+  // 포가 사거리 밖에서 맞기만 하는 부대였다는 뜻이다. 5로 올려 최속 기동에
+  // 한 칸을 남긴다 — 포를 잡으려면 두 턴을 걸거나 엄호를 뚫어야 한다.
+  artillery: { label: "야포대", mark: "포", domain: "land", hp: 8, move: 1, towedMove: 4, range: 5, attack: 5, cost: 6, supplyUse: 2 },
   // 값 300은 잠금장치였다. 아트도 3개국어 이름도 지형 제약도 다 들어와 있는데
   // 아무도 살 수 없어 사장돼 있었다. 야포(6)보다 비싼 대신 견인 없이 쏘고 달린다.
   // 대가는 값이 아니라 보급이다 — 소모 4/턴은 창고 없이 굴릴 수 없는 숫자이고,
   // 고지에도 못 오른다. 강하되 보급선을 요구하는 부대, 이 게임의 주제 그대로다.
   // 값 9는 과했다(체력+공격 대비 값이 전 병종 최하위였다). 야포와의 차이는
   // 이동의 자유이지 화력이 아니므로, 값은 야포에 붙이고 대가는 보급에 남긴다.
-  spArtillery: { label: "자주포", mark: "자", domain: "land", hp: 10, move: 4, range: 3, attack: 5, cost: 7, supplyUse: 4 },
+  // 자주포도 같은 장거리포라 사거리 5를 함께 받는다. 다만 기동 4를 그대로 두면
+  // 이동 후 사격의 위협 반경이 9가 되어 야포와의 구분이 사라진다. 기동 3으로
+  // 내려 야포(견인 4로 옮기고 그 턴은 못 쏨)와의 차이를 "옮긴 턴에도 쏜다"로
+  // 좁힌다. 값 7과 소모 4는 그 자유의 대가로 남는다.
+  spArtillery: { label: "자주포", mark: "자", domain: "land", hp: 10, move: 3, range: 5, attack: 5, cost: 7, supplyUse: 4 },
   // 공병대는 튼튼한 전투원이 아니라 빨리 가서 짓는 일꾼이다. 체력 12는 보병보다
   // 두텁고 이동 4는 보병보다 빨라서, 값 1 차이로 보병 자리를 통째로 빼앗고 있었다.
   // 이동 4는 남긴다 — 공사 자리까지 가는 게 이 부대의 일이다.
@@ -185,7 +202,8 @@ const defaultBalance = {
     objectiveHoldTurns,
     enemyDepotGoal,
     enemyEngineerLimit,
-    enemyForceFloor,
+    forcePerBase,
+    forcePerDepot,
     enemyRecruitSurplus,
     enemyDefenseRadius,
     deployRange,
@@ -247,7 +265,8 @@ const ruleEditorFields = [
   ["objectiveHoldTurns", "목표 장악 유지 턴", 1, 10, 1],
   ["enemyDepotGoal", "적 보급창고 최소 목표 (0=안 지음)", 0, 12, 1],
   ["enemyEngineerLimit", "적 공병대 한도", 0, 6, 1],
-  ["enemyForceFloor", "적 전투 정원 하한", 1, 24, 1],
+  ["forcePerBase", "보급 기지당 전투 정원", 0, 20, 1],
+  ["forcePerDepot", "보급창고당 전투 정원", 0, 20, 1],
   ["enemyRecruitSurplus", "적 증원 가속 보급품", 0, 200, 2],
   ["enemyDefenseRadius", "적 방어 출격 반경", 0, 10, 1],
   ["deployRange", "배치 조정 반경", 0, 10, 1],
@@ -426,10 +445,12 @@ const turnLabelEl = document.querySelector("#turnLabel");
 const phaseLabelEl = document.querySelector("#phaseLabel");
 const resourceLabelEl = document.querySelector("#resourceLabel");
 const baseLabelEl = document.querySelector("#baseLabel");
+const forceLabelEl = document.querySelector("#forceLabel");
 const hudTurnLabelEl = document.querySelector("#hudTurnLabel");
 const hudPhaseLabelEl = document.querySelector("#hudPhaseLabel");
 const hudResourceLabelEl = document.querySelector("#hudResourceLabel");
 const hudBaseLabelEl = document.querySelector("#hudBaseLabel");
+const hudForceLabelEl = document.querySelector("#hudForceLabel");
 const hudAlertLabelEl = document.querySelector("#hudAlertLabel");
 const balanceEditorEl = document.querySelector("#balanceEditor");
 const operationModalEl = document.querySelector("#newOperationModal");
@@ -1921,7 +1942,8 @@ function balanceSnapshot() {
       objectiveHoldTurns,
       enemyDepotGoal,
       enemyEngineerLimit,
-      enemyForceFloor,
+      forcePerBase,
+      forcePerDepot,
       enemyRecruitSurplus,
       enemyDefenseRadius,
       deployRange,
@@ -1966,7 +1988,8 @@ function ruleValue(key) {
     objectiveHoldTurns,
     enemyDepotGoal,
     enemyEngineerLimit,
-    enemyForceFloor,
+    forcePerBase,
+    forcePerDepot,
     enemyRecruitSurplus,
     enemyDefenseRadius,
     deployRange,
@@ -2010,7 +2033,8 @@ function setRuleValue(key, value) {
   if (key === "objectiveHoldTurns") objectiveHoldTurns = value;
   if (key === "enemyDepotGoal") enemyDepotGoal = value;
   if (key === "enemyEngineerLimit") enemyEngineerLimit = value;
-  if (key === "enemyForceFloor") enemyForceFloor = value;
+  if (key === "forcePerBase") forcePerBase = value;
+  if (key === "forcePerDepot") forcePerDepot = value;
   if (key === "enemyRecruitSurplus") enemyRecruitSurplus = value;
   if (key === "enemyDefenseRadius") enemyDefenseRadius = value;
   if (key === "deployRange") deployRange = value;
@@ -2045,6 +2069,7 @@ function updatePanel() {
   phaseLabelEl.textContent = phaseDisplayName();
   resourceLabelEl.textContent = formatNumber(state.resources);
   baseLabelEl.textContent = formatNumber(projectedIncome("player"));
+  if (forceLabelEl) forceLabelEl.textContent = forceDisplay("player");
   updateOperationHud();
   renderSelectedCard();
   renderCommanderList();
@@ -2053,10 +2078,13 @@ function updatePanel() {
   syncRecruitButtonCosts();
   syncConstructionButtonCosts();
   updateActionPanel();
-  document.querySelector("#recruitInfantry").disabled = !selectedBattalionHQ() || state.resources < unitTypes.infantry.cost || state.gameOver;
-  document.querySelector("#recruitArmor").disabled = !selectedBattalionHQ() || state.resources < unitTypes.armor.cost || state.gameOver;
-  document.querySelector("#recruitArtillery").disabled = !selectedBattalionHQ() || state.resources < unitTypes.artillery.cost || state.gameOver;
-  document.querySelector("#recruitSpArtillery").disabled = !selectedBattalionHQ() || state.resources < unitTypes.spArtillery.cost || state.gameOver;
+  // 전투 정원이 찼으면 전투 병종 버튼은 잠근다. 공병대는 정원 밖이라 계속 열려
+  // 있어야 한다 — 정원을 늘리는 유일한 수단이 창고 건설이기 때문이다.
+  const forceFull = forceIsFull("player");
+  document.querySelector("#recruitInfantry").disabled = !selectedBattalionHQ() || state.resources < unitTypes.infantry.cost || state.gameOver || forceFull;
+  document.querySelector("#recruitArmor").disabled = !selectedBattalionHQ() || state.resources < unitTypes.armor.cost || state.gameOver || forceFull;
+  document.querySelector("#recruitArtillery").disabled = !selectedBattalionHQ() || state.resources < unitTypes.artillery.cost || state.gameOver || forceFull;
+  document.querySelector("#recruitSpArtillery").disabled = !selectedBattalionHQ() || state.resources < unitTypes.spArtillery.cost || state.gameOver || forceFull;
   document.querySelector("#recruitEngineer").disabled = !selectedBattalionHQ() || state.resources < unitTypes.engineer.cost || state.gameOver;
   const hqButton = document.querySelector("#recruitBattalionHQ");
   if (hqButton) {
@@ -2095,6 +2123,7 @@ function updateOperationHud() {
   if (hudPhaseLabelEl) hudPhaseLabelEl.textContent = phaseName;
   if (hudResourceLabelEl) hudResourceLabelEl.textContent = formatNumber(state.resources);
   if (hudBaseLabelEl) hudBaseLabelEl.textContent = formatNumber(projectedIncome("player"));
+  if (hudForceLabelEl) hudForceLabelEl.textContent = forceDisplay("player");
   if (hudAlertLabelEl) hudAlertLabelEl.textContent = operationAlertText();
   if (missionNameLabelEl) missionNameLabelEl.textContent = state.mission?.name ?? "작전";
   // 브리핑은 한 번 뜨고 로그에 묻힌다. 목표는 매 턴 보이는 자리에 있어야 한다.
@@ -2651,6 +2680,17 @@ function recruit(type) {
     render();
     return;
   }
+  // 전투 정원은 적에게만 있던 제약이었다. 이제 양쪽 다 쥔 거점만큼만 세운다.
+  // 공병대와 대대사령부는 정원에서 빠진다 — 짓고 먹이는 부대까지 정원으로 세면
+  // 보급선을 늘리는 선택 자체가 벌점이 된다.
+  if (isCombatUnit({ type })) {
+    const limit = forceLimitFor("player");
+    if (combatCountFor("player") >= limit) {
+      addLog(`전투 정원 ${limit}개를 모두 채웠습니다. 거점을 더 확보하거나 공병대로 보급창고를 지어야 편제가 늘어납니다.`);
+      render();
+      return;
+    }
+  }
 
   const spawn = findHQSpawn(hq, type);
   if (!spawn) {
@@ -2914,12 +2954,32 @@ function isCombatUnit(unit) {
   return unit.type !== "engineer" && unit.type !== "battalionHQ";
 }
 
-// 적 전투 정원. 플레이어는 상한이 없는데 적만 여섯 기에 묶여 있었다. 그래서
-// 플레이어가 창고로 몸집을 불릴수록 후반은 쉬워지기만 했다. 창고 목표와 같은
-// 원칙으로 간다 — 앞지르지는 않되, 뒤처져서 혼자 작아지지도 않는다.
-function enemyForceLimit() {
-  const rivals = state.units.filter((unit) => unit.owner === "player" && isCombatUnit(unit)).length;
-  return Math.max(enemyForceFloor, rivals);
+// 전투 정원은 지도에서 나온다. 원래 있던 보급 기지가 기지당 forcePerBase,
+// 공병대가 세운 보급창고가 창고당 forcePerDepot. 양 진영에 똑같은 식이 돌아간다.
+// 이전에는 적만 상한이 있었고 플레이어는 무제한이었다. 그래서 한쪽은 여섯 기에
+// 묶여 보급품을 쌓아만 뒀고, 다른 쪽은 뽑을 수 있는 만큼 뽑았다. 이제 양쪽 다
+// "몇 개 거점을 쥐고 있느냐"가 세울 수 있는 부대 수를 정한다 — 거점 하나가
+// 생산 숫자 몇 점이 아니라 사단 하나만큼의 값어치가 된다.
+// 거점을 전부 잃은 쪽은 정원이 0이라 증원이 끊긴다. 이는 baseLossGraceTurns의
+// 붕괴 유예 창과 같은 방향이다 — 땅을 잃으면 군도 잃는다.
+function forceLimitFor(owner) {
+  const bases = state.bases.filter((base) => base.owner === owner);
+  const depots = bases.filter((base) => base.builtByEngineer).length;
+  const supplyBases = bases.length - depots;
+  return supplyBases * forcePerBase + depots * forcePerDepot;
+}
+
+function combatCountFor(owner) {
+  return state.units.filter((unit) => unit.owner === owner && isCombatUnit(unit)).length;
+}
+
+function forceIsFull(owner) {
+  return combatCountFor(owner) >= forceLimitFor(owner);
+}
+
+// 정원은 화면에 있어야 규칙이다. 안 보이면 그냥 버튼이 안 눌리는 버그로 읽힌다.
+function forceDisplay(owner) {
+  return `${combatCountFor(owner)} / ${forceLimitFor(owner)}`;
 }
 
 // 지금 무엇이 모자란가. 편성비에서 가장 크게 벌어진 병종을 부른다.
@@ -2953,7 +3013,7 @@ function maybeEnemyRecruit() {
   if (maybeEnemyRecruitEngineer()) return;
 
   const combat = state.units.filter((unit) => unit.owner === "enemy" && isCombatUnit(unit));
-  const limit = enemyForceLimit();
+  const limit = forceLimitFor("enemy");
   if (combat.length >= limit) return;
 
   const type = enemyRecruitChoice(combat, limit, flush);
@@ -3264,7 +3324,13 @@ function refitOnOwnBase(owner) {
   const refitted = state.units.filter((unit) =>
     unit.owner === owner &&
     unit.hp < unitTypes[unit.type].hp &&
-    depots.some((base) => base.x === unit.x && base.y === unit.y)
+    depots.some((base) => base.x === unit.x && base.y === unit.y) &&
+    // 붙어 있는 적이 있으면 재편성하지 못한다. repairOwnBases에는 처음부터 이 조건이
+    // 있었는데 여기에만 빠져 있었다 — 창고는 포화 아래서 못 고치면서 부대는 고쳤다는 뜻이다.
+    // 그 구멍이 규칙 하나를 통째로 망가뜨렸다. 거점 방어 +2로 피해가 6에서 4로 줄고
+    // 매 턴 1씩 차오르면 순 3인데, 수비수를 한 부대로 때리는 한 막타가 영영 안 나온다.
+    // 동시에 두 부대가 붙지 않으면 못 깨는 거점은 방어 보정이 아니라 무적이다.
+    nearestOpposingDistance(owner, unit.x, unit.y) > 1
   );
 
   refitted.forEach((unit) => {

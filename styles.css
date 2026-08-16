@@ -233,9 +233,17 @@ h1 {
   font-size: 24px;
 }
 
+/* 2열 격자에 다섯 번째 칸이 들어오면 마지막 줄이 반쪽만 차서 깨져 보인다.
+   전투 정원은 한 줄을 통째로 쓴다. */
+.status-grid div:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .operation-hud {
   display: grid;
-  grid-template-columns: repeat(4, minmax(88px, 0.75fr)) minmax(180px, 1.3fr) auto;
+  /* 스탯 다섯 칸(작전일·주도권·보급품·다음 보급·전투 정원) + 경보 + 버튼.
+     칸 수를 안 맞추면 경보와 버튼이 다음 줄로 밀려 HUD가 두 줄이 된다. */
+  grid-template-columns: repeat(5, minmax(84px, 0.7fr)) minmax(180px, 1.3fr) auto;
   gap: 8px;
   align-items: stretch;
   padding: 8px;
