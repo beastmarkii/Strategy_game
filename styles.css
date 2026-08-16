@@ -3615,3 +3615,461 @@ h1 {
     top: -4px;
   }
 }
+
+/* ============================================================
+   전투 조작실 외장 (Operations Room)
+   ------------------------------------------------------------
+   여기까지의 화면은 밝은 종이 위에 흰 상자를 늘어놓은 모양이었다 — 전쟁 게임인데
+   발표 자료처럼 보인다. 지도판을 뺀 나머지 전부를 야전 지휘소의 금속 콘솔로 바꾼다.
+   계기창에 숫자가 켜지고, 명령은 스위치를 내리는 것이고, 전황은 무전으로 들어온다.
+
+   두 가지는 일부러 건드리지 않는다.
+   1) 지도판의 색과 디자인. 종이 작전지도라는 인상이 이 게임의 중심이다.
+      오히려 둘레가 어두워질수록 가운데 지도가 조명 아래 놓인 것처럼 떠오른다.
+   2) 글자 크기. 작게 줄여서 '정교해 보이게' 만드는 수법은 쓰지 않는다.
+      크기는 그대로 두고 바탕과 색만 바꾼다.
+   ============================================================ */
+
+:root {
+  /* 도장한 강판. 야전 장비의 올리브드랩이다. */
+  --console: #2f342a;
+  --console-hi: #3f463a;
+  --console-lo: #1a1d17;
+  /* 각인된 글자. 금속을 파낸 자국이라 바탕보다 밝다. */
+  --engrave: #cbd2ba;
+  --engrave-dim: #8b9280;
+  /* 계기창에 켜지는 숫자. */
+  --readout: #f0c86a;
+  --lamp-on: #86d68f;
+  --lamp-warn: #e8a13f;
+}
+
+/* --- 콘솔 본체 -------------------------------------------------- */
+
+/* 강판 한 장. 세로 결(브러시드 메탈)과 네 모서리 리벳으로 '판때기'라는 것을 알린다. */
+.command-panel,
+.balance-editor {
+  border: 1px solid rgb(8 10 6 / 72%);
+  background:
+    radial-gradient(circle at 14px 14px, rgb(226 232 214 / 22%) 0 2.5px, rgb(0 0 0 / 34%) 3px 4.5px, transparent 5px),
+    radial-gradient(circle at calc(100% - 14px) 14px, rgb(226 232 214 / 22%) 0 2.5px, rgb(0 0 0 / 34%) 3px 4.5px, transparent 5px),
+    radial-gradient(circle at 14px calc(100% - 14px), rgb(226 232 214 / 22%) 0 2.5px, rgb(0 0 0 / 34%) 3px 4.5px, transparent 5px),
+    radial-gradient(circle at calc(100% - 14px) calc(100% - 14px), rgb(226 232 214 / 22%) 0 2.5px, rgb(0 0 0 / 34%) 3px 4.5px, transparent 5px),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 3%) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, var(--console-hi), var(--console) 22%, var(--console-lo));
+  box-shadow:
+    inset 0 1px 0 rgb(226 232 214 / 16%),
+    inset 0 -2px 6px rgb(0 0 0 / 45%),
+    0 22px 70px rgb(0 0 0 / 52%);
+  color: var(--engrave);
+}
+
+/* 판 위에 얹혀 있던 종이 모눈은 콘솔에서는 어울리지 않는다. 조명 반사만 남긴다. */
+.command-panel::before {
+  background: linear-gradient(180deg, rgb(255 255 255 / 5%), transparent 30%);
+}
+
+/* 지도판을 감싸는 틀도 같은 강판으로. 지도가 콘솔에 끼워진 것처럼 보여야 한다. */
+.battlefield-wrap {
+  border-color: rgb(8 10 6 / 72%);
+  background:
+    radial-gradient(circle at 26% 8%, rgb(240 230 190 / 8%), transparent 34%),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 2%) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #363c30, #23271e 60%, #171a13);
+  box-shadow:
+    inset 0 1px 0 rgb(226 232 214 / 14%),
+    inset 0 0 90px rgb(0 0 0 / 40%),
+    0 22px 70px rgb(0 0 0 / 52%);
+}
+
+/* --- 명패 ------------------------------------------------------- */
+
+/* 제목은 콘솔에 나사로 박은 놋쇠 명패다. 글자는 파낸 자국처럼 위쪽만 어둡게. */
+.command-panel > div:first-of-type {
+  border: 1px solid rgb(8 10 6 / 62%);
+  border-radius: 5px;
+  padding: 12px 14px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 12%), transparent 40%),
+    linear-gradient(180deg, #4a4b39, #33362a);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 18%),
+    0 2px 4px rgb(0 0 0 / 40%);
+}
+
+.eyebrow {
+  color: var(--readout);
+  opacity: 0.78;
+  letter-spacing: 1.4px;
+}
+
+.command-panel h1 {
+  color: #eee6cd;
+  text-shadow:
+    0 -1px 0 rgb(0 0 0 / 70%),
+    0 1px 0 rgb(255 255 255 / 12%);
+}
+
+/* --- 계기창 ----------------------------------------------------- */
+
+/* 상태 숫자는 판에 뚫린 창 안에서 빛난다. 안으로 파인 그림자 + 유리 반사 한 줄. */
+.status-grid div,
+.hud-stat,
+.unit-card {
+  border: 1px solid rgb(8 10 6 / 70%);
+  background:
+    linear-gradient(200deg, rgb(255 255 255 / 7%) 0 38%, transparent 38%),
+    linear-gradient(180deg, #14170f, #1b1f15);
+  box-shadow:
+    inset 0 2px 5px rgb(0 0 0 / 72%),
+    inset 0 -1px 0 rgb(226 232 214 / 10%),
+    0 1px 0 rgb(255 255 255 / 6%);
+}
+
+.status-grid span,
+.hud-stat span {
+  color: var(--engrave-dim);
+  letter-spacing: 0.6px;
+}
+
+.status-grid strong,
+.hud-stat strong {
+  color: var(--readout);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px rgb(240 200 106 / 34%);
+}
+
+/* --- 상단 계기판 ------------------------------------------------ */
+
+.operation-hud,
+.mission-bar,
+.legend {
+  border: 1px solid rgb(8 10 6 / 66%);
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 2%) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #3b4135, #262a20);
+  box-shadow:
+    inset 0 1px 0 rgb(226 232 214 / 12%),
+    0 3px 8px rgb(0 0 0 / 34%);
+  color: var(--engrave);
+}
+
+/* 경보창. 이상이 없을 때는 초록불, 뭔가 뜨면 호박색으로 바뀐다 —
+   글자를 읽기 전에 불빛만 보고도 알아채라는 뜻이다. */
+.hud-alerts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--engrave);
+  border-color: rgb(8 10 6 / 70%);
+  background:
+    linear-gradient(200deg, rgb(255 255 255 / 6%) 0 38%, transparent 38%),
+    linear-gradient(180deg, #14170f, #1b1f15);
+  box-shadow: inset 0 2px 5px rgb(0 0 0 / 70%);
+}
+
+.hud-alerts::before {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--lamp-on);
+  box-shadow:
+    0 0 8px var(--lamp-on),
+    inset 0 -2px 3px rgb(0 0 0 / 45%);
+  content: "";
+}
+
+.hud-alerts.alert {
+  color: #f6d79a;
+}
+
+.hud-alerts.alert::before {
+  background: var(--lamp-warn);
+  box-shadow:
+    0 0 10px var(--lamp-warn),
+    inset 0 -2px 3px rgb(0 0 0 / 45%);
+}
+
+.mission-bar strong {
+  color: #f0e6c8;
+}
+
+.mission-bar span,
+.legend {
+  color: var(--engrave-dim);
+}
+
+/* 범례의 색 조각은 어두운 판 위에서 테두리가 없으면 뭉개진다. */
+.chip,
+.terrain {
+  border-color: rgb(0 0 0 / 55%);
+  box-shadow: 0 0 0 1px rgb(226 232 214 / 22%);
+}
+
+/* --- 스위치(버튼) ----------------------------------------------- */
+
+/* 명령 버튼은 베이클라이트 스위치다. 위가 밝고 아래가 어두운 돌출,
+   누르면 실제로 눌린 것처럼 그림자가 뒤집힌다. */
+.command-panel button,
+.hud-actions button,
+.balance-editor button {
+  border: 1px solid rgb(8 10 6 / 76%);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 14%), transparent 46%),
+    linear-gradient(180deg, #454c3d, #2a2f24);
+  color: var(--engrave);
+  letter-spacing: 0.4px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 20%),
+    inset 0 -2px 0 rgb(0 0 0 / 40%),
+    0 3px 0 rgb(0 0 0 / 45%);
+}
+
+.command-panel button:hover:not(:disabled),
+.hud-actions button:hover:not(:disabled),
+.balance-editor button:hover:not(:disabled) {
+  border-color: rgb(134 214 143 / 46%);
+  color: #eef3e2;
+  filter: none;
+}
+
+.command-panel button:active:not(:disabled),
+.hud-actions button:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 2px 5px rgb(0 0 0 / 60%),
+    0 1px 0 rgb(0 0 0 / 35%);
+}
+
+/* 비용 표시는 스위치 옆에 붙은 각인 숫자다. */
+.actions button span {
+  background: rgb(0 0 0 / 46%);
+  color: var(--readout);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 60%);
+}
+
+/* 턴 종료처럼 '실행'에 해당하는 것은 불이 들어온 스위치. */
+.command-panel .actions .primary {
+  border-color: rgb(8 10 6 / 76%);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 16%), transparent 44%),
+    linear-gradient(180deg, #3f7a4a, #24512f);
+  color: #f2f8ea;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 45%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 24%),
+    inset 0 -2px 0 rgb(0 0 0 / 38%),
+    0 3px 0 rgb(0 0 0 / 45%),
+    0 0 14px rgb(94 168 110 / 30%);
+}
+
+.command-panel .panel-toggle {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 14%), transparent 46%),
+    linear-gradient(180deg, #4a5140, #2c3126);
+  color: var(--engrave);
+}
+
+/* --- 구획 ------------------------------------------------------- */
+
+/* 증원·해군·공군 같은 묶음은 콘솔의 구획이다. 제목줄은 각인 라벨,
+   앞의 점은 그 구획이 살아 있는지 알려주는 표시등이다. */
+.command-menu {
+  border: 1px solid rgb(8 10 6 / 62%);
+  background: rgb(0 0 0 / 22%);
+}
+
+.command-menu summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgb(0 0 0 / 55%);
+  background: linear-gradient(180deg, #3d4436, #292e22);
+  color: var(--engrave);
+  letter-spacing: 1px;
+}
+
+.command-menu summary::before {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lamp-on);
+  box-shadow: 0 0 6px rgb(134 214 143 / 70%);
+  content: "";
+}
+
+/* 아직 못 쓰는 구획은 불이 꺼져 있다. */
+.command-menu:not(:has(button:not(:disabled))) summary::before {
+  background: #4b5344;
+  box-shadow: none;
+}
+
+.command-menu summary::after {
+  margin-left: auto;
+  float: none;
+  color: var(--engrave-dim);
+}
+
+.action-hint {
+  border: 1px solid rgb(0 0 0 / 45%);
+  background: rgb(0 0 0 / 26%);
+  color: var(--engrave-dim);
+}
+
+/* --- 부대 카드 -------------------------------------------------- */
+
+.unit-card h2,
+.commander-list h2 {
+  color: #f0e6c8;
+}
+
+.unit-card,
+.unit-stats,
+.commander-list p,
+.commander-list strong {
+  color: var(--engrave);
+}
+
+.muted,
+.commander-list span {
+  color: var(--engrave-dim);
+}
+
+.commander-list {
+  border-top: 1px solid rgb(0 0 0 / 50%);
+  box-shadow: inset 0 1px 0 rgb(226 232 214 / 10%);
+}
+
+.unit-card-image.icon-only {
+  background:
+    linear-gradient(180deg, rgb(226 232 214 / 16%), transparent 60%),
+    rgb(0 0 0 / 34%);
+}
+
+/* --- 무전 수신 기록 --------------------------------------------- */
+
+/* 전황 기록은 무전기에서 찍혀 나오는 종이다. 어두운 창 안에 옅은 호박빛 글씨,
+   맨 위에는 무엇을 보고 있는지 붙여 둔다 — 제목 없는 글 뭉치는 안 읽힌다.
+   글자 크기는 그대로 14px다. 좁아 보인다고 줄이면 읽으라고 만든 물건이 아니게 된다. */
+.log {
+  border: 1px solid rgb(8 10 6 / 70%);
+  border-radius: 6px;
+  padding: 0 12px 12px;
+  background:
+    repeating-linear-gradient(180deg, rgb(255 255 255 / 3%) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #12150e, #191d13);
+  box-shadow:
+    inset 0 2px 6px rgb(0 0 0 / 70%),
+    inset 0 -1px 0 rgb(226 232 214 / 8%);
+  color: #d8e0c6;
+  font-family: ui-monospace, Consolas, "Malgun Gothic", monospace;
+  line-height: 1.55;
+}
+
+.log::before {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: block;
+  margin: 0 -12px 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgb(0 0 0 / 60%);
+  background: linear-gradient(180deg, #333a2c, #21261b);
+  color: var(--readout);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.6px;
+  content: "무전 수신 기록";
+}
+
+/* --- 수치 에디터 ------------------------------------------------ */
+
+.balance-editor summary,
+.editor-section h3,
+.editor-row label,
+.editor-row .editor-name {
+  color: var(--engrave);
+}
+
+.editor-head {
+  color: var(--engrave-dim);
+}
+
+.editor-row input {
+  border-color: rgb(0 0 0 / 60%);
+  background: rgb(10 12 8 / 72%);
+  color: var(--readout);
+}
+
+/* --- 작전 설정 창 ------------------------------------------------ */
+
+/* 시작 전에 뜨는 창만 밝은 종이로 남으면 다른 게임처럼 보인다. 같은 콘솔로 맞춘다. */
+.operation-dialog {
+  border-color: rgb(8 10 6 / 72%);
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 2%) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #3a4034, #23271e 58%, #171a13);
+  box-shadow:
+    inset 0 1px 0 rgb(226 232 214 / 14%),
+    0 24px 60px rgb(0 0 0 / 60%);
+  color: var(--engrave);
+}
+
+.operation-dialog h2,
+.operation-dialog h3 {
+  color: #f0e6c8;
+}
+
+.operation-dialog button {
+  border: 1px solid rgb(8 10 6 / 76%);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 14%), transparent 46%),
+    linear-gradient(180deg, #454c3d, #2a2f24);
+  color: var(--engrave);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 20%),
+    0 3px 0 rgb(0 0 0 / 45%);
+}
+
+.operation-dialog .primary {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 16%), transparent 44%),
+    linear-gradient(180deg, #3f7a4a, #24512f);
+  color: #f2f8ea;
+}
+
+.side-choice label,
+.commander-choice,
+.scenario-choice {
+  border-color: rgb(0 0 0 / 55%);
+  background: rgb(0 0 0 / 26%);
+  color: var(--engrave);
+}
+
+.commander-choice:has(input:checked),
+.side-choice label:has(input:checked),
+.scenario-choice:has(input:checked) {
+  border-color: rgb(134 214 143 / 60%);
+  background: rgb(58 96 62 / 40%);
+  box-shadow: inset 0 0 0 1px rgb(134 214 143 / 28%);
+}
+
+.commander-choice-body strong,
+.scenario-choice-body strong {
+  color: #f0e6c8;
+}
+
+.commander-choice-body span,
+.scenario-choice-body span {
+  color: var(--engrave-dim);
+}
+
+.scenario-choice-meta {
+  color: var(--lamp-on) !important;
+}
+
+.scenario-choice-goal {
+  color: var(--readout) !important;
+}
