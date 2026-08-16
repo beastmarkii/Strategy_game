@@ -1242,6 +1242,75 @@ h1 {
   box-shadow: inset 0 0 0 1px rgb(214 220 230 / 52%);
 }
 
+/* ── 전장 안개 ──────────────────────────────────────────────────────────────
+   아무도 보고 있지 않은 칸. 지형은 지도에 그려진 것이니 그대로 두고, 그 위에
+   푸른 회색 막을 한 겹 씌워 "지금 눈이 닿지 않는 곳"만 구분한다.
+   칸을 검게 덮지 않는 것은 의도다 — 강과 고지가 안 보이면 그건 안개가 아니라
+   지도를 빼앗는 것이고, 작전 계획 자체가 서질 않는다.
+
+   안개막은 가상 요소가 아니라 진짜 자식 요소로 깐다. 철도(.tile.rail::after)와
+   초토화 효과가 이미 ::after를 쓰고 있어서, 가상 요소로 그리면 안개 낀 철도 칸에서
+   둘 중 하나가 통째로 사라진다 — 보급권 표시(.supply-wash)를 자식으로 뺀 것과 같은
+   이유다. */
+.fog-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background: rgb(16 24 38 / 42%);
+  backdrop-filter: saturate(35%) brightness(85%);
+}
+
+/* 지도 모드는 위성사진 위라 같은 농도로는 티가 안 난다. 조금 더 짙게 깐다. */
+.battlefield.map-enabled .fog-veil {
+  background: rgb(12 18 30 / 52%);
+}
+
+/* 이동·공격 표시가 걸린 칸은 안개를 걷는다. 지금 명령을 고르는 중인 칸이
+   흐려 보이면 선택 자체가 어려워진다. */
+.tile.reachable .fog-veil,
+.tile.attackable .fog-veil,
+.tile.raidable .fog-veil,
+.tile.selected .fog-veil {
+  background: rgb(16 24 38 / 14%);
+  backdrop-filter: none;
+}
+
+/* 마지막으로 본 자리. "지금 거기 있다"가 아니라 "거기서 봤다"는 뜻이라
+   실루엣만 남기고 색을 뺀다. 실선 대신 점선 테두리를 쓰는 이유도 같다 —
+   확실한 정보와 기억은 눈으로 구분돼야 한다. */
+.unit.ghost {
+  opacity: 0.42;
+  filter: grayscale(85%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.unit.ghost .unit-icon {
+  animation: contact-fade 2.6s ease-in-out infinite;
+}
+
+.tile.contact-memory::before {
+  outline: 2px dashed rgb(226 232 240 / 45%);
+  outline-offset: -5px;
+}
+
+@keyframes contact-fade {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unit.ghost .unit-icon {
+    animation: none;
+  }
+}
+
 .tile.reachable {
   z-index: 4;
   outline: 0;

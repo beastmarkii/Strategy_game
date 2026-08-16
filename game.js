@@ -98,6 +98,20 @@ let hqTrailDistance = 2;
 // 기본 3인 이유는 이동 2 / 사거리 1짜리 보병이 다음 턴에 닿는 거리가 정확히 3이라서다.
 // 0으로 두면 예전처럼 끝까지 자리만 지키다 잡힌다.
 let hqPanicRange = 3;
+// 전장 안개. 1이면 부대는 누가 봐줘야 보이고, 0이면 예전처럼 지도 전체가 열린다.
+// 규칙 전체를 한 스위치로 끌 수 있게 둔 것은 안개가 이 게임의 거의 모든 판단
+// (전투·이동·적 참모부)에 얹히는 규칙이라, 밸런스를 볼 때 "안개 때문인가 아닌가"를
+// 한 번에 갈라 볼 수 있어야 하기 때문이다.
+let fogOfWar = 1;
+// 고지에 서면 더해지는 시야(칸). 고지는 여태 방어와 사선 차단만 주는 땅이었다.
+// 여기에 관측이 붙으면 능선 하나를 잡는 일이 화력이 아니라 정보의 문제가 된다.
+let hillSightBonus = 2;
+// 보급 거점이 스스로 보는 거리(칸). 후방 창고가 제 앞마당도 못 보면 침투 한 기에
+// 소리 없이 뺏기고, 플레이어는 생산이 멈춘 뒤에야 알게 된다.
+let baseSightRange = 2;
+// 마지막으로 본 적의 자리가 기억에 남는 턴 수. 0이면 시야를 벗어나는 순간 잊는다.
+// 이 값이 곧 "안개"의 두께다 — 적은 사라지는 것이 아니라 흐려져야 한다.
+let contactMemoryTurns = 3;
 // 전방 방어 거리(칸). 수비의 자리는 지킬 칸 위가 아니라 그 앞이다. 지켜야 할 칸을
 // 밟고 서 있으면 적이 도달한 시점에 그 칸은 이미 전장이 되어 있다. 위협 방향으로
 // 이만큼 나가 맞이한다. 0으로 두면 목표 위에 그대로 눌러앉는다.
@@ -160,13 +174,13 @@ function applyScenario(scenario) {
 }
 
 const unitTypes = {
-  infantry: { label: "소총분대", mark: "보", domain: "land", hp: 10, move: 3, range: 1, attack: 4, cost: 3, supplyUse: 1 },
-  armor: { label: "중형전차", mark: "전", domain: "land", hp: 14, move: 4, range: 1, attack: 6, cost: 5, supplyUse: 2 },
+  infantry: { label: "소총분대", mark: "보", domain: "land", hp: 10, move: 3, range: 1, attack: 4, cost: 3, supplyUse: 1, sight: 5 },
+  armor: { label: "중형전차", mark: "전", domain: "land", hp: 14, move: 4, range: 1, attack: 6, cost: 5, supplyUse: 2, sight: 6 },
   // 장거리포는 지상 최속(기동 4)보다 멀리 쏴야 한다. 사거리 3이던 시절에는
   // 보병(3)이 한 턴에 붙었고 전차·공병·자주포(4)는 붙고도 한 칸이 남았다.
   // 포가 사거리 밖에서 맞기만 하는 부대였다는 뜻이다. 5로 올려 최속 기동에
   // 한 칸을 남긴다 — 포를 잡으려면 두 턴을 걸거나 엄호를 뚫어야 한다.
-  artillery: { label: "야포대", mark: "포", domain: "land", hp: 8, move: 1, towedMove: 4, range: 5, attack: 5, cost: 6, supplyUse: 2 },
+  artillery: { label: "야포대", mark: "포", domain: "land", hp: 8, move: 1, towedMove: 4, range: 5, attack: 5, cost: 6, supplyUse: 2, sight: 3 },
   // 값 300은 잠금장치였다. 아트도 3개국어 이름도 지형 제약도 다 들어와 있는데
   // 아무도 살 수 없어 사장돼 있었다. 야포(6)보다 비싼 대신 견인 없이 쏘고 달린다.
   // 대가는 값이 아니라 보급이다 — 소모 4/턴은 창고 없이 굴릴 수 없는 숫자이고,
@@ -177,16 +191,16 @@ const unitTypes = {
   // 이동 후 사격의 위협 반경이 9가 되어 야포와의 구분이 사라진다. 기동 3으로
   // 내려 야포(견인 4로 옮기고 그 턴은 못 쏨)와의 차이를 "옮긴 턴에도 쏜다"로
   // 좁힌다. 값 7과 소모 4는 그 자유의 대가로 남는다.
-  spArtillery: { label: "자주포", mark: "자", domain: "land", hp: 10, move: 3, range: 5, attack: 5, cost: 7, supplyUse: 4 },
+  spArtillery: { label: "자주포", mark: "자", domain: "land", hp: 10, move: 3, range: 5, attack: 5, cost: 7, supplyUse: 4, sight: 5 },
   // 공병대는 튼튼한 전투원이 아니라 빨리 가서 짓는 일꾼이다. 체력 12는 보병보다
   // 두텁고 이동 4는 보병보다 빨라서, 값 1 차이로 보병 자리를 통째로 빼앗고 있었다.
   // 이동 4는 남긴다 — 공사 자리까지 가는 게 이 부대의 일이다.
-  engineer: { label: "공병대", mark: "공", domain: "land", hp: 10, move: 4, range: 1, attack: 2, cost: 4, supplyUse: 1 },
+  engineer: { label: "공병대", mark: "공", domain: "land", hp: 10, move: 4, range: 1, attack: 2, cost: 4, supplyUse: 1, sight: 6 },
   // 방어 3은 사령부가 스스로 버티라고 준 값이다. 이동 1에 공격 1이라 도망도 반격도
   // 못 하는데, 지금까지는 개활지에서 전차 두 대면 정리됐다. 사령부가 죽으면 보급이
   // 통째로 끊기므로 그 한 번의 돌파가 전선 전체를 무너뜨렸다. 이제 보병은 세 번,
   // 전차는 두 번 붙어야 한다 — 잡을 수는 있되, 지나가는 길에 덤으로 잡히지는 않는다.
-  battalionHQ: { label: "대대 사령부", mark: "지", domain: "land", hp: 9, move: 1, range: 1, attack: 1, cost: 6, supplyUse: 1, defense: 3, moraleAura: 10, commandRange: 2, supplyRange: hqSupplyRange, recoveryRange: hqRecoveryRange },
+  battalionHQ: { label: "대대 사령부", mark: "지", domain: "land", hp: 9, move: 1, range: 1, attack: 1, cost: 6, supplyUse: 1, defense: 3, moraleAura: 10, commandRange: 2, supplyRange: hqSupplyRange, recoveryRange: hqRecoveryRange, sight: 3 },
 };
 
 const factionUnitProfiles = {
@@ -245,6 +259,10 @@ const defaultBalance = {
     enemyScreenRange,
     hqTrailDistance,
     hqPanicRange,
+    fogOfWar,
+    hillSightBonus,
+    baseSightRange,
+    contactMemoryTurns,
     enemyForwardDefense,
     // 이 넷은 balanceSnapshot과 ruleEditorFields에는 있는데 여기에만 빠져 있었다.
     // 에디터에서 만질 수는 있지만 "초기값 복원"이 되돌려 주지 않는다는 뜻이다.
@@ -274,6 +292,9 @@ const unitEditorFields = [
   ["hp", "체력", 1, 99, 1],
   ["move", "기동", 0, 12, 1],
   ["range", "사거리", 1, 8, 1],
+  // 기동+2로 채워 두었을 뿐 기동에 묶여 있지는 않다. 여기서 보병만 올리면
+  // 그날로 보병이 정찰병이 되고, 전차를 내리면 전차는 눈이 좁은 돌격 병기가 된다.
+  ["sight", "시야", 0, 12, 1],
   ["attack", "공격", 0, 30, 1],
   // 지형 방어 보정과 같은 단위로 더해진다. 값이 없는 병종에는 아예 칸이 안 생긴다.
   ["defense", "방어", 0, 20, 1],
@@ -320,6 +341,10 @@ const ruleEditorFields = [
   ["enemyScreenRange", "적 보병 엄호 반경", 0, 8, 1],
   ["hqTrailDistance", "사령부 추종 거리", 0, 8, 1],
   ["hqPanicRange", "사령부 위기 감지 거리", 0, 8, 1],
+  ["fogOfWar", "전장 안개 (1=켬)", 0, 1, 1],
+  ["hillSightBonus", "고지 시야 보너스", 0, 6, 1],
+  ["baseSightRange", "거점 감시 거리", 0, 8, 1],
+  ["contactMemoryTurns", "적 목격 기억 턴", 0, 10, 1],
   ["enemyForwardDefense", "적 전방 방어 거리", 0, 6, 1],
   ["baseLossGraceTurns", "거점 상실 패배 유예 턴 (0=즉시)", 0, 20, 1],
   ["baseDefenseBonus", "거점 안 부대 방어 버프", 0, 8, 1],
@@ -977,6 +1002,9 @@ function startGame(config = {}) {
     improvements: [],
     constructions: [],
     units: deployment.units,
+    // 마지막으로 목격한 적의 자리. 진영마다 따로 쥔다 — 이게 곧 "각자 아는 만큼만
+    // 안다"는 뜻이고, 안개가 양쪽에 공평하게 걸린다는 뜻이다.
+    contacts: { player: {}, enemy: {} },
     mission: {
       id: scenario.id,
       name: scenario.name,
@@ -1217,6 +1245,17 @@ function render() {
   // 클릭한 사령부/거점의 보급권. 지도 한 장에 한 번만 계산한다 — 칸마다 BFS를 다시 돌리면
   // 320칸을 그리는 동안 320번을 돈다.
   const coverage = supplyCoverageFocus();
+  // 그리기 직전에 눈에 든 것을 기록한다. 부대가 움직일 때마다 render가 다시 도니
+  // 시야가 열리는 그 순간에 기억도 갱신된다.
+  recordContacts("player");
+  // 이번 화면의 아군 시야. 칸마다 canSee를 부르면 같은 계산을 320번 하게 되므로
+  // 한 번 받아서 들고 다닌다.
+  const seen = fogOfWar ? visionField("player") : null;
+  // 시야를 벗어난 적의 마지막 자리. 칸별로 찾을 수 있게 자리 열쇠로 묶어 둔다.
+  const ghosts = new Map();
+  staleContacts("player").forEach((memo) => {
+    if (!ghosts.has(posKey(memo.x, memo.y))) ghosts.set(posKey(memo.x, memo.y), memo);
+  });
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -1269,13 +1308,40 @@ function render() {
 
       renderImprovements(cell, x, y);
 
-      const construction = getConstructionAt(x, y);
-      if (construction) renderConstruction(cell, construction);
+      // 안개는 땅이 아니라 사람을 가린다. 지형·거점·목표는 지도에 그려진 것이니 늘 보이고,
+      // 가려지는 것은 그 위에 선 적과 적이 파는 공사뿐이다. 안 보이는 칸은 색을 죽여
+      // "여긴 지금 아무도 안 보고 있다"를 한눈에 알린다.
+      const lit = !fogOfWar || seen.has(posKey(x, y));
+      if (!lit) {
+        cell.classList.add("fogged");
+        // 안개막은 가상 요소가 아니라 자식 한 장으로 깐다 — 철도·초토화 표시가
+        // 이미 ::after를 쓰고 있어서, 가상 요소로 그리면 둘 중 하나가 사라진다.
+        const veil = document.createElement("span");
+        veil.className = "fog-veil";
+        veil.setAttribute("aria-hidden", "true");
+        cell.appendChild(veil);
+      }
 
-      const units = getUnitsAt(x, y);
+      const construction = getConstructionAt(x, y);
+      if (construction && (lit || construction.owner === "player")) renderConstruction(cell, construction);
+
+      const units = getUnitsAt(x, y).filter((unit) => unitVisibleTo(unit, "player"));
       if (units.length) {
         cell.classList.add("occupied");
         renderUnitStack(cell, units);
+      } else if (fogOfWar && ghosts.has(posKey(x, y))) {
+        // 마지막으로 본 자리. 지금 거기 있다는 뜻이 아니라 "거기서 봤다"는 뜻이다 —
+        // 그래서 실루엣만 흐리게 남긴다. 이 표시가 없으면 적은 사라지는 게 아니라
+        // 존재한 적도 없는 것이 되어, 플레이어가 세울 수 있는 계획이 없어진다.
+        cell.classList.add("contact-memory");
+        const memo = ghosts.get(posKey(x, y));
+        const ghost = document.createElement("div");
+        ghost.className = `unit ghost ${memo.owner} ${sideKeyForUnit(memo.owner)} ${memo.type}`;
+        const ghostIcon = document.createElement("span");
+        ghostIcon.className = `unit-icon ${memo.type} ${memo.owner} ${sideKeyForUnit(memo.owner)}`;
+        ghost.appendChild(ghostIcon);
+        ghost.title = `${sideUnitLabel(memo.owner, memo.type)} 목격 지점 (${state.turn - memo.turn}일 전)`;
+        cell.appendChild(ghost);
       }
 
       boardEl.appendChild(cell);
@@ -2004,7 +2070,19 @@ function balanceSnapshot() {
       enemyScreenRange,
       hqTrailDistance,
       hqPanicRange,
+      fogOfWar,
+      hillSightBonus,
+      baseSightRange,
+      contactMemoryTurns,
+    fogOfWar,
+    hillSightBonus,
+    baseSightRange,
+    contactMemoryTurns,
     hqPanicRange,
+    fogOfWar,
+    hillSightBonus,
+    baseSightRange,
+    contactMemoryTurns,
       enemyForwardDefense,
       baseLossGraceTurns,
       baseDefenseBonus,
@@ -2056,6 +2134,10 @@ function ruleValue(key) {
     enemyScreenRange,
     hqTrailDistance,
     hqPanicRange,
+    fogOfWar,
+    hillSightBonus,
+    baseSightRange,
+    contactMemoryTurns,
     enemyForwardDefense,
     baseLossGraceTurns,
     baseDefenseBonus,
@@ -2106,6 +2188,16 @@ function setRuleValue(key, value) {
   if (key === "enemyScreenRange") enemyScreenRange = value;
   if (key === "hqTrailDistance") hqTrailDistance = value;
   if (key === "hqPanicRange") hqPanicRange = value;
+  // 시야에 얽힌 값이 바뀌면 캐시가 옛 시야를 들고 있게 된다. 열쇠는 배치만 보므로
+  // 부대가 그대로면 새 값이 반영되지 않는다 — 에디터에서 슬라이더를 밀었는데
+  // 지도가 그대로인 것이 이 한 줄이 없을 때의 증상이다.
+  if (key === "fogOfWar") fogOfWar = value;
+  if (key === "hillSightBonus") hillSightBonus = value;
+  if (key === "baseSightRange") baseSightRange = value;
+  if (key === "contactMemoryTurns") contactMemoryTurns = value;
+  if (["fogOfWar", "hillSightBonus", "baseSightRange", "contactMemoryTurns"].includes(key)) {
+    visionCache = { key: "", byOwner: new Map() };
+  }
   if (key === "enemyForwardDefense") enemyForwardDefense = value;
   if (key === "baseLossGraceTurns") baseLossGraceTurns = value;
   if (key === "baseDefenseBonus") baseDefenseBonus = value;
@@ -2622,16 +2714,23 @@ function handleTileClick(x, y) {
 
   if (canMoveTo(selected, x, y)) {
     if (!confirmConstructionMove(selected)) return;
-    recordUnitMove(selected, x, y);
-    selected.x = x;
-    selected.y = y;
+    // 가는 길에 적을 발견하면 거기서 멈춘다. 명령한 칸까지 그냥 밀어 넣으면
+    // 매복을 밟고도 지나쳐 서 있게 된다.
+    const halt = ambushHalt(selected, x, y);
+    const stopAt = halt && !halt.atGoal ? halt : { x, y };
+    recordUnitMove(selected, stopAt.x, stopAt.y);
+    selected.x = stopAt.x;
+    selected.y = stopAt.y;
     selected.moved = true;
     selected.acted = selected.type === "artillery";
     captureBase(selected);
     state.selectedId = selected.acted ? null : selected.id;
     state.inspectedId = null;
     state.inspectedTile = null;
-    addLog(selected.acted ? `${unitLabel(selected)}이 (${x}, ${y}) 좌표로 기동했습니다.` : `${unitLabel(selected)}이 (${x}, ${y}) 좌표로 기동했습니다. 아직 공격할 수 있습니다.`);
+    if (halt) {
+      addLog(`${unitLabel(selected)}이 (${stopAt.x}, ${stopAt.y})에서 ${sideUnitLabel(halt.foe)}를 발견했습니다.`);
+    }
+    addLog(selected.acted ? `${unitLabel(selected)}이 (${stopAt.x}, ${stopAt.y}) 좌표로 기동했습니다.` : `${unitLabel(selected)}이 (${stopAt.x}, ${stopAt.y}) 좌표로 기동했습니다. 아직 공격할 수 있습니다.`);
     checkVictory();
     render();
     return;
@@ -2885,6 +2984,9 @@ function endPlayerTurn() {
     if (unit.owner === "enemy") {
       unit.acted = false;
       unit.moved = false;
+      // 총구 화염은 한 턴만 간다. 쏜 자리는 그 턴 동안만 상대에게 드러나고,
+      // 다음 턴이 오면 다시 안개 속으로 들어간다 — 이게 "쏘고 옮긴다"를 성립시킨다.
+      unit.firedFrom = null;
     }
   });
   replenishNearBattalionHQ("enemy");
@@ -2904,6 +3006,11 @@ function enemyTurn() {
   // 지난 턴에 다리가 놓였거나 철도가 깔렸으면 어제 그린 길은 이미 틀렸다.
   clearRouteFields();
 
+  // 계획보다 먼저 정찰이다. 참모부가 세우는 계획은 "지금 보이는 것 + 마지막으로 본 것"
+  // 위에서만 세워져야 한다. 이 줄이 계획 뒤로 가면 적은 이번 턴에 본 것을 이번 턴 계획에
+  // 반영하지 못하고 늘 한 턴 늦게 움직인다.
+  recordContacts("enemy");
+
   // 부대가 움직이기 전에 참모부가 먼저 계획을 세운다. 부대마다 따로 판단하면
   // 같은 답이 나와 전군이 한 덩어리로 몰린다.
   buildEnemyPlan();
@@ -2922,20 +3029,15 @@ function enemyTurn() {
 
     if (unit.type === "battalionHQ") {
       enemyHQTurn(unit);
-      captureBase(unit);
-      checkVictory();
-      return;
-    }
-
-    if (unit.type === "engineer") {
+    } else if (unit.type === "engineer") {
       enemyEngineerTurn(unit);
-      captureBase(unit);
-      checkVictory();
-      return;
+    } else {
+      enemyFieldTurn(unit);
     }
-
-    enemyFieldTurn(unit);
     captureBase(unit);
+    // 한 부대가 전진하면 그 부대의 눈도 같이 전진한다. 매 부대 뒤에 다시 적어 두어야
+    // 선두가 발견한 것을 후속 부대가 같은 턴에 쓸 수 있다 — 척후가 앞서 나가는 이유다.
+    recordContacts("enemy");
     checkVictory();
   });
 
@@ -2967,6 +3069,7 @@ function enemyTurn() {
     if (unit.owner === "player") {
       unit.acted = false;
       unit.moved = false;
+      unit.firedFrom = null;
     }
   });
   replenishNearBattalionHQ("player");
@@ -3175,6 +3278,11 @@ function attack(attacker, defender) {
     return;
   }
 
+  // 쏘면 드러난다. 안개 속에서 포문을 열면 총구 화염과 포성이 자리를 알려주니,
+  // 매복은 한 번뿐이고 그 다음은 자리를 옮겨야 하는 문제가 된다. 자리를 따로 적어 두는
+  // 이유는 쏘고 나서 부대가 죽거나 밀려나도 "거기서 쐈다"는 사실은 남아야 하기 때문이다.
+  attacker.firedFrom = { x: attacker.x, y: attacker.y };
+
   const damage = combatDamage(attacker, defender);
   playUnitSound(attacker, "attack");
   defender.hp -= damage;
@@ -3252,6 +3360,8 @@ function resolveCounterattack(attacker, defender) {
     return;
   }
 
+  // 반격도 사격이다. 되받아친 쪽 역시 자기 자리를 알린다.
+  defender.firedFrom = { x: defender.x, y: defender.y };
   const damage = Math.max(1, Math.round(combatDamage(defender, attacker) * counterattackFactor));
   attacker.hp -= damage;
   attacker.hitSinceRefit = true;
@@ -4241,6 +4351,12 @@ function canAttack(attacker, defender) {
   if (attacker.type === "artillery" && attacker.moved) return false;
   if (isTowedArtillery(attacker)) return false;
   if (supplyStatus(attacker).level === "isolated" && unitTypes[attacker.type].range > 1) return false;
+  // 안 보이는 적은 못 친다. 그리고 멀리 쏘는 부대는 자기 눈이 아니라 아군의 눈이 필요하다 —
+  // 사거리 5짜리 야포의 시야는 3이라, 관측 없이는 자기 사거리의 절반밖에 못 쏜다.
+  // 이 두 줄이 "포병 앞에는 정찰이 선다"를 규칙으로 만든다. 붙어서 치는 백병(사거리 1)은
+  // 눈앞의 일이니 관측을 따지지 않는다.
+  if (!unitVisibleTo(defender, attacker.owner)) return false;
+  if (!hasObservation(attacker, defender)) return false;
   return distance(attacker, defender) <= unitTypes[attacker.type].range && !ridgeBlocksFire(attacker, defender);
 }
 
@@ -4287,6 +4403,176 @@ function pathsBetween(start, end) {
   }
 
   return [horizontalFirst, verticalFirst];
+}
+
+// ── 전장 안개 ──────────────────────────────────────────────────────────────
+// 여태 이 게임은 양쪽이 패를 깔아놓고 두는 장기였다. 첫 턴부터 적 배치가 전부
+// 보이니 매복도 기만도 성립하지 않았고, 정찰이라는 개념 자체가 없었다.
+// 안개의 규칙은 하나다: 지형은 늘 보이고, 부대는 누가 봐줘야 보인다.
+// 지형까지 가리지 않는 것은 지도가 곧 작전 브리핑이기 때문이다 — 어느 쪽에
+// 강이 있는지 모르는 것은 전략이 아니라 불편이다.
+
+// 능선이 시야를 막는가. 사격 차단(ridgeBlocksFire)과 일부러 규칙을 다르게 둔다.
+// 사격은 고지 위의 표적 자체를 못 맞히지만, 시야는 반대다 — 능선 위에 선 것은
+// 오히려 하늘을 배경으로 드러난다. 가리는 것은 사이에 낀 산등성이뿐이고,
+// 관측자가 그 산등성이만큼 높이 서 있으면 넘겨다본다.
+function ridgeBlocksSight(from, to) {
+  if (distance(from, to) <= 1) return false;
+  if (getTerrainKey(from.x, from.y) === "H") return false;
+  return pathsBetween(from, to).every((path) =>
+    path.some(
+      (point) =>
+        (point.x !== to.x || point.y !== to.y) &&
+        (point.x !== from.x || point.y !== from.y) &&
+        getTerrainKey(point.x, point.y) === "H",
+    ),
+  );
+}
+
+// 이 부대가 지금 몇 칸을 보는가. 기본값은 기동+2로 채워 두었지만 병종마다
+// 따로 쥔 값이다 — 시야를 기동에 묶어 버리면 "빠른 부대 = 잘 보는 부대"가 되어
+// 정찰이 독립된 임무로 서질 못한다. 에디터에서 보병만 올리면 그날로 정찰병이 된다.
+function sightRangeOf(unit) {
+  return sightRangeAt(unit, unit.x, unit.y);
+}
+
+// 저 칸에 서면 몇 칸을 보는가. 서 있는 자리를 따로 받는 것은 "가 보면 뭐가 보이는가"를
+// 미리 재야 하기 때문이다 — 행군 중 접적 정지(ambushHalt)가 이 계산을 쓴다.
+function sightRangeAt(unit, x, y) {
+  const spec = unitTypes[unit.type];
+  const base = spec.sight ?? spec.move + 2;
+  // 고지에 서면 멀리 본다. 고지 쟁탈이 화력 싸움에서 정보 싸움으로 넓어지는 자리다.
+  return base + (getTerrainKey(x, y) === "H" ? hillSightBonus : 0);
+}
+
+// 행군 중 접적 정지. 안개가 있는데 이동만 예전처럼 순간이동이면, 부대는 적의 코앞을
+// 스쳐 지나 목적지에 서 있고 플레이어는 지나온 길에 뭐가 있었는지 영영 모른다.
+// 실제 부대는 척후가 적을 보면 멈춘다 — 그 자리에서 대형을 풀고 다음 판단을 한다.
+// 이 규칙이 있어야 "한 칸씩 조심해서 나간다"와 "일단 끝까지 달린다"가 서로 다른
+// 선택이 되고, 매복이 매복으로 작동한다.
+// 목적지에서 처음 보이는 경우는 멈출 것이 없으니(이미 다 왔다) 알림만 남긴다.
+function ambushHalt(unit, targetX, targetY) {
+  if (!fogOfWar) return null;
+  const path = movementPath(unit, targetX, targetY);
+  // 출발 전에 이미 알고 있던 적. 이 명단에 없는 것이 나타나야 "새로 발견"이다.
+  const known = new Set(visibleFoes(unit.owner).map((foe) => foe.id));
+  for (let i = 1; i < path.length; i += 1) {
+    const spot = path[i];
+    const range = sightRangeAt(unit, spot.x, spot.y);
+    const found = state.units.find(
+      (foe) =>
+        foe.owner !== unit.owner &&
+        !known.has(foe.id) &&
+        distance(spot, foe) <= range &&
+        !ridgeBlocksSight(spot, foe),
+    );
+    if (found) return { x: spot.x, y: spot.y, foe: found, atGoal: i === path.length - 1 };
+  }
+  return null;
+}
+
+// 진영이 지금 보고 있는 칸 전부. 시야는 부대마다 재지만 아는 것은 진영이 공유한다 —
+// 정찰병이 본 것을 후방의 야포가 모른다면 관측이라는 말 자체가 성립하지 않는다.
+// 한 턴에 여러 번 불리므로(칸 320개를 그리는 동안 특히) 배치가 그대로면 캐시를 쓴다.
+let visionCache = { key: "", byOwner: new Map() };
+
+function visionKey() {
+  return `${state.turn}:${state.units.map((unit) => `${unit.id}@${unit.x},${unit.y}`).join("|")}:${state.bases
+    .map((base) => `${base.owner}@${base.x},${base.y}`)
+    .join("|")}`;
+}
+
+function visionField(owner) {
+  const key = visionKey();
+  if (visionCache.key !== key) visionCache = { key, byOwner: new Map() };
+  const cached = visionCache.byOwner.get(owner);
+  if (cached) return cached;
+
+  const seen = new Set();
+  const eyes = [
+    ...state.units.filter((unit) => unit.owner === owner).map((unit) => ({ x: unit.x, y: unit.y, range: sightRangeOf(unit) })),
+    // 거점도 눈이다. 후방 창고가 제 앞마당조차 못 본다면 침투 한 기에 소리 없이
+    // 뺏기고, 플레이어는 생산이 멈춘 뒤에야 알게 된다.
+    ...state.bases.filter((base) => base.owner === owner).map((base) => ({ x: base.x, y: base.y, range: baseSightRange })),
+  ];
+
+  eyes.forEach((eye) => {
+    for (let y = Math.max(0, eye.y - eye.range); y <= Math.min(height - 1, eye.y + eye.range); y += 1) {
+      for (let x = Math.max(0, eye.x - eye.range); x <= Math.min(width - 1, eye.x + eye.range); x += 1) {
+        if (distance(eye, { x, y }) > eye.range) continue;
+        if (ridgeBlocksSight(eye, { x, y })) continue;
+        seen.add(posKey(x, y));
+      }
+    }
+  });
+
+  visionCache.byOwner.set(owner, seen);
+  return seen;
+}
+
+function canSee(owner, x, y) {
+  if (!fogOfWar) return true;
+  return visionField(owner).has(posKey(x, y));
+}
+
+// 이 부대가 상대 진영에게 보이는가. 자기 부대는 언제나 보인다.
+// 쏜 부대는 그 턴 동안 드러난다 — 매복의 대가다. 한 방 먹이고 계속 숨어 있을 수
+// 있다면 그건 매복이 아니라 무적이고, 맞은 쪽은 어디서 날아왔는지도 모른 채
+// 전멸한다. 총구 화염은 숨길 수 없다.
+function unitVisibleTo(unit, owner) {
+  if (!fogOfWar) return true;
+  if (unit.owner === owner) return true;
+  if (unit.firedFrom && canSee(owner, unit.firedFrom.x, unit.firedFrom.y)) return true;
+  return canSee(owner, unit.x, unit.y);
+}
+
+// 이 진영이 지금 볼 수 있는 상대 부대 전부. AI가 적을 훑는 자리는 전부 이 함수를
+// 거쳐야 한다 — 한 군데라도 state.units를 직접 훑으면 그 함수만 안개를 뚫고 보게 되고,
+// AI는 "보이지도 않는 부대를 정확히 피해 다니는" 이상한 물건이 된다.
+function visibleFoes(owner) {
+  return state.units.filter((unit) => unit.owner !== owner && unitVisibleTo(unit, owner));
+}
+
+// 마지막으로 목격한 자리. 진짜 안개의 느낌은 여기서 나온다 — 적이 숲으로 사라져도
+// "저 근처에 있었다"는 것은 남고, 몇 턴이 지나면 그것마저 흐려진다.
+// AI도 이 기록을 보고 수색한다. 이게 없으면 적은 시야에서 놓친 순간 상대를
+// 처음부터 없었던 것처럼 잊고 제자리에 선다.
+function recordContacts(owner) {
+  if (!fogOfWar || !state.contacts) return;
+  const book = state.contacts[owner];
+  visibleFoes(owner).forEach((foe) => {
+    book[foe.id] = { id: foe.id, x: foe.x, y: foe.y, type: foe.type, owner: foe.owner, turn: state.turn };
+  });
+  // 기록을 지우는 이유는 둘뿐이다: 그 부대가 죽었거나, 본 지 너무 오래됐거나.
+  // "지금 그 칸이 비어 있는 게 보인다"는 지우는 이유가 아니다 — 적이 눈앞에서
+  // 숲으로 걸어 들어간 그 순간, 마지막으로 선 자리야말로 유일한 단서이기 때문이다.
+  // (처음엔 그 조건으로 지웠는데, 그러면 기록이 남는 경우가 사실상 없어서
+  //  안개는 그림만 남고 수색이라는 행동 자체가 사라졌다.)
+  Object.keys(book).forEach((id) => {
+    const memo = book[id];
+    const gone = !state.units.some((unit) => String(unit.id) === String(id));
+    const stale = contactMemoryTurns > 0 && state.turn - memo.turn > contactMemoryTurns;
+    if (gone || stale) delete book[id];
+  });
+}
+
+// 목격 기록 중 지금 눈에 보이지 않는 것만. 화면에는 흐린 표식으로, AI에게는
+// 수색 목적지로 쓰인다. 지금 보이는 부대까지 섞이면 AI가 "수색"과 "교전"을
+// 구분하지 못하고, 화면에는 실체 위에 유령이 겹쳐 찍힌다.
+function staleContacts(owner) {
+  if (!fogOfWar) return [];
+  return Object.values(state.contacts[owner] ?? {}).filter(
+    (memo) => !state.units.some((unit) => String(unit.id) === String(memo.id) && unitVisibleTo(unit, owner)),
+  );
+}
+
+// 포병이 지금 이 표적을 쏠 수 있는가. 사거리 5에 시야 3인 야포는 자기 눈으로는
+// 절대 닿지 않는 곳을 때린다 — 그 자리를 누가 봐주느냐가 곧 정찰의 존재 이유다.
+// 사거리 1짜리 부대는 눈앞을 치는 것이라 이 규칙과 무관하다.
+function hasObservation(attacker, target) {
+  if (!fogOfWar) return true;
+  if (unitTypes[attacker.type].range <= 1) return true;
+  return canSee(attacker.owner, target.x, target.y);
 }
 
 function bestRaidTarget(unit, owner) {
@@ -4384,7 +4670,17 @@ function enemyAxes() {
   const posture = enemyPosture();
 
   if (posture === "hunt") {
-    return enemyPreyUnits().map((prey) => ({ x: prey.x, y: prey.y, label: "표적", key: `표적:${prey.id}` }));
+    const seen = enemyPreyUnits().map((prey) => ({ x: prey.x, y: prey.y, label: "표적", key: `표적:${prey.id}` }));
+    if (seen.length) return seen;
+    // 사냥감이 안개로 들어갔다. 그렇다고 사냥을 그만두는 것은 아니다 —
+    // 마지막으로 본 자리가 이번 턴의 수색 축선이 된다.
+    const tracks = huntTracks();
+    if (tracks.length) return tracks;
+    // 흔적조차 없으면 상대의 보급 거점을 훑는다. 지켜야 할 부대는 결국
+    // 보급을 등지고 움직이니, 거점 주변이 가장 그럴듯한 수색 구역이다.
+    return state.bases
+      .filter((base) => base.owner === "player")
+      .map((base) => ({ x: base.x, y: base.y, label: "수색", key: `수색:${base.x},${base.y}` }));
   }
 
   if (posture === "defend") {
@@ -4417,7 +4713,7 @@ function defenseAnchor(owner, post) {
   // 같은 초소를 맡은 부대가 매 턴 "다른 축선"으로 읽히지 않는다.
   const base = { x: post.x, y: post.y, label: "초소", key: `초소:${post.x},${post.y}` };
   if (enemyForwardDefense <= 0) return base;
-  const foes = state.units.filter((unit) => unit.owner !== owner);
+  const foes = visibleFoes(owner);
   if (!foes.length) return base;
   const cx = foes.reduce((sum, unit) => sum + unit.x, 0) / foes.length;
   const cy = foes.reduce((sum, unit) => sum + unit.y, 0) / foes.length;
@@ -4447,8 +4743,8 @@ function enemyBreach(unit) {
   if (enemyPosture() !== "defend") return null;
   const posts = defensePosts(unit.owner);
   if (!posts.length) return null;
-  const broken = state.units.filter(
-    (foe) => foe.owner !== unit.owner && posts.some((post) => distance(foe, post) <= enemyDefenseRadius),
+  const broken = visibleFoes(unit.owner).filter((foe) =>
+    posts.some((post) => distance(foe, post) <= enemyDefenseRadius),
   );
   return broken.length ? nearestOf(unit, broken) : null;
 }
@@ -4456,7 +4752,7 @@ function enemyBreach(unit) {
 // 어느 축선에 주력을 걸 것인가. 공격이면 "적이 얇은 곳", 수비면 "적이 몰려오는 곳".
 // 둘 다 결국 같은 원칙이다 — 결정이 날 곳에 무게를 싣는다.
 function axisWeight(axis, units) {
-  const defenders = state.units.filter((foe) => foe.owner === "player" && distance(foe, axis) <= 3).length;
+  const defenders = visibleFoes("enemy").filter((foe) => distance(foe, axis) <= 3).length;
   const closeness = units.length
     ? units.reduce((sum, unit) => sum + distance(unit, axis), 0) / units.length
     : 0;
@@ -4603,6 +4899,8 @@ function postureVerb(unit) {
 }
 
 // 미션이 지목한 사냥감. 격파 목표가 가리키는 부대와, 플레이어가 사수해야 하는 부대.
+// 안개가 켜져 있으면 지금 눈에 든 것만 돌려준다 — 사냥감이 어디 있는지 처음부터
+// 알고 시작하는 사냥은 사냥이 아니다. 놓친 사냥감은 huntTracks가 이어받는다.
 function enemyPreyUnits() {
   const prey = [];
   objectivesFor("enemy")
@@ -4613,7 +4911,20 @@ function enemyPreyUnits() {
   objectivesFor("player")
     .filter((objective) => objective.kind === "protect")
     .forEach((objective) => prey.push(...taggedUnits("player", objective.tag)));
-  return prey;
+  return prey.filter((unit) => unitVisibleTo(unit, "enemy"));
+}
+
+// 놓친 사냥감의 흔적. 격파 목표가 병종을 지목했으면 그 병종의 목격 기록만,
+// 지목이 없으면(사수 목표 등) 남은 목격 기록 전부가 수색 대상이 된다.
+function huntTracks() {
+  const wanted = new Set(
+    objectivesFor("enemy")
+      .filter((objective) => objective.kind === "destroy")
+      .map((objective) => objective.targetType),
+  );
+  return staleContacts("enemy")
+    .filter((memo) => memo.owner === "player" && (!wanted.size || wanted.has(memo.type)))
+    .map((memo) => ({ x: memo.x, y: memo.y, label: "수색", key: `수색:${memo.x},${memo.y}` }));
 }
 
 // 목표 칸을 맡을 부대. 공병대는 공사가 임무고, 사령부는 보급의 중심이라
@@ -4661,7 +4972,7 @@ function defensePostFor(unit) {
 
 // 초소 반경 안까지 들어온 상대. 수비라고 가만히 서서 맞을 이유는 없다.
 function nearestIntruder(unit, post) {
-  const intruders = state.units.filter((foe) => foe.owner !== unit.owner && distance(foe, post) <= enemyDefenseRadius);
+  const intruders = visibleFoes(unit.owner).filter((foe) => distance(foe, post) <= enemyDefenseRadius);
   return intruders.length ? nearestOf(unit, intruders) : null;
 }
 
@@ -4715,7 +5026,9 @@ function unclaimedBaseGoal(unit) {
 // 그 턴을 버리는 짓이다. 다음 턴에 안전하게 쏠 수 있는 자리가 언제나 더 값지다.
 function bestFiringPost(unit, goal) {
   const range = unitTypes[unit.type].range;
-  const foes = state.units.filter((foe) => foe.owner !== unit.owner);
+  // 포병은 보이는 표적만 센다. 안 보이는 적까지 세면 "관측 없이는 못 쏜다"는 규칙과
+  // 어긋나, 쏘지도 못할 자리를 명당으로 읽고 그리로 기어들어 간다.
+  const foes = visibleFoes(unit.owner);
   const scored = [{ x: unit.x, y: unit.y }, ...reachableTiles(unit)].map((tile) => {
     const spot = { owner: unit.owner, type: unit.type, x: tile.x, y: tile.y };
     return {
@@ -4785,7 +5098,7 @@ function enemyArmorStep(unit, goal) {
   // 전차도 길을 따라 재야 한다. 직선거리로 재면 강 건너의 목표가 코앞으로 보이고,
   // 전차는 그 강가에서 작전이 끝날 때까지 서 있게 된다.
   const here = routeCostFrom(unit, goal, unit.x, unit.y);
-  const foes = state.units.filter((foe) => foe.owner !== unit.owner);
+  const foes = visibleFoes(unit.owner);
   let best = null;
   reachableTiles(unit).forEach((tile) => {
     let score = routeCostFrom(unit, goal, tile.x, tile.y);
@@ -4836,6 +5149,10 @@ function enemyGoalFor(unit) {
   if (posture === "hunt") {
     const prey = enemyPreyUnits();
     if (prey.length) return nearestOf(unit, prey);
+    // 사냥감을 놓쳤으면 마지막 흔적으로 간다. 여기서 포기하면 아래의 nearestEnemy로
+    // 떨어져 아무나 쫓게 되고, 사냥 미션이 그냥 난전이 된다.
+    const tracks = huntTracks();
+    if (tracks.length) return nearestOf(unit, tracks);
   }
 
   if (posture === "attack") {
@@ -4861,10 +5178,9 @@ function bestEnemyStrike(unit) {
   const screens = prey
     .filter((target) => isScreenedHQ(target))
     .flatMap((target) => neighbors(target.x, target.y).flatMap((spot) => getUnitsAt(spot.x, spot.y)))
-    .filter((guard) => guard.owner !== unit.owner);
+    .filter((guard) => guard.owner !== unit.owner && unitVisibleTo(guard, unit.owner));
   let best = null;
-  state.units.forEach((foe) => {
-    if (foe.owner === unit.owner) return;
+  visibleFoes(unit.owner).forEach((foe) => {
     if (attackIsSuicidal(unit, foe)) return;
     const forecast = attackForecast(unit, foe);
     if (!forecast) return;
@@ -4928,9 +5244,13 @@ function enemyFieldTurn(unit) {
 }
 
 function moveEnemyUnit(unit, step) {
-  recordUnitMove(unit, step.x, step.y);
-  unit.x = step.x;
-  unit.y = step.y;
+  // 접적 정지는 양쪽에 똑같이 걸린다. 적만 안개를 뚫고 목적지까지 내리 달리면
+  // 매복은 플레이어에게만 걸리는 함정이 되고, 그건 규칙이 아니라 편애다.
+  const halt = ambushHalt(unit, step.x, step.y);
+  const stopAt = halt && !halt.atGoal ? halt : step;
+  recordUnitMove(unit, stopAt.x, stopAt.y);
+  unit.x = stopAt.x;
+  unit.y = stopAt.y;
   unit.moved = true;
   // 야포는 이동한 턴에 쏘지 못한다(canAttack). 행동까지 닫아 두지 않으면
   // 이동 후 사격을 다시 시도하며 매 턴 헛수고를 한다.
@@ -5347,8 +5667,11 @@ function nearestOwnedBase(unit) {
     .sort((a, b) => distance(unit, a) - distance(unit, b))[0] ?? null;
 }
 
+// 이 자리에서 가장 가까운 "아는" 적까지의 거리. 안개가 켜지면 모르는 적은 위협으로
+// 세지 않는다 — 그게 기습이 성립하는 이유다. 붙어 있는 적(거리 1)은 어떤 병종이라도
+// 시야 안이므로, 이 함수에 기대는 재정비·점령 규칙은 예전 그대로 움직인다.
 function nearestOpposingDistance(owner, x, y) {
-  const foes = state.units.filter((unit) => unit.owner !== owner);
+  const foes = visibleFoes(owner);
   if (!foes.length) return 99;
   return Math.min(...foes.map((unit) => distance({ x, y }, unit)));
 }
@@ -5434,9 +5757,7 @@ function hqRefuge(hq) {
 }
 
 function hqSafetyScore(hq, x, y) {
-  const enemyDistances = state.units
-    .filter((unit) => unit.owner !== hq.owner)
-    .map((unit) => distance({ x, y }, unit));
+  const enemyDistances = visibleFoes(hq.owner).map((unit) => distance({ x, y }, unit));
   const nearestThreat = enemyDistances.length ? Math.min(...enemyDistances) : 99;
   // 지금 쫓기고 있는가. 기준은 사령부가 선 자리이지 후보 칸이 아니다 — 후보마다
   // 따로 판정하면 위험한 칸만 "위기"로 읽혀 도망 규칙과 자리 규칙이 뒤섞이고,
@@ -5501,10 +5822,24 @@ function nearestOwnedBaseDistance(owner, x, y) {
   return Math.min(...bases.map((base) => distance({ x, y }, base)));
 }
 
+// 가장 가까운 "아는" 상대. 보이는 것이 없으면 마지막으로 본 자리로 간다.
+// 이 되돌림이 없으면 안개가 켜진 순간 적 전군은 갈 곳을 잃고 제자리에 선다 —
+// 안개의 값은 적을 눈멀게 하는 데 있는 것이 아니라 수색하게 만드는 데 있다.
 function nearestEnemy(unit, owner) {
-  return state.units
+  const seen = visibleFoes(opponentOwner(owner))
     .filter((target) => target.owner === owner)
     .sort((a, b) => distance(unit, a) - distance(unit, b))[0];
+  if (seen) return seen;
+  return staleContacts(opponentOwner(owner))
+    .filter((memo) => memo.owner === owner)
+    .map((memo) => ({ x: memo.x, y: memo.y, label: "수색", key: `수색:${memo.x},${memo.y}` }))
+    .sort((a, b) => distance(unit, a) - distance(unit, b))[0];
+}
+
+// 진영의 반대편. sideKey(연합군/추축군)가 아니라 owner(player/enemy)를 다룬다 —
+// opponentSide와 헷갈리기 쉬워 이름을 따로 둔다.
+function opponentOwner(owner) {
+  return owner === "player" ? "enemy" : "player";
 }
 
 // 증원이 나오는 곳은 대대 사령부다 — 어느 쪽이든 그렇다. 예전에는 적만 보급 거점에서
@@ -5585,7 +5920,10 @@ function selectedUnit() {
 }
 
 function inspectedUnit() {
-  return state.units.find((unit) => unit.id === state.inspectedId);
+  const unit = state.units.find((other) => other.id === state.inspectedId);
+  // 봤던 적이 안개로 물러나면 카드도 같이 닫힌다. 안 그러면 화면에서는 사라진 부대의
+  // 체력과 좌표가 옆 패널에서 실시간으로 갱신되어, 안개가 그림에만 있고 정보에는 없게 된다.
+  return unit && unitVisibleTo(unit, "player") ? unit : null;
 }
 
 function selectedEngineer() {
@@ -5602,9 +5940,13 @@ function getSelectableUnitAt(x, y, owner) {
   return getUnitsAt(x, y).find((unit) => unit.owner === owner && !unit.acted);
 }
 
+// 안 보이는 적은 클릭 대상도 아니다. 이 한 곳만 막으면 "안 보이는데 카드에는 체력이 뜬다",
+// "빈 칸을 눌렀는데 공격이 나간다" 같은 구멍이 한꺼번에 닫힌다 — 플레이어가 적을 건드리는
+// 길은 전부 이 함수를 지나기 때문이다. 화면에 없는 것은 게임에도 없어야 안개다.
 function getTargetUnitAt(x, y, owner) {
+  const viewer = owner === "enemy" ? "player" : "enemy";
   return getUnitsAt(x, y)
-    .filter((unit) => unit.owner === owner)
+    .filter((unit) => unit.owner === owner && unitVisibleTo(unit, viewer))
     .sort((a, b) => a.hp - b.hp)[0];
 }
 
