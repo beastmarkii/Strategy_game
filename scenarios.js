@@ -41,7 +41,12 @@ const scenarios = [
     objectiveBrief: "상대 후방 간선 출구를 점령해 유지하라.",
     turnLimit: 30,
     timeoutWinner: null,
-    map: { enabled: true, centerLat: 49.18, centerLon: -0.36, zoom: 10, radius: 2 },
+    // 원래는 캉 앞바다(49.18, -0.36)를 잡고 있었다. 그래서 320칸 중 115칸, 판의 위쪽
+    // 3분의 1이 영불해협이었는데 게임은 그걸 개활지로 쳐서 부대가 바다 위를 행군했다.
+    // 이 작전의 설명이 "노르망디 내륙"이므로 지도만 남쪽 내륙으로 옮긴다.
+    // 알랑송·에쿠브 숲 일대 — 바다 0칸이고 숲과 구릉이 많아 아래 지형 배치와도 맞는다.
+    // 지형·목표·시작 위치는 하나도 건드리지 않았다.
+    map: { enabled: true, centerLat: 48.6, centerLon: -0.3, zoom: 10, radius: 2 },
     terrain: [
       "PPPPPPPPPPPPPPPPPPPP",
       "PPPPPPPPPPPPPPPPPPPP",
@@ -118,7 +123,12 @@ const scenarios = [
     turnLimit: 18,
     // 시간이 끝나면 방어 측(동군)이 이긴다. 이게 "시간 내 돌파" 미션이다.
     timeoutWinner: "east",
-    map: { enabled: true, centerLat: 49.34, centerLon: -1.09, zoom: 10, radius: 2 },
+    // 원래는 코탕탱 해안(49.34, -1.09)이라 320칸 중 153칸, 판의 절반이 바다였다.
+    // 이 작전은 강 하나가 전선을 가르는 이야기인데, 정작 화면에 그려진 물은 강이 아니라
+    // 위쪽 바다였다 — 규칙상의 강(세로 한 줄)과 눈에 보이는 물이 서로 딴 데 있었다.
+    // 마옌 강이 판 한가운데를 세로로 흐르는 라발 일대로 옮긴다. 바다 0칸이고,
+    // 지도에 보이는 강줄기와 규칙상의 강이 같은 방향으로 흐른다.
+    map: { enabled: true, centerLat: 48.3, centerLon: -0.7, zoom: 10, radius: 2 },
     terrain: [
       "PPFFPPPPPWPPHHPPPPPP",
       "PPFFPPPPPWPPHHPPPPBP",
@@ -196,7 +206,10 @@ const scenarios = [
     turnLimit: 14,
     // 시간이 끝나면 수비 측(서군)이 이긴다. 이게 "N턴 버티기" 미션이다.
     timeoutWinner: "west",
-    map: { enabled: true, centerLat: 49.12, centerLon: -0.79, zoom: 10, radius: 2 },
+    // 원래 자리(49.12, -0.79)는 판의 오른쪽 위 모서리가 바다에 잠겨 69칸이 물이었다.
+    // 간선도로가 실제로 여러 갈래로 갈리는 내륙(마메르·라페르테베르나르 일대)으로 옮긴다.
+    // 바다 0칸이고 숲이 가장 많은 자리라, 교차로를 지키는 그림과도 맞는다.
+    map: { enabled: true, centerLat: 48.35, centerLon: 0.2, zoom: 10, radius: 2 },
     terrain: [
       "PPPPPPFFPPPPFFPPPPPP",
       "PPBPPPFFPPPPFFPPPPPP",
