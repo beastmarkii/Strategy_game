@@ -832,18 +832,49 @@ h1 {
   display: block;
 }
 
-/* 작전 격자. 종이 작전지도 위에 그어 둔 좌표선이고, 칸 경계와 반드시 겹쳐야 한다.
-   예전에는 여기에 5% × 6.25%가 못 박혀 있었다 — 20칸 × 16칸 지도에서만 맞는 숫자다.
-   16칸 × 12칸짜리 「고립 사령부 구조」에서는 격자가 칸과 어긋나 지도 위에 아무 데도
-   걸리지 않는 그물이 한 겹 덮였다. 칸 수는 시나리오마다 다르므로 칸 수에서 계산한다. */
+/* 작전 격자 — 줄이 아니라 모서리 표시다.
+   ------------------------------------------------------------------
+   예전에는 지도 전체에 세로줄·가로줄을 끝까지 그어 놓았다. 게다가 흰 줄과
+   검은 줄을 한 쌍씩 겹쳐 둬서, 선이 종이에 인쇄된 것이 아니라 종이 위에
+   한 겹 떠 있는 것처럼 보였다 — 작전지도에 방충망을 씌운 꼴이었다.
+   지도판의 색과 그림이 이 게임의 얼굴인데 그 위를 그물이 덮고 있었다.
+
+   칸을 세는 데 필요한 것은 줄 전체가 아니라 칸이 만나는 자리다. 그래서
+   줄은 그대로 그리되, 네 칸이 만나는 모서리 부근만 남기고 나머지는 지운다
+   (mask 두 장을 겹쳐서 교차 지점만 통과시킨다). 남는 것은 짧은 십자 표시
+   뿐이라 지도가 다시 보이고, 칸 경계는 여전히 눈으로 짚을 수 있다.
+
+   칸 수는 시나리오마다 다르므로(20×16, 16×12 …) 무조건 칸 수에서 계산한다.
+   여기에 5% × 6.25%를 못 박아 두면 다른 크기 지도에서 표시가 칸과 어긋난다. */
 .battlefield.map-enabled::after {
+  --grid-w: calc(100% / var(--map-cols));
+  --grid-h: calc(100% / var(--map-rows));
+  /* 십자 팔 길이. 짧을수록 지도가 살아난다. 칸의 1할 반이면 모서리를 짚을
+     만큼은 보이면서, 옆 모서리와 이어져 다시 줄이 되지는 않는다. */
+  --tick-x: calc(var(--grid-w) * 0.15);
+  --tick-y: calc(var(--grid-h) * 0.15);
+
   z-index: 1;
   background:
-    linear-gradient(90deg, rgb(255 255 255 / 15%) 0 1px, transparent 1px),
-    linear-gradient(rgb(255 255 255 / 12%) 0 1px, transparent 1px),
-    linear-gradient(90deg, rgb(30 38 28 / 8%) 0 1px, transparent 1px),
-    linear-gradient(rgb(30 38 28 / 7%) 0 1px, transparent 1px);
-  background-size: calc(100% / var(--map-cols)) calc(100% / var(--map-rows));
+    linear-gradient(90deg, rgb(46 52 40 / 34%) 0 1px, transparent 1px),
+    linear-gradient(180deg, rgb(46 52 40 / 30%) 0 1px, transparent 1px);
+  background-size: var(--grid-w) var(--grid-h);
+  /* 가로 띠(행 경계 부근)와 세로 띠(열 경계 부근)를 겹치는 자리만 남긴다. */
+  mask-image:
+    repeating-linear-gradient(
+      180deg,
+      #000 0 var(--tick-y),
+      transparent var(--tick-y) calc(var(--grid-h) - var(--tick-y)),
+      #000 calc(var(--grid-h) - var(--tick-y)) var(--grid-h)
+    ),
+    repeating-linear-gradient(
+      90deg,
+      #000 0 var(--tick-x),
+      transparent var(--tick-x) calc(var(--grid-w) - var(--tick-x)),
+      #000 calc(var(--grid-w) - var(--tick-x)) var(--grid-w)
+    );
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
 }
 
 .tile {
