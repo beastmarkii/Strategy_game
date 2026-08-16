@@ -101,6 +101,12 @@ let enemyForwardDefense = 2;
 // 거점 상실은 파국이어야지 사고여선 안 된다 — 유예 동안 되찾으면 계속 싸운다.
 // 0으로 두면 예전처럼 그 자리에서 끝난다.
 let baseLossGraceTurns = 3;
+// 거점 안에 들어앉은 부대가 받는 방어 버프. 부대 자체 방어력과는 별개로 더해진다 —
+// 대대 사령부(방어 3)가 거점에 들어가면 합쳐서 6이 되어 아주 오래 버틴다.
+// 예전에는 이 값이 지형표(terrain.B.defense)에 박혀 있었고, 그래서 공병대가 지은
+// 보급창고에는 붙지 않았다. 같은 "보급 거점"인데 시나리오가 그린 것에만 엄폐가 있고
+// 내가 지은 것에는 없는 셈이었다. 이제 거점이면 출신을 안 따진다.
+let baseDefenseBonus = 3;
 // 내가 가진 보급 거점 위에 선 부대가 턴마다 회복하는 병력. 거점을 "생산 숫자가
 // 붙은 칸"에서 "부대를 다시 세우는 자리"로 만든다. 0으로 두면 이 규칙이 꺼진다.
 let baseRepairRate = 1;
@@ -237,6 +243,7 @@ const defaultBalance = {
     // 에디터에서 만질 수는 있지만 "초기값 복원"이 되돌려 주지 않는다는 뜻이다.
     // 하필 거점 규칙만 통째로 빠져 있었다.
     baseLossGraceTurns,
+    baseDefenseBonus,
     baseRepairRate,
     baseEfficiencyRepair,
     enemyBaseSeekRange,
@@ -307,6 +314,7 @@ const ruleEditorFields = [
   ["hqTrailDistance", "사령부 추종 거리", 0, 8, 1],
   ["enemyForwardDefense", "적 전방 방어 거리", 0, 6, 1],
   ["baseLossGraceTurns", "거점 상실 패배 유예 턴 (0=즉시)", 0, 20, 1],
+  ["baseDefenseBonus", "거점 안 부대 방어 버프", 0, 8, 1],
   ["baseRepairRate", "거점 위 재편성 회복 (0=끔)", 0, 5, 1],
   ["baseEfficiencyRepair", "거점 효율 턴당 복구 (0=끔)", 0, 0.5, 0.05],
   ["enemyBaseSeekRange", "적 중립 거점 확보 반경 (0=안 감)", 0, 20, 1],
@@ -325,7 +333,9 @@ const terrain = {
   // 창고와 하역장이 들어선 시가지다. 고지와 같은 엄폐를 주되 고지가 아니므로 관측 이점은
   // 없고, 포장된 바닥이라 전차도 그대로 들어온다. 지키는 쪽이 유리하지만 지형만으로는
   // 못 버틴다 — 거점을 지키려면 결국 부대를 붙여야 한다.
-  B: { name: "보급 거점", className: "base", cost: 1, defense: 2, elevation: 0, artilleryCover: 2 },
+  // 방어 보정이 0인 건 거점에 엄폐가 없어서가 아니라, 그 몫이 baseDefenseBonus로
+  // 옮겨갔기 때문이다. 지형이 아니라 거점이 주는 버프여야 공병대가 지은 창고에도 붙는다.
+  B: { name: "보급 거점", className: "base", cost: 1, defense: 0, elevation: 0, artilleryCover: 2 },
 };
 
 const localePacks = {
@@ -1987,6 +1997,7 @@ function balanceSnapshot() {
       hqTrailDistance,
       enemyForwardDefense,
       baseLossGraceTurns,
+      baseDefenseBonus,
       baseRepairRate,
       baseEfficiencyRepair,
       enemyBaseSeekRange,
@@ -2036,6 +2047,7 @@ function ruleValue(key) {
     hqTrailDistance,
     enemyForwardDefense,
     baseLossGraceTurns,
+    baseDefenseBonus,
     baseRepairRate,
     baseEfficiencyRepair,
     enemyBaseSeekRange,
@@ -2084,6 +2096,7 @@ function setRuleValue(key, value) {
   if (key === "hqTrailDistance") hqTrailDistance = value;
   if (key === "enemyForwardDefense") enemyForwardDefense = value;
   if (key === "baseLossGraceTurns") baseLossGraceTurns = value;
+  if (key === "baseDefenseBonus") baseDefenseBonus = value;
   if (key === "baseRepairRate") baseRepairRate = value;
   if (key === "baseEfficiencyRepair") baseEfficiencyRepair = value;
   if (key === "enemyBaseSeekRange") enemyBaseSeekRange = value;
@@ -2359,7 +2372,8 @@ function renderSelectedCard() {
     <div class="unit-stats">
       <span>위치 <strong>${displayTileName(unit.x, unit.y)}</strong></span>
       <span>지형 <strong>${terrainDescription(tile)}</strong></span>
-      <span>방어 보정 <strong>+${tile.defense}</strong></span>
+      <span>방어 보정 <strong>+${coverAt(unit.x, unit.y)}</strong></span>
+      ${getBaseAt(unit.x, unit.y) && baseDefenseBonus ? `<span>거점 엄폐 <strong>+${baseDefenseBonus}</strong></span>` : ""}
       <span>지형 특성 <strong>${terrainTraitText(unit.x, unit.y)}</strong></span>
       <span>전투력 <strong>${unit.hp}/${spec.hp}</strong></span>
       <span>기동력 <strong>${effectiveMove(unit)}</strong></span>
@@ -2403,7 +2417,8 @@ function renderTileCard(x, y) {
     <div class="unit-stats">
       <span>지형 <strong>${terrainDescription(tile)}</strong></span>
       <span>이동 비용 <strong>${Number.isFinite(moveCost) ? formatNumber(moveCost) : "통과 불가"}</strong></span>
-      <span>방어 보정 <strong>+${tile.defense}</strong></span>
+      <span>방어 보정 <strong>+${coverAt(x, y)}</strong></span>
+      ${base && baseDefenseBonus ? `<span>거점 엄폐 <strong>+${baseDefenseBonus}</strong></span>` : ""}
       <span>고도 <strong>${formatElevation(tile.elevation)}</strong></span>
       <span>포격 엄폐 <strong>${tile.artilleryCover ? `-${tile.artilleryCover}` : "없음"}</strong></span>
       ${hillDirection ? `<span>방어방향 <strong>${ridgeDirectionLabel(hillDirection)}</strong></span>` : ""}
@@ -3140,6 +3155,7 @@ function attack(attacker, defender) {
   const damage = combatDamage(attacker, defender);
   playUnitSound(attacker, "attack");
   defender.hp -= damage;
+  defender.hitSinceRefit = true;
   recordCombatEvent(attacker, defender, { damage, killed: defender.hp <= 0 });
   addLog(`${sideUnitLabel(attacker)}가 ${sideUnitLabel(defender)}에 ${damage} 피해를 입혔습니다.`);
 
@@ -3215,6 +3231,7 @@ function resolveCounterattack(attacker, defender) {
 
   const damage = Math.max(1, Math.round(combatDamage(defender, attacker) * counterattackFactor));
   attacker.hp -= damage;
+  attacker.hitSinceRefit = true;
   recordCombatEvent(defender, attacker, { damage, killed: attacker.hp <= 0, counter: true });
   addLog(`${sideUnitLabel(defender)}가 반격해 ${unitLabel(attacker)}에 ${damage} 피해를 입혔습니다.`);
 
@@ -3242,7 +3259,9 @@ function combatDamage(attacker, defender) {
   // 대대 사령부(공1)조차 보병의 3분의 2를 때렸다. 지휘관은 전투를 지휘하지,
   // 삽질과 보급을 지휘해 적을 때리지 않는다.
   const commanderAttack = isCombatUnit(attacker) ? commander.attack : 0;
-  const rawDamage = attackerSpec.attack + heightModifier + commanderAttack + directArtilleryVulnerability + defenderSupplyPenalty - defenderTile.defense - defenderArmor - artilleryPenalty;
+  // 엄폐는 지형만이 아니라 거점에서도 온다. 셋(지형·거점·부대)이 각각 따로 빠지므로
+  // 거점 위의 대대 사령부는 3 + 3이 겹쳐 정면으로는 좀처럼 뚫리지 않는다.
+  const rawDamage = attackerSpec.attack + heightModifier + commanderAttack + directArtilleryVulnerability + defenderSupplyPenalty - coverAt(defender.x, defender.y) - defenderArmor - artilleryPenalty;
   const moraleAdjusted = rawDamage * (effectiveMorale(attacker) / 100);
   return Math.max(1, Math.round(moraleAdjusted));
 }
@@ -3271,6 +3290,9 @@ function raidBase(attacker, base) {
 // 어느 쪽이든 baseEfficiencyFloor 밑으로는 안 내려간다.
 function damageBaseProduction(base, attacker, { collateral = false } = {}) {
   const factor = collateral ? combatBaseDamage : raidEfficiencyFactor;
+  // 하한에 닿아 값이 안 움직여도 맞은 건 맞은 거다. 표식을 아래 return 뒤에 두면
+  // 하한에 닿은 거점이 포화 속에서 복구를 시작한다.
+  markBaseHit(base);
   if (!applyBaseEfficiencyLoss(base, factor)) return;
   addLog(`${sideName(base.owner)} 보급 거점 생산 효율이 ${Math.round(base.efficiency * 100)}%로 떨어졌습니다.`);
 
@@ -3281,6 +3303,12 @@ function damageBaseProduction(base, attacker, { collateral = false } = {}) {
 
 // 하한에 닿았으면 아무 일도 안 일어난다. 이때 로그까지 찍으면 "떨어졌습니다"가
 // 매 턴 쌓이면서 실제로는 멀쩡한 거점을 무너지는 중인 것처럼 읽히게 만든다.
+// 포격당한 거점은 그 턴에 복구하지 못한다. 부대의 재편성과 같은 이유다 — 여기도
+// 인접만 봤기 때문에, 사거리 밖에서 쏘는 포병은 복구를 전혀 방해하지 못했다.
+function markBaseHit(base) {
+  base.hitSinceRepair = true;
+}
+
 function applyBaseEfficiencyLoss(base, factor) {
   const next = Math.max(baseEfficiencyFloor, base.efficiency * factor);
   if (next >= base.efficiency) return false;
@@ -3370,6 +3398,14 @@ function replenishNearBattalionHQ(owner) {
 // 부대가 사령부 곁에 있는 부대보다 빨리 회복하는 건 이상한 일이 아니다.
 // 두절된 거점은 채워줄 물자가 없다 — 대대 보충과 같은 논리다.
 function refitOnOwnBase(owner) {
+  // 표식 지우기는 어떤 이유로 빠져나가든 먼저 끝낸다. 아래 두 줄 뒤에 두면 회복률이
+  // 0이거나 거점이 없는 동안 표식이 영원히 남아, 규칙이 다시 켜진 첫 턴에 멀쩡한 부대까지
+  // 한 번씩 회복을 건너뛴다.
+  const wasHit = new Set(state.units.filter((unit) => unit.owner === owner && unit.hitSinceRefit).map((unit) => unit.id));
+  state.units.forEach((unit) => {
+    if (unit.owner === owner) unit.hitSinceRefit = false;
+  });
+
   if (baseRepairRate <= 0) return;
   const depots = state.bases.filter((base) => base.owner === owner);
   if (!depots.length) return;
@@ -3380,10 +3416,15 @@ function refitOnOwnBase(owner) {
     depots.some((base) => base.x === unit.x && base.y === unit.y) &&
     // 붙어 있는 적이 있으면 재편성하지 못한다. repairOwnBases에는 처음부터 이 조건이
     // 있었는데 여기에만 빠져 있었다 — 창고는 포화 아래서 못 고치면서 부대는 고쳤다는 뜻이다.
-    // 그 구멍이 규칙 하나를 통째로 망가뜨렸다. 거점 방어 +2로 피해가 6에서 4로 줄고
-    // 매 턴 1씩 차오르면 순 3인데, 수비수를 한 부대로 때리는 한 막타가 영영 안 나온다.
-    // 동시에 두 부대가 붙지 않으면 못 깨는 거점은 방어 보정이 아니라 무적이다.
-    nearestOpposingDistance(owner, unit.x, unit.y) > 1
+    // 그 구멍이 규칙 하나를 통째로 망가뜨렸다. 거점 방어로 피해가 줄고 매 턴 1씩 차오르면
+    // 수비수를 한 부대로 때리는 한 막타가 영영 안 나온다.
+    nearestOpposingDistance(owner, unit.x, unit.y) > 1 &&
+    // 인접만 보면 포병이 규칙을 통째로 우회한다. 사거리 5에서 쏘는 야포는 영원히
+    // "붙어 있지 않은 적"이라, 거점 방어 3 + 포격 엄폐 2에 피해가 1로 깎이고 회복이 1이면
+    // 정확히 상쇄된다 — 야포 백 대로 백 턴을 쏴도 수비수 한 기가 안 죽는다.
+    // 맞았느냐를 봐야지 붙었느냐를 보면 안 된다. 턴 번호로는 비교할 수 없다 —
+    // 적 턴의 피격과 아군 재편성 사이에 state.turn이 이미 올라가 있기 때문이다.
+    !wasHit.has(unit.id)
   );
 
   refitted.forEach((unit) => {
@@ -3401,7 +3442,14 @@ function repairOwnBases(owner) {
   if (baseEfficiencyRepair <= 0) return;
   const mended = state.bases.filter((base) => {
     if (base.owner !== owner || base.efficiency >= 1) return false;
+    if (base.hitSinceRepair) return false;
     return nearestOpposingDistance(owner, base.x, base.y) > 1;
+  });
+
+  // 표식은 복구 여부와 상관없이 매번 지운다. mended가 비었다고 일찍 빠져나가면
+  // 효율이 이미 1인 거점의 표식이 영원히 남아, 나중에 깎였을 때 복구가 안 된다.
+  state.bases.forEach((base) => {
+    if (base.owner === owner) base.hitSinceRepair = false;
   });
   if (!mended.length) return;
 
@@ -4656,7 +4704,7 @@ function bestFiringPost(unit, goal) {
       exposed: foes.filter((foe) => distance(spot, foe) <= unitTypes[foe.type].range).length,
       // 다음 턴 위협: 걸어와서 때릴 수 있는가. 사격 진지끼리 비교할 때만 쓴다.
       stalked: foes.filter((foe) => distance(spot, foe) <= unitTypes[foe.type].range + unitTypes[foe.type].move).length,
-      cover: tileAt(tile.x, tile.y).defense,
+      cover: coverAt(tile.x, tile.y),
       reach: distance(tile, goal),
       here: tile.x === unit.x && tile.y === unit.y,
     };
@@ -4722,7 +4770,7 @@ function enemyArmorStep(unit, goal) {
     score += traversalCostForUnit(unit, tile.x, tile.y) * 0.25;
     // 험지에 박힌 상대와 맞붙는 자리는 소모전 자리다. 붙을 거면 트인 땅에서 붙는다.
     foes.forEach((foe) => {
-      if (distance(tile, foe) <= 1) score += tileAt(foe.x, foe.y).defense * 0.6;
+      if (distance(tile, foe) <= 1) score += coverAt(foe.x, foe.y) * 0.6;
     });
     if (!best || score < best.score) best = { x: tile.x, y: tile.y, score };
   });
@@ -5174,7 +5222,7 @@ function bestReachableStepToward(unit, target) {
   let best = null;
   reachableTiles(unit).forEach((tile) => {
     // 가까워지되 엄폐가 나은 칸을 고른다. 개활지로 뛰어드는 돌격은 반격에 녹는다.
-    const score = distance(tile, target) - tileAt(tile.x, tile.y).defense * 0.2;
+    const score = distance(tile, target) - coverAt(tile.x, tile.y) * 0.2;
     if (!best || score < best.score) best = { x: tile.x, y: tile.y, score };
   });
   if (!best) return null;
@@ -5263,7 +5311,7 @@ function routeStepToward(unit, target) {
     if (remain === undefined) return;
     // 남은 길이 짧은 칸이 우선, 같으면 엄폐가 나은 칸. 개활지로 뛰어드는 돌격은
     // 반격에 녹는다는 원칙은 그대로 둔다.
-    const score = remain - tileAt(tile.x, tile.y).defense * 0.2;
+    const score = remain - coverAt(tile.x, tile.y) * 0.2;
     if (!best || score < best.score) best = { x: tile.x, y: tile.y, score, remain };
   });
   if (!best) return null;
@@ -5516,6 +5564,13 @@ function getTerrainKey(x, y) {
 
 function tileAt(x, y) {
   return terrain[getTerrainKey(x, y)];
+}
+
+// 그 칸에 서면 실제로 깎이는 피해량. 지형 엄폐 + 거점 버프다.
+// 전투 계산과 AI의 자리 고르기가 이 함수 하나만 보게 해야 한다 — 따로 세면
+// AI는 거점을 그냥 개활지로 읽고, 방어할 만한 자리를 지나쳐 들판에 선다.
+function coverAt(x, y) {
+  return tileAt(x, y).defense + (getBaseAt(x, y) ? baseDefenseBonus : 0);
 }
 
 function displayTileName(x, y) {
