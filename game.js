@@ -1150,6 +1150,13 @@ function render() {
       if (coverBand) {
         cell.classList.add("supply-cover", `supply-cover-${coverBand}`, `supply-cover-${coverage.owner}`);
         cell.title += ` / ${supplyCoverLabel(coverage.kind, coverBand)}`;
+        // 보급권은 칸 테두리가 아니라 칸 안에 깔린 판 한 장으로 그린다. 처음에는
+        // box-shadow로 그렸는데 지도 모드의 `.map-enabled .tile { box-shadow: none }`이
+        // 더 강해서 한 칸도 안 보였다 — 카드에는 숫자가 뜨는데 지도는 텅 빈 꼴이었다.
+        // 자식 요소는 그 규칙과 무관하고, 덤으로 이동·공격 테두리와도 안 겹친다.
+        const wash = document.createElement("span");
+        wash.className = "supply-wash";
+        cell.appendChild(wash);
       }
       if (highlights.moves.has(posKey(x, y))) cell.classList.add("reachable");
       if (highlights.attacks.has(posKey(x, y))) cell.classList.add("attackable");

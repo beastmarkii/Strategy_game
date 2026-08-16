@@ -1138,59 +1138,55 @@ h1 {
     inset 0 0 16px rgb(122 199 255 / 24%);
 }
 
-/* 클릭한 사령부·보급 거점 "하나"의 보급권. 위의 hq-supply/hq-recovery는 아군 사령부
-   전체를 겹친 합집합이라 어느 사령부의 고리인지 답하지 못하고, 거점 보급망은 아예
-   그려지지 않았다. 여기서는 지금 보고 있는 하나만 진하게 덮어 그린다.
-   띠마다 색이 다르다 — 보충(청록) / 보급(파랑) / 불안(호박) / 무효(적색).
-   이동·공격 강조보다 먼저 선언해, 명령 표시가 언제나 위로 오게 둔다. */
-.tile.supply-cover {
+/* 클릭한 사령부·보급 거점 "하나"의 보급권.
+   보급권은 "면", 이동·공격 명령은 "테두리" — 두 가지가 같은 언어로 그려지면 서로 먹는다.
+   처음에는 보급권도 테두리(box-shadow)로 그렸는데, 지도 모드의
+   `.battlefield.map-enabled .tile { box-shadow: none }`이 더 강해서 한 칸도 안 나왔다.
+   카드에는 "보급권 정상 69칸"이 뜨는데 지도는 텅 비어 있었다.
+   칸 안에 판을 한 장 까는 방식은 그 규칙과 아예 무관하고, 명령 표시와도 겹치지 않는다.
+   띠마다 색이 다르다 — 보충(청록) / 보급(파랑) / 불안(호박) / 무효(적색). */
+.supply-wash {
+  position: absolute;
   z-index: 3;
+  inset: 0;
+  background: rgb(122 199 255 / 20%);
+  box-shadow: inset 0 0 0 1px rgb(122 199 255 / 42%);
+  pointer-events: none;
 }
 
-.tile.supply-cover-recovery {
-  box-shadow:
-    inset 0 0 0 3px rgb(120 245 214 / 82%),
-    inset 0 0 20px rgb(120 245 214 / 38%);
+.supply-cover-recovery .supply-wash {
+  background: rgb(120 245 214 / 34%);
+  box-shadow: inset 0 0 0 2px rgb(120 245 214 / 66%);
 }
 
-.tile.supply-cover-supply {
-  box-shadow:
-    inset 0 0 0 2px rgb(122 199 255 / 68%),
-    inset 0 0 18px rgb(122 199 255 / 26%);
+.supply-cover-supply .supply-wash {
+  background: rgb(122 199 255 / 22%);
+  box-shadow: inset 0 0 0 1px rgb(122 199 255 / 44%);
 }
 
-.tile.supply-cover-strained {
-  box-shadow:
-    inset 0 0 0 2px rgb(255 199 92 / 60%),
-    inset 0 0 18px rgb(255 199 92 / 22%);
+.supply-cover-strained .supply-wash {
+  background: rgb(255 199 92 / 22%);
+  box-shadow: inset 0 0 0 1px rgb(255 199 92 / 46%);
 }
 
-/* 보급선이 끊긴 사령부의 고리. 아무것도 안 그리면 클릭이 먹지 않은 것처럼 보인다 —
-   붉게 그려서 "범위는 이만큼이지만 지금은 한 칸도 못 먹인다"를 그대로 말한다. */
-.tile.supply-cover-dead {
-  box-shadow:
-    inset 0 0 0 2px rgb(255 122 122 / 58%),
-    inset 0 0 18px rgb(255 122 122 / 20%);
+/* 보급선이 끊긴 사령부. 아무것도 안 그리면 클릭이 먹지 않은 것처럼 보인다 —
+   붉게 칠해서 "범위는 이만큼이지만 지금은 한 칸도 못 먹인다"를 그대로 말한다. */
+.supply-cover-dead .supply-wash {
+  background: rgb(255 122 122 / 22%);
+  box-shadow: inset 0 0 0 1px rgb(255 122 122 / 50%);
 }
 
 /* 적 보급권은 같은 띠라도 붉게. 내 보급권과 색이 같으면 지도를 거꾸로 읽고
    적 보급권 한복판으로 부대를 밀어 넣는다. */
-.tile.supply-cover-enemy.supply-cover-recovery {
-  box-shadow:
-    inset 0 0 0 3px rgb(255 152 132 / 80%),
-    inset 0 0 20px rgb(255 152 132 / 36%);
+.supply-cover-enemy.supply-cover-recovery .supply-wash {
+  background: rgb(255 152 132 / 32%);
+  box-shadow: inset 0 0 0 2px rgb(255 152 132 / 62%);
 }
 
-.tile.supply-cover-enemy.supply-cover-supply {
-  box-shadow:
-    inset 0 0 0 2px rgb(255 152 132 / 58%),
-    inset 0 0 18px rgb(255 152 132 / 22%);
-}
-
-.tile.supply-cover-enemy.supply-cover-strained {
-  box-shadow:
-    inset 0 0 0 2px rgb(224 148 108 / 52%),
-    inset 0 0 18px rgb(224 148 108 / 20%);
+.supply-cover-enemy.supply-cover-supply .supply-wash,
+.supply-cover-enemy.supply-cover-strained .supply-wash {
+  background: rgb(255 152 132 / 20%);
+  box-shadow: inset 0 0 0 1px rgb(255 152 132 / 44%);
 }
 
 .tile.reachable {
