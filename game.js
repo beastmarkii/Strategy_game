@@ -74,6 +74,24 @@ let hqTrailDistance = 2;
 // 밟고 서 있으면 적이 도달한 시점에 그 칸은 이미 전장이 되어 있다. 위협 방향으로
 // 이만큼 나가 맞이한다. 0으로 두면 목표 위에 그대로 눌러앉는다.
 let enemyForwardDefense = 2;
+// 거점을 전부 잃은 뒤 패배 선고까지의 유예 턴. 진영당 거점 하나로 시작하게 되면서
+// "거점 0 = 즉시 패배"는 기병 한 기의 후방 침투로 작전 전체가 끝나는 규칙이 됐다.
+// 거점 상실은 파국이어야지 사고여선 안 된다 — 유예 동안 되찾으면 계속 싸운다.
+// 0으로 두면 예전처럼 그 자리에서 끝난다.
+let baseLossGraceTurns = 3;
+// 내가 가진 보급 거점 위에 선 부대가 턴마다 회복하는 병력. 거점을 "생산 숫자가
+// 붙은 칸"에서 "부대를 다시 세우는 자리"로 만든다. 0으로 두면 이 규칙이 꺼진다.
+let baseRepairRate = 1;
+// 거점 생산 효율이 턴마다 회복하는 폭. 여태 효율은 내려가기만 했다 — 습격당할 때마다
+// 곱하기로 깎이고 되돌릴 방법이 없었다. 거점이 둘일 때는 반쪽만 죽는 일이었지만, 하나로
+// 줄인 지금은 습격 서너 번이면 생산이 영구히 0에 수렴한다. 그건 전투의 결과가 아니라
+// 회복 규칙이 없어서 생기는 사고다. 지키고 있으면 복구된다 — 다만 적이 붙어 있으면 못 한다.
+// 0으로 두면 예전처럼 한 번 깎인 효율은 영영 안 돌아온다.
+let baseEfficiencyRepair = 0.1;
+// 적이 무주공산 거점을 확보하러 나가는 반경(칸). 중립 거점을 AI가 무시하면
+// 플레이어만 주워 먹고 후반 물량이 일방적으로 기운다. 거리로 묶어 두는 이유는
+// 지도 반대편 거점을 쫓아 전선을 비우지 않게 하기 위함이다. 0이면 안 나간다.
+let enemyBaseSeekRange = 8;
 const episodeLimits = {
   playerBattalionHQ: 1,
   enemyBattalionHQ: 1,
@@ -240,6 +258,10 @@ const ruleEditorFields = [
   ["enemyScreenRange", "적 보병 엄호 반경", 0, 8, 1],
   ["hqTrailDistance", "사령부 추종 거리", 0, 8, 1],
   ["enemyForwardDefense", "적 전방 방어 거리", 0, 6, 1],
+  ["baseLossGraceTurns", "거점 상실 패배 유예 턴 (0=즉시)", 0, 20, 1],
+  ["baseRepairRate", "거점 위 재편성 회복 (0=끔)", 0, 5, 1],
+  ["baseEfficiencyRepair", "거점 효율 턴당 복구 (0=끔)", 0, 0.5, 0.05],
+  ["enemyBaseSeekRange", "적 중립 거점 확보 반경 (0=안 감)", 0, 20, 1],
   ["depotSafeDistance", "보급창고 안전 거리", 1, 12, 1],
   ["hqScreening", "사령부 엄호 (0=끔)", 0, 1, 1],
   ["playerBattalionHQ", "연합군 HQ 한도", 0, 9, 1],
@@ -252,7 +274,10 @@ const terrain = {
   F: { name: "삼림", className: "forest", cost: 2, defense: 1, elevation: 0, artilleryCover: 1 },
   H: { name: "고지/산등성이", className: "hill", cost: 1, defense: 2, elevation: 2, artilleryCover: 2 },
   W: { name: "하천/강", className: "water", cost: Infinity, defense: 0, elevation: -1, artilleryCover: 0 },
-  B: { name: "보급 거점", className: "base", cost: 1, defense: 1, elevation: 0, artilleryCover: 1 },
+  // 창고와 하역장이 들어선 시가지다. 고지와 같은 엄폐를 주되 고지가 아니므로 관측 이점은
+  // 없고, 포장된 바닥이라 전차도 그대로 들어온다. 지키는 쪽이 유리하지만 지형만으로는
+  // 못 버틴다 — 거점을 지키려면 결국 부대를 붙여야 한다.
+  B: { name: "보급 거점", className: "base", cost: 1, defense: 2, elevation: 0, artilleryCover: 2 },
 };
 
 const localePacks = {
@@ -874,6 +899,8 @@ function startGame(config = {}) {
     inspectedId: null,
     inspectedTile: null,
     gameOver: false,
+    // 거점을 전부 잃은 시점의 턴. 되찾으면 다시 null로 지워진다. baseLossCollapsed 참고.
+    baseLossSince: { player: null, enemy: null },
     commanders: {
       player: playerCommander,
       enemy: aiCommander,
@@ -936,9 +963,11 @@ function deploymentForScenario(scenario, playerSide) {
   const playerDeployment = scenario[playerKey];
   const enemyDeployment = scenario[enemyKey];
   return {
+    // 진영 블록 안에 적혀 있다고 다 그 진영 것은 아니다. neutral이 붙은 거점은
+    // 위치만 그쪽 몫이고 소유는 아무에게도 없다 — 먼저 밟는 쪽이 가져간다.
     bases: [
-      ...playerDeployment.bases.map((base) => createBase(base.x, base.y, "player", base.production)),
-      ...enemyDeployment.bases.map((base) => createBase(base.x, base.y, "enemy", base.production)),
+      ...playerDeployment.bases.map((base) => createBase(base.x, base.y, base.neutral ? "neutral" : "player", base.production)),
+      ...enemyDeployment.bases.map((base) => createBase(base.x, base.y, base.neutral ? "neutral" : "enemy", base.production)),
     ],
     units: [
       ...playerDeployment.units.map((entry) => createScenarioUnit("player", entry)),
@@ -1149,7 +1178,7 @@ function render() {
       const coverBand = coverage?.field.get(posKey(x, y));
       if (coverBand) {
         cell.classList.add("supply-cover", `supply-cover-${coverBand}`, `supply-cover-${coverage.owner}`);
-        cell.title += ` / ${supplyCoverLabel(coverage.kind, coverBand)}`;
+        cell.title += ` / ${supplyCoverLabel(coverage.kind, coverBand, coverage.owner)}`;
         // 보급권은 칸 테두리가 아니라 칸 안에 깔린 판 한 장으로 그린다. 처음에는
         // box-shadow로 그렸는데 지도 모드의 `.map-enabled .tile { box-shadow: none }`이
         // 더 강해서 한 칸도 안 보였다 — 카드에는 숫자가 뜨는데 지도는 텅 빈 꼴이었다.
@@ -1225,6 +1254,16 @@ function lonLatToTile(lon, lat, zoom) {
 
 function renderBase(cell, base) {
   cell.title += ` / ${sideName(base.owner)} 생산 ${formatNumber(baseProduction(base))}, 효율 ${Math.round(base.efficiency * 100)}%`;
+
+  // 지도 모드에서 거점은 여태 아무것도 그리지 않았다. `.map-enabled .tile`이 배경을 지우고
+  // `.tile.base::after`까지 꺼 놓아서, 남는 건 구석의 점 하나와 숫자뿐이었다 — 게임의 중심이
+  // 되는 칸이 개활지와 구분이 안 됐다는 뜻이다. 자식 요소는 그 규칙들과 무관하므로,
+  // 보급권을 면으로 그릴 때 쓴 수법을 그대로 쓴다. 소유에 따라 색이 달라져서
+  // 무주공산 거점은 회색으로 남고, 그 회색이 곧 "가서 밟으라"는 표시가 된다.
+  const depot = document.createElement("span");
+  depot.className = `depot-mark ${base.owner}`;
+  cell.appendChild(depot);
+
   const mark = document.createElement("span");
   mark.className = `owner-mark ${base.owner}`;
   cell.appendChild(mark);
@@ -1893,6 +1932,10 @@ function balanceSnapshot() {
       enemyScreenRange,
       hqTrailDistance,
       enemyForwardDefense,
+      baseLossGraceTurns,
+      baseRepairRate,
+      baseEfficiencyRepair,
+      enemyBaseSeekRange,
       depotSafeDistance,
       hqScreening,
       playerBattalionHQ: episodeLimits.playerBattalionHQ,
@@ -1934,6 +1977,10 @@ function ruleValue(key) {
     enemyScreenRange,
     hqTrailDistance,
     enemyForwardDefense,
+    baseLossGraceTurns,
+    baseRepairRate,
+    baseEfficiencyRepair,
+    enemyBaseSeekRange,
     depotSafeDistance,
     hqScreening,
     playerBattalionHQ: episodeLimits.playerBattalionHQ,
@@ -1974,6 +2021,10 @@ function setRuleValue(key, value) {
   if (key === "enemyScreenRange") enemyScreenRange = value;
   if (key === "hqTrailDistance") hqTrailDistance = value;
   if (key === "enemyForwardDefense") enemyForwardDefense = value;
+  if (key === "baseLossGraceTurns") baseLossGraceTurns = value;
+  if (key === "baseRepairRate") baseRepairRate = value;
+  if (key === "baseEfficiencyRepair") baseEfficiencyRepair = value;
+  if (key === "enemyBaseSeekRange") enemyBaseSeekRange = value;
   if (key === "depotSafeDistance") depotSafeDistance = value;
   if (key === "hqScreening") hqScreening = value;
   if (key === "playerBattalionHQ") episodeLimits.playerBattalionHQ = value;
@@ -2325,6 +2376,11 @@ function terrainTraitText(x, y) {
   if (getTerrainKey(x, y) === "H") return "원거리 포격 차단 / 전차, 자주포 진입 불가";
   if (getTerrainKey(x, y) === "W" && !hasImprovement(x, y, "bridge")) return "하천: 교량 없이는 통과 불가";
   if (getTerrainKey(x, y) === "F") return "방어 유리 / 포격 효과 감소";
+  // 거점만 "일반"으로 나오면 지도에서 왜 이 칸을 다투는지가 카드에 한 줄도 안 적힌다.
+  if (getTerrainKey(x, y) === "B") {
+    const refit = baseRepairRate > 0 ? ` / 소유 시 주둔 부대 병력 +${baseRepairRate}` : "";
+    return `시가지 창고: 방어 +2 / 포격 효과 감소 / 전차 진입 가능${refit}`;
+  }
   return "일반";
 }
 
@@ -2727,6 +2783,8 @@ function endPlayerTurn() {
     }
   });
   replenishNearBattalionHQ("enemy");
+  refitOnOwnBase("enemy");
+  repairOwnBases("enemy");
   addLog(`${sideName("enemy")}이 반격 작전을 시작합니다.`);
   render();
   window.setTimeout(enemyTurn, 420);
@@ -2807,6 +2865,8 @@ function enemyTurn() {
     }
   });
   replenishNearBattalionHQ("player");
+  refitOnOwnBase("player");
+  repairOwnBases("player");
   addLog(`${formatNumber(income)} 보급품을 확보했습니다.`);
   render();
 }
@@ -3191,16 +3251,64 @@ function replenishNearBattalionHQ(owner) {
   if (recovered.length) addLog(`${sideName(owner)} 대대사령부가 밀접 부대 ${recovered.length}개의 병력을 1씩 보충했습니다.`);
 }
 
+// 거점 위 재편성. 보급 거점은 여태 "생산 숫자가 붙은 칸"일 뿐이어서, 지형으로서는
+// 개활지와 다를 게 없었다 — 밟을 이유가 점령 말고는 없었다는 뜻이다. 내가 가진 거점 위에
+// 선 부대는 창고를 열어 병력을 다시 채운다. 사령부 보충과 겹쳐도 상관없다. 거점까지 물러난
+// 부대가 사령부 곁에 있는 부대보다 빨리 회복하는 건 이상한 일이 아니다.
+// 두절된 거점은 채워줄 물자가 없다 — 대대 보충과 같은 논리다.
+function refitOnOwnBase(owner) {
+  if (baseRepairRate <= 0) return;
+  const depots = state.bases.filter((base) => base.owner === owner);
+  if (!depots.length) return;
+
+  const refitted = state.units.filter((unit) =>
+    unit.owner === owner &&
+    unit.hp < unitTypes[unit.type].hp &&
+    depots.some((base) => base.x === unit.x && base.y === unit.y)
+  );
+
+  refitted.forEach((unit) => {
+    unit.hp = Math.min(unitTypes[unit.type].hp, unit.hp + baseRepairRate);
+  });
+
+  if (refitted.length) addLog(`${sideName(owner)} 부대 ${refitted.length}개가 보급 거점에서 재편성해 병력을 ${baseRepairRate}씩 회복했습니다.`);
+}
+
+// 거점 복구. 효율은 여태 내려가기만 하는 값이었다 — 습격 한 번에 곱하기로 깎이고
+// 되돌릴 길이 없었으니, 거점 하나로 시작하는 지금은 습격 서너 번으로 생산이 영구히
+// 0에 수렴한다. 지고 나서가 아니라 지는 중에 되돌릴 방법이 있어야 방어에 값어치가 생긴다.
+// 적이 붙어 있는 동안은 복구하지 못한다 — 포화 아래에서 창고를 다시 세울 수는 없다.
+function repairOwnBases(owner) {
+  if (baseEfficiencyRepair <= 0) return;
+  const mended = state.bases.filter((base) => {
+    if (base.owner !== owner || base.efficiency >= 1) return false;
+    return nearestOpposingDistance(owner, base.x, base.y) > 1;
+  });
+  if (!mended.length) return;
+
+  mended.forEach((base) => {
+    base.efficiency = Math.min(1, base.efficiency + baseEfficiencyRepair);
+  });
+  addLog(`${sideName(owner)} 보급 거점 ${mended.length}곳의 복구 작업이 진행되어 생산 효율이 올랐습니다.`);
+}
+
 // 반격이 생기면서 공격자가 attack() 안에서 죽을 수 있게 됐다. 호출부들은
 // 공격 직후 captureBase(unit)을 부르므로, 죽은 부대가 거점을 점령하지 않도록 여기서 막는다.
 function captureBase(unit) {
   if (!unit || unit.hp <= 0) return;
   const base = getBaseAt(unit.x, unit.y);
-  if (base && base.owner !== unit.owner) {
-    base.owner = unit.owner;
-    base.efficiency *= raidEfficiencyFactor;
-    addLog(`${sideName(unit.owner)}이 (${unit.x}, ${unit.y}) 보급 거점을 장악했습니다. 전투 피해로 생산 효율이 ${Math.round(base.efficiency * 100)}%가 되었습니다.`);
+  if (!base || base.owner === unit.owner) return;
+  // 무주공산 거점은 아무도 지키지 않았으니 부술 것도 없었다. 빼앗은 거점에만 붙는
+  // 효율 감소를 여기에 그대로 적용하면, 먼저 달려간 보상이 "반쯤 부서진 거점"이 된다.
+  // 그러면 아무도 안 가고 개편의 의도 자체가 죽는다.
+  const wasNeutral = base.owner === "neutral";
+  base.owner = unit.owner;
+  if (wasNeutral) {
+    addLog(`${sideName(unit.owner)}이 (${unit.x}, ${unit.y}) 무주공산 보급 거점을 온전히 접수했습니다. 생산 효율 ${Math.round(base.efficiency * 100)}%.`);
+    return;
   }
+  base.efficiency *= raidEfficiencyFactor;
+  addLog(`${sideName(unit.owner)}이 (${unit.x}, ${unit.y}) 보급 거점을 장악했습니다. 전투 피해로 생산 효율이 ${Math.round(base.efficiency * 100)}%가 되었습니다.`);
 }
 
 function missionObjectives() {
@@ -3428,11 +3536,29 @@ function checkVictory() {
 
   const playerUnits = state.units.some((unit) => unit.owner === "player");
   const enemyUnits = state.units.some((unit) => unit.owner === "enemy");
-  const playerBases = state.bases.some((base) => base.owner === "player");
-  const enemyBases = state.bases.some((base) => base.owner === "enemy");
+  const playerCollapsed = baseLossCollapsed("player");
+  const enemyCollapsed = baseLossCollapsed("enemy");
 
-  if (!enemyUnits || !enemyBases) finishGame("승리: 추축군 전선이 붕괴되었습니다.");
-  else if (!playerUnits || !playerBases) finishGame("패배: 연합군 교두보를 상실했습니다.");
+  if (!enemyUnits || enemyCollapsed) finishGame("승리: 추축군 전선이 붕괴되었습니다.");
+  else if (!playerUnits || playerCollapsed) finishGame("패배: 연합군 교두보를 상실했습니다.");
+}
+
+// 거점을 전부 잃었는가, 그리고 그 상태가 유예 턴을 넘겼는가.
+// 진영당 거점 하나로 시작하게 되면서 "거점 0 = 즉시 패배"는 후방으로 흘러든 전차 한 대가
+// 작전 전체를 끝내는 규칙이 됐다. 그건 전략의 결과가 아니라 사고다. 유예를 주면 거점 상실은
+// "졌다"가 아니라 "지금 당장 되찾지 않으면 진다"가 된다 — 그래야 역습에 의미가 생긴다.
+function baseLossCollapsed(owner) {
+  if (state.bases.some((base) => base.owner === owner)) {
+    state.baseLossSince[owner] = null;
+    return false;
+  }
+  if (state.baseLossSince[owner] == null) {
+    state.baseLossSince[owner] = state.turn;
+    if (baseLossGraceTurns > 0) {
+      addLog(`${sideName(owner)}이 보급 거점을 모두 상실했습니다. ${baseLossGraceTurns}턴 안에 되찾지 못하면 전선이 붕괴합니다.`);
+    }
+  }
+  return state.turn - state.baseLossSince[owner] >= baseLossGraceTurns;
 }
 
 function finishGame(message) {
@@ -3727,10 +3853,13 @@ function baseCoverage(base) {
   return { kind: "base", owner: base.owner, live: true, field };
 }
 
-function supplyCoverLabel(kind, band) {
+function supplyCoverLabel(kind, band, owner) {
   if (band === "dead") return "보급 두절 사령부 / 무효";
   if (kind === "hq") return band === "recovery" ? "대대 보충권" : "대대 보급권";
-  return band === "supply" ? "거점 보급권" : "거점 보급 불안권";
+  // 무주공산 거점의 보급권은 "지금 받는 것"이 아니라 "가져가면 받을 것"이다.
+  // 같은 말로 적으면 이미 내 것인 줄 안다.
+  const prefix = owner === "neutral" ? "확보 시 " : "";
+  return band === "supply" ? `${prefix}거점 보급권` : `${prefix}거점 보급 불안권`;
 }
 
 // 지도 색만으로는 "몇 칸을 먹이는가"를 눈으로 세어야 안다. 카드에 숫자로 같이 적는다.
@@ -4310,6 +4439,25 @@ function infantryScreenGoal(unit) {
   return closest?.id === unit.id ? { x: gun.x, y: gun.y, label: "엄호" } : null;
 }
 
+// 무주공산 거점을 확보하러 갈 부대 하나를 고른다.
+// 거점을 진영당 하나로 줄이면서 지도에는 주인 없는 거점이 남게 됐다. AI가 이걸 무시하면
+// 플레이어만 전부 주워 담고, 후반에 물량이 일방적으로 기운다 — 예전에 "적 보급량이 고정이라
+// 나중엔 너무 쉬워진다"던 그 문제가 그대로 돌아온다. 그렇다고 전군을 보내면 전선이 빈다.
+// 거점 하나당 가장 가까운 부대 하나만, 그것도 반경 안에 있을 때만 뗀다.
+// 사령부와 포병은 빼는데, 둘 다 혼자 걸어가면 죽는 병종이라 파견 자체가 헌납이기 때문이다.
+function unclaimedBaseGoal(unit) {
+  if (enemyBaseSeekRange <= 0) return null;
+  if (unit.type === "battalionHQ" || isArtilleryUnit(unit)) return null;
+  const open = state.bases.filter((base) => base.owner === "neutral" && distance(unit, base) <= enemyBaseSeekRange);
+  if (!open.length) return null;
+
+  const base = nearestOf(unit, open);
+  const closest = state.units
+    .filter((other) => other.owner === unit.owner && other.type !== "battalionHQ" && !isArtilleryUnit(other))
+    .sort((a, b) => distance(a, base) - distance(b, base))[0];
+  return closest?.id === unit.id ? { x: base.x, y: base.y, label: "거점 확보" } : null;
+}
+
 // 포병의 자리 고르기. 좋은 자리란 "표적은 닿고 나는 안 닿는 자리"다.
 // 야포는 한 턴에 이동과 사격 중 하나만 하므로, 지금 쏠 수 있는 자리로 걸어가는 것은
 // 그 턴을 버리는 짓이다. 다음 턴에 안전하게 쏠 수 있는 자리가 언제나 더 값지다.
@@ -4408,6 +4556,11 @@ function enemyGoalFor(unit) {
   // 여기서 한 턴 늦는 것이 포 하나를 잃는 것보다 싸다.
   const screen = infantryScreenGoal(unit);
   if (screen) return screen;
+
+  // 참모부 계획보다 먼저 본다. 계획은 축선을 향해 걷는 일이고, 주인 없는 거점은
+  // 걷는 동안 사라지는 기회다 — 플레이어가 먼저 밟으면 그걸로 끝이다.
+  const unclaimed = unclaimedBaseGoal(unit);
+  if (unclaimed) return unclaimed;
 
   const assignment = enemyPlan.get(unit.id);
   if (assignment) {
@@ -5232,6 +5385,9 @@ function phaseDisplayName() {
 }
 
 function sideName(owner) {
+  // 거점은 주인이 없을 수 있다. sideKeyForUnit은 "player가 아니면 적"으로 접기 때문에
+  // 여기서 먼저 걸러내지 않으면 무주공산 거점이 적 거점으로 표시된다.
+  if (owner === "neutral") return "중립";
   const side = sideKeyForUnit(owner);
   if (activePack) return side === "allies" ? activePack.side.player : activePack.side.enemy;
   return side === "allies" ? "연합군" : "추축군";

@@ -12,6 +12,11 @@
 // 그래서 목표도 timeoutWinner도 "플레이어 기준"이 아니라 "진영 기준"으로 적는다.
 // 플레이어 기준으로 적으면 진영을 바꿔 고르는 순간 미션이 뒤집혀서 말이 안 된다.
 //
+// 보급 거점(bases)
+//   각 진영은 거점 하나만 소유하고 시작한다. neutral: true가 붙은 거점은 무주공산이라
+//   먼저 밟는 쪽이 가져간다 — 그래서 거점은 "받고 시작하는 것"이 아니라 "싸워서 여는 것"이다.
+//   진영 블록 안에 적혀 있어도 소유가 아니라 위치만 그쪽 몫이라는 뜻이다.
+//
 // 목표(objective) 종류
 //   seize    지정 칸을 점유하고 holdTurns 만큼 유지 → 즉시 승리
 //            byTag를 주면 그 태그가 붙은 유닛만 인정한다 (탈출 미션용)
@@ -77,7 +82,7 @@ const scenarios = [
     west: {
       bases: [
         { x: 6, y: 10, production: 6 },
-        { x: 10, y: 13, production: 5 },
+        { x: 10, y: 13, production: 5, neutral: true },
       ],
       units: [
         ["infantry", 2, 12],
@@ -92,7 +97,7 @@ const scenarios = [
     east: {
       bases: [
         { x: 13, y: 7, production: 6 },
-        { x: 15, y: 8, production: 5 },
+        { x: 15, y: 8, production: 5, neutral: true },
       ],
       units: [
         ["infantry", 17, 3],
@@ -153,7 +158,7 @@ const scenarios = [
     west: {
       bases: [
         { x: 1, y: 14, production: 6 },
-        { x: 5, y: 15, production: 5 },
+        { x: 5, y: 15, production: 5, neutral: true },
       ],
       units: [
         ["infantry", 2, 13],
@@ -168,7 +173,7 @@ const scenarios = [
     east: {
       bases: [
         { x: 18, y: 1, production: 6 },
-        { x: 13, y: 9, production: 5 },
+        { x: 13, y: 9, production: 5, neutral: true },
       ],
       units: [
         ["infantry", 16, 2],
@@ -231,7 +236,7 @@ const scenarios = [
     west: {
       bases: [
         { x: 2, y: 1, production: 6 },
-        { x: 9, y: 7, production: 5 },
+        { x: 9, y: 7, production: 5, neutral: true },
       ],
       units: [
         ["infantry", 3, 2],
@@ -247,7 +252,7 @@ const scenarios = [
     east: {
       bases: [
         { x: 18, y: 4, production: 6 },
-        { x: 17, y: 13, production: 5 },
+        { x: 17, y: 13, production: 5, neutral: true },
       ],
       units: [
         ["infantry", 17, 4],
@@ -313,7 +318,7 @@ const scenarios = [
     west: {
       bases: [
         { x: 3, y: 12, production: 6 },
-        { x: 1, y: 14, production: 5 },
+        { x: 1, y: 14, production: 5, neutral: true },
       ],
       units: [
         ["infantry", 4, 12],
@@ -327,7 +332,7 @@ const scenarios = [
     east: {
       bases: [
         { x: 18, y: 0, production: 6 },
-        { x: 16, y: 3, production: 5 },
+        { x: 16, y: 3, production: 5, neutral: true },
       ],
       units: [
         ["infantry", 17, 1],
@@ -382,7 +387,7 @@ const scenarios = [
     west: {
       bases: [
         { x: 1, y: 1, production: 6 },
-        { x: 1, y: 10, production: 5 },
+        { x: 1, y: 10, production: 5, neutral: true },
       ],
       // 본대에는 사령부가 없다. 구해야 할 그 사령부가 이 작전의 유일한 사령부다.
       units: [
@@ -414,7 +419,7 @@ const scenarios = [
     east: {
       bases: [
         { x: 14, y: 4, production: 6 },
-        { x: 13, y: 9, production: 5 },
+        { x: 13, y: 9, production: 5, neutral: true },
       ],
       // 포위는 뒤에서 쫓는 게 아니라 둘러싸는 것이다. 전부 동쪽에 세우면
       // 포켓이 그냥 서쪽으로 걸어나가고 미션이 성립하지 않는다.
@@ -490,7 +495,7 @@ const scenarios = [
     west: {
       bases: [
         { x: 1, y: 7, production: 6 },
-        { x: 2, y: 14, production: 5 },
+        { x: 2, y: 14, production: 5, neutral: true },
       ],
       units: [
         ["infantry", 3, 7],
@@ -511,7 +516,7 @@ const scenarios = [
     east: {
       bases: [
         { x: 18, y: 4, production: 6 },
-        { x: 17, y: 11, production: 5 },
+        { x: 17, y: 11, production: 5, neutral: true },
       ],
       units: [
         // 화물역 회랑 위에 앉는다. 개통 목표는 그 칸에 상대가 서 있기만 해도
