@@ -112,6 +112,13 @@ let baseSightRange = 2;
 // 마지막으로 본 적의 자리가 기억에 남는 턴 수. 0이면 시야를 벗어나는 순간 잊는다.
 // 이 값이 곧 "안개"의 두께다 — 적은 사라지는 것이 아니라 흐려져야 한다.
 let contactMemoryTurns = 3;
+// 행군 중 접적 정지가 걸리는 거리(칸). 0이면 아예 멈추지 않는다.
+// 처음에는 이 값이 곧 시야였다 — 새 적이 시야 안에 들어오기만 하면 그 자리에서
+// 멈췄다. 그래서 시야 6칸짜리 전차는 계곡 건너 적을 "알아본" 것만으로 이동력 6을
+// 한 칸에 버리고 섰고, 화면에는 장애물도 없는데 멈춘 것처럼 보였다(목적지 46칸 중
+// 20칸이 이렇게 잘렸고, 멈춘 지점의 적과의 거리는 예외 없이 정확히 6칸이었다).
+// 멀리서 알아보는 것은 정찰이지 접적이 아니다. 발이 묶이는 건 코앞일 때뿐이다.
+let contactHaltRange = 2;
 // 전방 방어 거리(칸). 수비의 자리는 지킬 칸 위가 아니라 그 앞이다. 지켜야 할 칸을
 // 밟고 서 있으면 적이 도달한 시점에 그 칸은 이미 전장이 되어 있다. 위협 방향으로
 // 이만큼 나가 맞이한다. 0으로 두면 목표 위에 그대로 눌러앉는다.
@@ -263,6 +270,7 @@ const defaultBalance = {
     hillSightBonus,
     baseSightRange,
     contactMemoryTurns,
+    contactHaltRange,
     enemyForwardDefense,
     // 이 넷은 balanceSnapshot과 ruleEditorFields에는 있는데 여기에만 빠져 있었다.
     // 에디터에서 만질 수는 있지만 "초기값 복원"이 되돌려 주지 않는다는 뜻이다.
@@ -345,6 +353,7 @@ const ruleEditorFields = [
   ["hillSightBonus", "고지 시야 보너스", 0, 6, 1],
   ["baseSightRange", "거점 감시 거리", 0, 8, 1],
   ["contactMemoryTurns", "적 목격 기억 턴", 0, 10, 1],
+  ["contactHaltRange", "행군 중 접적 정지 거리 (0=끔)", 0, 6, 1],
   ["enemyForwardDefense", "적 전방 방어 거리", 0, 6, 1],
   ["baseLossGraceTurns", "거점 상실 패배 유예 턴 (0=즉시)", 0, 20, 1],
   ["baseDefenseBonus", "거점 안 부대 방어 버프", 0, 8, 1],
@@ -1629,12 +1638,13 @@ const unitWeapons = {
 // burst    착탄 연출의 크기 배수.
 // shards   튀는 파편 수.
 // shake    화면 흔들림 세기. 0이면 흔들지 않는다.
+// embers   튀어 오르는 불티 수. 파편과 달리 포물선을 그리고 떨어진다.
 const weaponProfiles = {
-  rifle: { shots: 3, shotGap: 66, stepTime: 22, arc: 0, burst: 0.68, shards: 3, shake: 0 },
-  cannon: { shots: 1, shotGap: 0, stepTime: 40, arc: 0.16, burst: 1.14, shards: 6, shake: 1 },
-  howitzer: { shots: 1, shotGap: 0, stepTime: 128, arc: 0.9, burst: 1.4, shards: 8, shake: 1 },
-  charge: { shots: 1, shotGap: 0, stepTime: 0, arc: 0, burst: 0.95, shards: 5, shake: 1 },
-  sidearm: { shots: 2, shotGap: 86, stepTime: 20, arc: 0, burst: 0.46, shards: 2, shake: 0 },
+  rifle: { shots: 3, shotGap: 66, stepTime: 22, arc: 0, burst: 0.74, shards: 4, embers: 4, shake: 0 },
+  cannon: { shots: 1, shotGap: 0, stepTime: 40, arc: 0.16, burst: 1.2, shards: 9, embers: 8, shake: 1 },
+  howitzer: { shots: 1, shotGap: 0, stepTime: 128, arc: 0.9, burst: 1.48, shards: 12, embers: 11, shake: 1 },
+  charge: { shots: 1, shotGap: 0, stepTime: 0, arc: 0, burst: 1.02, shards: 8, embers: 7, shake: 1 },
+  sidearm: { shots: 2, shotGap: 86, stepTime: 20, arc: 0, burst: 0.5, shards: 3, embers: 3, shake: 0 },
 };
 
 // 반격은 공격이 끝난 뒤에 나가야 반격으로 읽힌다. 같은 프레임에 같이 터지면
@@ -1779,7 +1789,19 @@ function addTempClass(element, className, life) {
 // 시간은 짧게 둔다. 움직임을 줄이겠다고 한 사용자에게는 CSS가 통째로 끈다.
 function shakeBoard(strength) {
   if (!boardEl) return;
-  addTempClass(boardEl, `fx-shake-${strength}`, strength === "heavy" ? 420 : 240);
+  addTempClass(boardEl, `fx-shake-${strength}`, strength === "heavy" ? 520 : 260);
+}
+
+// 격파 순간의 화면 번쩍임. 여러 부대가 한 턴에 격파되면 번쩍임도 겹치는데,
+// 두 장이 포개지면 두 배로 하얘져서 판이 안 보인다. 한 장만 유지한다.
+function flashBoard() {
+  if (!boardEl) return;
+  boardEl.querySelectorAll(".fx-blast").forEach((old) => old.remove());
+  const blast = document.createElement("span");
+  blast.className = "fx-blast";
+  blast.setAttribute("aria-hidden", "true");
+  boardEl.appendChild(blast);
+  window.setTimeout(() => blast.remove(), 220);
 }
 
 function spawnEffect(className, x, y, life, styles = {}) {
@@ -1836,12 +1858,17 @@ function spawnProjectile(from, to, angle, flight, profile, event, scale) {
   );
 }
 
-// 착탄. 예전에는 원 하나가 커졌다 사라지는 게 전부였고, 격파도 그 원을 18px로
-// 키운 것뿐이었다. 이제는 층을 나눈다 — 섬광, 불덩이, 충격파 고리, 튀는 파편,
-// 그리고 격파일 때만 남는 연기와 잔해와 그을음.
+// 착탄. 층을 나눠 쌓는다 — 섬광이 먼저 꺼지고, 불덩이가 뜨고, 충격파가 퍼지고,
+// 먼지가 지면을 훑고, 파편과 불티가 흩어지고, 연기가 마지막까지 남는다.
+// 층마다 시작과 끝이 달라야 폭발로 읽힌다. 전부 같은 시간에 나타났다 사라지면
+// 그건 폭발이 아니라 도형 하나가 깜빡인 것이다.
+//
+// 격파는 여기서 한 급이 아니라 두 급 위다: 화주가 솟고, 연기가 세 뭉치로 피어오르고,
+// 큰 잔해가 텀블링하며 떨어지고, 판 전체가 한 번 번쩍인다. 부대 하나가 사라지는
+// 일이니 화면에서도 그만큼의 사건이어야 한다.
 function spawnImpact(to, tile, angle, profile, event, scale) {
   const kind = event.base ? "base" : event.killed ? "kill" : "hit";
-  const life = event.killed ? 1500 : 720;
+  const life = event.killed ? 2300 : 900;
   const impact = spawnEffect(
     `fx-impact fx-${kind} fx-${event.weapon}${event.counter ? " fx-counter" : ""}`,
     to.x,
@@ -1850,29 +1877,77 @@ function spawnImpact(to, tile, angle, profile, event, scale) {
     { "--fx-angle": `${angle}rad`, "--fx-scale": scale.toFixed(3) },
   );
 
+  // 빛무리는 섬광보다 넓고 흐리다. 폭발이 주변을 잠깐 밝히는 것처럼 보이게 하는
+  // 유일한 층이라, 이게 없으면 불덩이가 배경에서 오려 붙인 스티커처럼 뜬다.
+  impact.appendChild(makeLayer("fx-glow"));
   impact.appendChild(makeLayer("fx-flash"));
   impact.appendChild(makeLayer("fx-fire"));
   impact.appendChild(makeLayer("fx-ring"));
+  // 먼지는 지면에 붙어 넓게 퍼진다. 충격파 고리가 "압력"이라면 이쪽은 "흙"이다.
+  impact.appendChild(makeLayer("fx-dust"));
 
+  const shards = profile.shards + (event.killed ? 6 : 0);
   // 파편은 착탄 방향을 중심으로 부채꼴로 튄다. 뒤로도 조금 튀어야 폭발로 보인다.
-  for (let index = 0; index < profile.shards; index += 1) {
+  for (let index = 0; index < shards; index += 1) {
     const spread = (Math.random() - 0.5) * Math.PI * 1.5;
     const shardAngle = angle + spread;
-    const distance = (0.4 + Math.random() * 0.7) * to.w * 0.55 * scale;
+    const distance = (0.45 + Math.random() * 0.85) * to.w * 0.7 * scale;
     impact.appendChild(makeLayer("fx-shard", {
       "--shard-x": `${Math.cos(shardAngle) * distance}px`,
-      "--shard-y": `${Math.sin(shardAngle) * distance - to.h * 0.14}px`,
+      "--shard-y": `${Math.sin(shardAngle) * distance - to.h * 0.18}px`,
       "--shard-delay": `${Math.round(Math.random() * 60)}ms`,
       "--shard-spin": `${Math.round((Math.random() - 0.5) * 540)}deg`,
     }));
   }
 
+  // 불티는 파편과 다르다. 파편은 직선으로 튀고 불티는 솟았다가 떨어진다.
+  // 이 낙하가 있어야 폭발에 무게가 생긴다 — 전부 직선으로만 뻗으면 불꽃놀이가 된다.
+  const embers = (profile.embers ?? 4) + (event.killed ? 8 : 0);
+  for (let index = 0; index < embers; index += 1) {
+    const emberAngle = Math.random() * Math.PI * 2;
+    const reach = (0.3 + Math.random() * 0.9) * to.w * 0.62 * scale;
+    const rise = (0.55 + Math.random() * 0.8) * to.h * 0.9 * scale;
+    impact.appendChild(makeLayer("fx-ember", {
+      "--ember-x": `${Math.cos(emberAngle) * reach}px`,
+      "--ember-peak": `${-rise}px`,
+      "--ember-drop": `${rise * 0.35}px`,
+      "--ember-delay": `${Math.round(Math.random() * 110)}ms`,
+      "--ember-size": `${(2 + Math.random() * 2.4).toFixed(2)}px`,
+    }));
+  }
+
   if (event.killed) {
-    impact.appendChild(makeLayer("fx-smoke"));
+    // 화주. 폭발이 위로 뻗는 층이 하나는 있어야 한다 — 나머지는 전부 옆으로 퍼지는
+    // 원이라, 이 세로선이 없으면 아무리 키워도 납작한 얼룩으로 보인다.
+    impact.appendChild(makeLayer("fx-column"));
+    // 연기는 한 덩이가 아니라 세 뭉치다. 서로 다른 시각에 다른 자리에서 피어올라야
+    // 하나의 기둥으로 읽힌다. 원 하나를 키우면 그냥 커지는 원이다.
+    [0, 1, 2].forEach((index) => {
+      impact.appendChild(makeLayer("fx-smoke", {
+        "--smoke-delay": `${index * 190}ms`,
+        "--smoke-x": `${((index - 1) * 0.26 * to.w * scale).toFixed(1)}px`,
+        "--smoke-size": `${(0.78 + index * 0.22).toFixed(2)}`,
+      }));
+    });
+    // 큰 잔해. 파편보다 무겁고 느리게, 회전하면서 포물선을 그리고 떨어진다.
+    for (let index = 0; index < 5; index += 1) {
+      const debrisAngle = angle + (Math.random() - 0.5) * Math.PI * 1.2;
+      const reach = (0.4 + Math.random() * 0.7) * to.w * 0.66 * scale;
+      impact.appendChild(makeLayer("fx-debris", {
+        "--debris-x": `${Math.cos(debrisAngle) * reach}px`,
+        "--debris-peak": `${-(0.7 + Math.random() * 0.6) * to.h * scale}px`,
+        "--debris-spin": `${Math.round((Math.random() - 0.5) * 900)}deg`,
+        "--debris-delay": `${Math.round(Math.random() * 90)}ms`,
+      }));
+    }
     // 격파된 부대는 이 시점에 이미 판에서 지워져 있다(state에서 먼저 뺀다).
     // 그래서 "부대가 무너지는" 연출을 붙일 요소가 없다 — 잔해를 대신 세운다.
     impact.appendChild(makeLayer("fx-wreck"));
-    addTempClass(tile, "fx-scorched", 1500);
+    addTempClass(tile, "fx-scorched", 2300);
+    // 판 전체가 한 번 번쩍인다. 아주 짧게 — 길면 눈이 아프고, 짧으면 소리 없이도
+    // "쾅" 소리가 난 것처럼 느껴진다. 클래스가 아니라 자식 한 장으로 까는 것은
+    // .battlefield의 ::before/::after를 이미 지도 격자가 쓰고 있기 때문이다.
+    flashBoard();
   }
 
   if (event.damage !== null) {
@@ -2074,15 +2149,7 @@ function balanceSnapshot() {
       hillSightBonus,
       baseSightRange,
       contactMemoryTurns,
-    fogOfWar,
-    hillSightBonus,
-    baseSightRange,
-    contactMemoryTurns,
-    hqPanicRange,
-    fogOfWar,
-    hillSightBonus,
-    baseSightRange,
-    contactMemoryTurns,
+      contactHaltRange,
       enemyForwardDefense,
       baseLossGraceTurns,
       baseDefenseBonus,
@@ -2138,6 +2205,7 @@ function ruleValue(key) {
     hillSightBonus,
     baseSightRange,
     contactMemoryTurns,
+    contactHaltRange,
     enemyForwardDefense,
     baseLossGraceTurns,
     baseDefenseBonus,
@@ -2195,6 +2263,8 @@ function setRuleValue(key, value) {
   if (key === "hillSightBonus") hillSightBonus = value;
   if (key === "baseSightRange") baseSightRange = value;
   if (key === "contactMemoryTurns") contactMemoryTurns = value;
+  // 정지 거리는 시야 계산에 끼지 않으므로 캐시를 비울 필요가 없다.
+  if (key === "contactHaltRange") contactHaltRange = value;
   if (["fogOfWar", "hillSightBonus", "baseSightRange", "contactMemoryTurns"].includes(key)) {
     visionCache = { key: "", byOwner: new Map() };
   }
@@ -4445,30 +4515,52 @@ function sightRangeAt(unit, x, y) {
   return base + (getTerrainKey(x, y) === "H" ? hillSightBonus : 0);
 }
 
-// 행군 중 접적 정지. 안개가 있는데 이동만 예전처럼 순간이동이면, 부대는 적의 코앞을
+// 행군 중 접적. 안개가 있는데 이동만 예전처럼 순간이동이면, 부대는 적의 코앞을
 // 스쳐 지나 목적지에 서 있고 플레이어는 지나온 길에 뭐가 있었는지 영영 모른다.
-// 실제 부대는 척후가 적을 보면 멈춘다 — 그 자리에서 대형을 풀고 다음 판단을 한다.
-// 이 규칙이 있어야 "한 칸씩 조심해서 나간다"와 "일단 끝까지 달린다"가 서로 다른
-// 선택이 되고, 매복이 매복으로 작동한다.
-// 목적지에서 처음 보이는 경우는 멈출 것이 없으니(이미 다 왔다) 알림만 남긴다.
+// 그래서 가는 길을 한 칸씩 밟아 보며 두 가지를 나눠 처리한다.
+//
+//   본다   — 새 적이 시야에 들어오면 그 자리에서 목격 기록을 남긴다. 목적지에서
+//            다시 안 보이더라도 지나가며 본 것은 본 것이다. 이게 정찰의 값어치다.
+//   멈춘다 — 그중 contactHaltRange 안까지 붙은 적이 있을 때만 발이 묶인다.
+//
+// 이 둘을 하나로 묶어 두었던 것이 셔먼이 장애물도 없이 한 칸 만에 서던 원인이다.
+// 시야 6칸짜리 전차는 계곡 건너를 알아본 것만으로 이동력 6을 통째로 버렸다.
+// 나눠 놓아야 "한 칸씩 조심해서 나간다"와 "일단 끝까지 달린다"가 서로 다른 선택이
+// 되고, 매복은 시야가 아니라 거리로 성립한다.
+//
+// 목격 기록을 여기서 직접 쓰는 것은 그 자리를 아는 곳이 여기뿐이기 때문이다 —
+// 부대는 곧 지나쳐 가므로 나중에 다시 물어볼 수가 없다.
+// 목적지에서 처음 붙는 경우는 멈출 것이 없으니(이미 다 왔다) 알림만 남긴다.
 function ambushHalt(unit, targetX, targetY) {
   if (!fogOfWar) return null;
   const path = movementPath(unit, targetX, targetY);
   // 출발 전에 이미 알고 있던 적. 이 명단에 없는 것이 나타나야 "새로 발견"이다.
+  // 행군 중에 본 적을 여기에 보태면 안 된다 — 2킬로 밖에서 알아본 순간 명단에
+  // 올라가 버려서, 정작 코앞까지 붙었을 때는 "아는 놈"이라며 그냥 지나친다.
+  // 알아보는 것과 맞닥뜨리는 것은 다른 사건이고, 발을 묶는 쪽은 뒤엣것이다.
   const known = new Set(visibleFoes(unit.owner).map((foe) => foe.id));
-  for (let i = 1; i < path.length; i += 1) {
+  const noted = new Set();
+  const book = state.contacts?.[unit.owner];
+  let halt = null;
+
+  for (let i = 1; i < path.length && !halt; i += 1) {
     const spot = path[i];
     const range = sightRangeAt(unit, spot.x, spot.y);
-    const found = state.units.find(
-      (foe) =>
-        foe.owner !== unit.owner &&
-        !known.has(foe.id) &&
-        distance(spot, foe) <= range &&
-        !ridgeBlocksSight(spot, foe),
-    );
-    if (found) return { x: spot.x, y: spot.y, foe: found, atGoal: i === path.length - 1 };
+    state.units.forEach((foe) => {
+      if (foe.owner === unit.owner || known.has(foe.id)) return;
+      const gap = distance(spot, foe);
+      if (gap > range || ridgeBlocksSight(spot, foe)) return;
+      if (book && !noted.has(foe.id)) {
+        noted.add(foe.id);
+        book[foe.id] = { id: foe.id, x: foe.x, y: foe.y, type: foe.type, owner: foe.owner, turn: state.turn };
+      }
+      if (!halt && contactHaltRange > 0 && gap <= contactHaltRange) {
+        halt = { x: spot.x, y: spot.y, foe, atGoal: i === path.length - 1 };
+      }
+    });
   }
-  return null;
+
+  return halt;
 }
 
 // 진영이 지금 보고 있는 칸 전부. 시야는 부대마다 재지만 아는 것은 진영이 공유한다 —

@@ -1633,6 +1633,14 @@ h1 {
   animation-name: fxKnockbackLight;
 }
 
+/* 맞은 부대는 하얗게 번쩍인다. 밀려나는 것만으로는 "밀렸다"까지만 읽히고
+   "맞았다"가 읽히지 않는다 — 타격이 몸에 닿았다는 신호는 이 한 번의 번쩍임이다.
+   폭발은 부대 옆에서 터지지만 이건 부대 위에서 일어나므로 둘이 겹치지 않는다. */
+.unit.fx-hit .unit-icon,
+.unit.fx-hit-counter .unit-icon {
+  animation: fxStruck 300ms ease-out both;
+}
+
 /* 총구 화염 */
 .fx-muzzle {
   position: absolute;
@@ -1749,61 +1757,140 @@ h1 {
   border-radius: 50%;
 }
 
-/* 섬광 ─ 가장 먼저, 가장 짧게. 흰색 한 점. */
-.fx-flash {
-  width: calc(24px * var(--fx-scale, 1));
-  height: calc(24px * var(--fx-scale, 1));
-  background: radial-gradient(circle, #fff 0 26%, rgb(255 246 206 / 82%) 27% 52%, rgb(255 246 206 / 0%) 70%);
-  animation: fxFlash 170ms ease-out both;
+/* 빛무리 ─ 섬광보다 넓고 흐리다. 폭발이 주변을 잠깐 밝히는 것처럼 보이게 하는
+   유일한 층이라, 이게 없으면 불덩이가 배경에서 오려 붙인 스티커처럼 뜬다. */
+.fx-glow {
+  width: calc(58px * var(--fx-scale, 1));
+  height: calc(58px * var(--fx-scale, 1));
+  background: radial-gradient(circle, rgb(255 214 132 / 46%) 0 22%, rgb(255 168 74 / 20%) 23% 54%, rgb(255 150 60 / 0%) 76%);
+  mix-blend-mode: screen;
+  animation: fxGlow 380ms ease-out both;
 }
 
-/* 불덩이 ─ 부풀면서 위로 뜬다. 카메라를 마주 보게 되세운다. */
+/* 섬광 ─ 가장 먼저, 가장 짧게. 흰색 한 점. */
+.fx-flash {
+  width: calc(30px * var(--fx-scale, 1));
+  height: calc(30px * var(--fx-scale, 1));
+  background: radial-gradient(circle, #fff 0 30%, rgb(255 246 206 / 88%) 31% 56%, rgb(255 246 206 / 0%) 72%);
+  animation: fxFlash 190ms ease-out both;
+}
+
+/* 불덩이 ─ 부풀면서 위로 뜬다. 카메라를 마주 보게 되세운다.
+   가운데가 흰색에서 주황으로, 다시 검게 식는 것이 화구의 생김새다 — 색이
+   한 겹이면 아무리 키워도 주황 동그라미다. */
 .fx-fire {
-  width: calc(26px * var(--fx-scale, 1));
-  height: calc(26px * var(--fx-scale, 1));
+  width: calc(34px * var(--fx-scale, 1));
+  height: calc(34px * var(--fx-scale, 1));
   background:
-    radial-gradient(circle at 50% 62%, #fff3c4 0 14%, #ffb545 15% 34%, #e0561f 35% 56%, rgb(122 46 22 / 62%) 57% 74%, rgb(60 34 22 / 0%) 80%);
-  animation: fxFire 420ms cubic-bezier(0.18, 0.72, 0.3, 1) both;
+    radial-gradient(circle at 50% 62%, #fffdf0 0 11%, #ffd96e 12% 25%, #ffa227 26% 40%, #dd4a15 41% 58%, rgb(108 38 18 / 72%) 59% 76%, rgb(48 28 18 / 0%) 84%);
+  box-shadow: 0 0 calc(16px * var(--fx-scale, 1)) rgb(255 146 52 / 52%);
+  animation: fxFire 520ms cubic-bezier(0.18, 0.72, 0.3, 1) both;
 }
 
 /* 충격파 ─ 땅에 붙어 퍼진다. 그래서 되세우지 않는다. 눕힌 판 위에서
    저절로 타원이 되고, 그게 지면을 따라 퍼지는 것처럼 보인다. */
 .fx-ring {
-  width: calc(16px * var(--fx-scale, 1));
-  height: calc(16px * var(--fx-scale, 1));
-  border: calc(2px * var(--fx-scale, 1)) solid rgb(255 233 176 / 82%);
-  box-shadow: 0 0 10px rgb(255 190 104 / 42%);
-  animation: fxRing 480ms cubic-bezier(0.12, 0.8, 0.24, 1) both;
+  width: calc(20px * var(--fx-scale, 1));
+  height: calc(20px * var(--fx-scale, 1));
+  border: calc(2.5px * var(--fx-scale, 1)) solid rgb(255 240 196 / 88%);
+  box-shadow: 0 0 14px rgb(255 190 104 / 52%);
+  animation: fxRing 560ms cubic-bezier(0.12, 0.8, 0.24, 1) both;
+}
+
+/* 먼지 ─ 충격파 고리가 "압력"이라면 이쪽은 "흙"이다. 고리보다 넓게, 느리게,
+   불투명하게 퍼진다. 지면에 붙는 층이라 되세우지 않는다. */
+.fx-dust {
+  width: calc(24px * var(--fx-scale, 1));
+  height: calc(24px * var(--fx-scale, 1));
+  background: radial-gradient(circle, rgb(150 130 100 / 0%) 0 34%, rgb(146 126 96 / 42%) 44% 68%, rgb(120 104 80 / 0%) 82%);
+  animation: fxDust 780ms cubic-bezier(0.1, 0.76, 0.2, 1) both;
 }
 
 /* 파편 ─ 방향과 거리와 회전은 자바스크립트가 하나씩 다르게 준다.
    전부 같은 값이면 폭발이 아니라 도형이 된다. */
 .fx-shard {
-  width: calc(6px * var(--fx-scale, 1));
+  width: calc(7px * var(--fx-scale, 1));
   height: calc(2px * var(--fx-scale, 1));
   border-radius: 1px;
-  background: linear-gradient(90deg, #ffe6a8, #b4571f);
-  animation: fxShard 520ms cubic-bezier(0.16, 0.72, 0.3, 1) both;
+  background: linear-gradient(90deg, #fff2cc, #ffab3c 42%, #a8481a);
+  box-shadow: 0 0 calc(3px * var(--fx-scale, 1)) rgb(255 170 70 / 60%);
+  animation: fxShard 560ms cubic-bezier(0.16, 0.72, 0.3, 1) both;
   animation-delay: var(--shard-delay, 0ms);
 }
 
-/* 연기 ─ 격파에만. 가장 느리고 가장 오래 남아서 "여기서 뭔가 죽었다"를 남긴다. */
+/* 불티 ─ 파편은 직선으로 튀고 불티는 솟았다가 떨어진다. 이 낙하가 있어야
+   폭발에 무게가 생긴다. 전부 직선으로만 뻗으면 폭발이 아니라 불꽃놀이다. */
+.fx-ember {
+  width: calc(var(--ember-size, 3px) * var(--fx-scale, 1));
+  height: calc(var(--ember-size, 3px) * var(--fx-scale, 1));
+  background: radial-gradient(circle, #fffbe8 0 30%, #ffc046 31% 62%, rgb(214 94 24 / 0%) 82%);
+  box-shadow: 0 0 calc(4px * var(--fx-scale, 1)) rgb(255 176 76 / 78%);
+  animation: fxEmber 900ms cubic-bezier(0.25, 0.5, 0.4, 1) both;
+  animation-delay: var(--ember-delay, 0ms);
+}
+
+/* 화주 ─ 격파에만. 나머지 층은 전부 옆으로 퍼지는 원이라, 위로 뻗는 이 세로선이
+   없으면 아무리 키워도 납작한 얼룩으로 보인다. */
+.fx-column {
+  width: calc(15px * var(--fx-scale, 1));
+  height: calc(46px * var(--fx-scale, 1));
+  border-radius: calc(8px * var(--fx-scale, 1));
+  background: linear-gradient(180deg, rgb(255 236 168 / 0%) 0%, rgb(255 196 88 / 62%) 26%, rgb(255 140 44 / 84%) 58%, rgb(255 244 214 / 92%) 100%);
+  filter: blur(calc(1.2px * var(--fx-scale, 1)));
+  /* 밑동을 회전·확대의 기준으로 삼는다. 가운데를 기준으로 두면 위아래로 동시에
+     늘어나서 땅속으로도 불이 뻗고, 세울 때도 허리가 접힌 것처럼 보인다. */
+  transform-origin: 50% 100%;
+  animation: fxColumn 520ms cubic-bezier(0.1, 0.82, 0.28, 1) both;
+}
+
+/* 큰 잔해 ─ 파편보다 무겁고 느리게, 회전하면서 포물선을 그리고 떨어진다. */
+.fx-debris {
+  width: calc(7px * var(--fx-scale, 1));
+  height: calc(5px * var(--fx-scale, 1));
+  border-radius: calc(1.5px * var(--fx-scale, 1));
+  background: linear-gradient(150deg, #6b5c46 0 48%, #2f2820 49% 100%);
+  box-shadow: inset 0 0 0 1px rgb(255 178 88 / 34%);
+  animation: fxDebris 1050ms cubic-bezier(0.3, 0.42, 0.5, 1) both;
+  animation-delay: var(--debris-delay, 0ms);
+}
+
+/* 연기 ─ 격파에만. 가장 느리고 가장 오래 남아서 "여기서 뭔가 죽었다"를 남긴다.
+   세 뭉치가 시각을 달리해 피어올라야 하나의 기둥으로 읽힌다 — 원 하나를 키우면
+   그냥 커지는 원이다. */
 .fx-smoke {
-  width: calc(28px * var(--fx-scale, 1));
-  height: calc(28px * var(--fx-scale, 1));
-  background: radial-gradient(circle at 50% 60%, rgb(96 88 76 / 72%) 0 36%, rgb(72 66 58 / 38%) 37% 62%, rgb(60 56 50 / 0%) 74%);
-  animation: fxSmoke 1400ms ease-out both;
+  width: calc(34px * var(--fx-scale, 1));
+  height: calc(34px * var(--fx-scale, 1));
+  background: radial-gradient(circle at 50% 60%, rgb(104 96 84 / 82%) 0 34%, rgb(78 72 62 / 48%) 35% 62%, rgb(60 56 50 / 0%) 76%);
+  animation: fxSmoke 2000ms ease-out both;
+  animation-delay: var(--smoke-delay, 0ms);
 }
 
 /* 잔해 ─ 격파된 부대는 이 시점에 이미 판에서 지워져 있어서, 무너지는 연출을
    붙일 요소가 없다. 대신 불탄 덩어리를 그 자리에 세운다. */
 .fx-wreck {
-  width: calc(17px * var(--fx-scale, 1));
-  height: calc(11px * var(--fx-scale, 1));
+  width: calc(19px * var(--fx-scale, 1));
+  height: calc(12px * var(--fx-scale, 1));
   border-radius: calc(2px * var(--fx-scale, 1));
   background: linear-gradient(160deg, #4a4034 0 46%, #2b241c 47% 100%);
-  box-shadow: inset 0 0 0 1px rgb(255 186 96 / 30%);
-  animation: fxWreck 1400ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 186 96 / 34%),
+    0 0 calc(9px * var(--fx-scale, 1)) rgb(255 138 48 / 30%);
+  animation: fxWreck 2100ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* 잔불 ─ 잔해 위에서 마지막까지 깜빡인다. 폭발이 다 꺼진 뒤에도 잠깐 뭔가
+   타고 있어야 "여기서 부대가 죽었다"가 화면에 남는다. */
+.fx-wreck::after {
+  position: absolute;
+  left: 50%;
+  bottom: 72%;
+  width: calc(7px * var(--fx-scale, 1));
+  height: calc(11px * var(--fx-scale, 1));
+  border-radius: 50% 50% 40% 40%;
+  background: linear-gradient(180deg, rgb(255 226 150 / 0%), #ffb444 46%, #ff7a1e);
+  content: "";
+  transform: translateX(-50%);
+  animation: fxEmberFlicker 460ms ease-in-out infinite alternate;
 }
 
 /* 그을음 ─ 타일에 남는다. 폭발이 사라져도 잠깐 자국이 있다. */
@@ -1812,14 +1899,14 @@ h1 {
   left: 50%;
   top: 50%;
   z-index: 3;
-  width: 74%;
-  height: 74%;
+  width: 88%;
+  height: 88%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgb(28 22 16 / 62%) 0 38%, rgb(28 22 16 / 22%) 39% 68%, rgb(28 22 16 / 0%) 78%);
+  background: radial-gradient(circle, rgb(22 17 12 / 74%) 0 34%, rgb(28 22 16 / 40%) 35% 62%, rgb(28 22 16 / 0%) 80%);
   content: "";
   pointer-events: none;
   transform: translate(-50%, -50%);
-  animation: fxScorch 1500ms ease-out both;
+  animation: fxScorch 2300ms ease-out both;
 }
 
 .fx-damage {
@@ -1848,6 +1935,15 @@ h1 {
   background: linear-gradient(90deg, #f3ead2, #7d7461);
 }
 
+.fx-impact.fx-counter .fx-ember {
+  background: radial-gradient(circle, #fffdf6 0 30%, #cfc6ae 31% 62%, rgb(124 116 98 / 0%) 82%);
+  box-shadow: 0 0 calc(3px * var(--fx-scale, 1)) rgb(214 208 190 / 62%);
+}
+
+.fx-impact.fx-counter .fx-glow {
+  background: radial-gradient(circle, rgb(226 226 214 / 34%) 0 22%, rgb(178 176 162 / 16%) 23% 54%, rgb(150 148 136 / 0%) 76%);
+}
+
 .fx-impact.fx-counter .fx-ring {
   border-color: rgb(228 224 208 / 74%);
 }
@@ -1867,31 +1963,70 @@ h1 {
   border-color: rgb(255 208 92 / 78%);
 }
 
-/* 격파 ─ 한 급 크게. 불덩이는 더 오래, 고리는 더 멀리 간다. */
+/* 무너지는 건물이라 먼지가 두 배로 퍼진다. */
+.fx-impact.fx-base .fx-dust {
+  width: calc(34px * var(--fx-scale, 1));
+  height: calc(34px * var(--fx-scale, 1));
+  animation-duration: 1000ms;
+}
+
+/* 격파 ─ 한 급이 아니라 두 급 위다. 부대 하나가 사라지는 일이니 화면에서도
+   그만큼의 사건이어야 한다. 불덩이는 타일을 넘어서고, 빛무리가 주변을 밝히고,
+   먼지는 세 칸을 훑는다. */
 .fx-impact.fx-kill .fx-fire {
-  width: calc(38px * var(--fx-scale, 1));
-  height: calc(38px * var(--fx-scale, 1));
-  animation-duration: 620ms;
+  width: calc(56px * var(--fx-scale, 1));
+  height: calc(56px * var(--fx-scale, 1));
+  animation-duration: 760ms;
 }
 
 .fx-impact.fx-kill .fx-flash {
-  width: calc(34px * var(--fx-scale, 1));
-  height: calc(34px * var(--fx-scale, 1));
-  animation-duration: 220ms;
+  width: calc(46px * var(--fx-scale, 1));
+  height: calc(46px * var(--fx-scale, 1));
+  animation-duration: 240ms;
+}
+
+.fx-impact.fx-kill .fx-glow {
+  width: calc(96px * var(--fx-scale, 1));
+  height: calc(96px * var(--fx-scale, 1));
+  animation-duration: 620ms;
 }
 
 .fx-impact.fx-kill .fx-ring {
-  animation-duration: 640ms;
+  border-width: calc(3.5px * var(--fx-scale, 1));
+  animation-duration: 760ms;
+}
+
+.fx-impact.fx-kill .fx-dust {
+  width: calc(40px * var(--fx-scale, 1));
+  height: calc(40px * var(--fx-scale, 1));
+  animation-duration: 1100ms;
 }
 
 /* 판 흔들림 ─ .battlefield의 transform은 판을 눕히는 그 각도라서 건드리면 안 된다.
    translate 속성은 transform과 따로 겹쳐지므로 각도를 그대로 둔 채 흔들 수 있다. */
 .battlefield.fx-shake-light {
-  animation: fxShakeLight 240ms ease-out both;
+  animation: fxShakeLight 260ms ease-out both;
 }
 
 .battlefield.fx-shake-heavy {
-  animation: fxShakeHeavy 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation: fxShakeHeavy 520ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/* 격파 순간 판 전체가 한 번 번쩍인다. 아주 짧게 — 길면 눈이 아프고, 짧으면
+   소리 없이도 "쾅" 소리가 난 것처럼 느껴진다.
+
+   가상 요소가 아니라 진짜 자식 한 장으로 깐다. .battlefield의 ::before와 ::after는
+   이미 지도 모드의 위성사진 겹침과 격자선이 쓰고 있어서, 여기서 가상 요소를 잡으면
+   지도 모드에서 폭발이 번쩍일 때마다 격자가 사라진다 — 안개막(.fog-veil)을
+   자식으로 뺀 것과 같은 이유다. */
+.fx-blast {
+  position: absolute;
+  z-index: 40;
+  inset: 0;
+  background: rgb(255 236 194 / 100%);
+  pointer-events: none;
+  mix-blend-mode: screen;
+  animation: fxBlast 200ms ease-out both;
 }
 
 .unit::before {
@@ -2531,6 +2666,61 @@ h1 {
   }
 }
 
+/* 빛무리는 불덩이보다 먼저 꺼진다. 폭발이 밝히는 시간은 실제로 아주 짧다. */
+@keyframes fxGlow {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(0.3);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -56%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -64%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(1.6);
+  }
+}
+
+/* 먼지는 지면을 따라 퍼진다 — 고리와 마찬가지로 되세우지 않는다.
+   고리보다 느리고 넓게 가서, 압력이 지나간 뒤 흙이 뒤따르는 것처럼 보인다. */
+@keyframes fxDust {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.25);
+  }
+
+  22% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(4.6);
+  }
+}
+
+/* 화주는 솟았다가 주저앉는다. 밑동(translate -100%)이 착탄 지점에 놓여야
+   불이 땅에서 자라 오르는 것으로 보인다 — 가운데를 맞추면 절반이 땅에 묻힌다. */
+@keyframes fxColumn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -100%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scaleY(0.12) scaleX(0.7);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -100%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scaleY(1) scaleX(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -100%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scaleY(0.45) scaleX(1.7);
+  }
+}
+
 @keyframes fxShard {
   0% {
     opacity: 0;
@@ -2547,20 +2737,115 @@ h1 {
   }
 }
 
-@keyframes fxSmoke {
+/* 불티는 솟았다가 떨어진다. 가운데 키프레임(정점)이 있어야 포물선이 된다 —
+   두 점만 찍으면 직선으로 날아가고, 그러면 파편과 구분이 안 된다. */
+@keyframes fxEmber {
   0% {
     opacity: 0;
-    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(0.4);
+    transform: translate(-50%, -50%) scale(0.5);
   }
 
-  26% {
-    opacity: 0.9;
-    transform: translate(-50%, -76%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(1);
+  10% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--ember-x, 0px) * 0.16), calc(-50% + var(--ember-peak, -12px) * 0.3)) scale(1);
+  }
+
+  46% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--ember-x, 0px) * 0.62), calc(-50% + var(--ember-peak, -12px))) scale(0.9);
   }
 
   100% {
     opacity: 0;
-    transform: translate(-50%, -150%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(1.9);
+    transform: translate(calc(-50% + var(--ember-x, 0px)), calc(-50% + var(--ember-drop, 6px))) scale(0.3);
+  }
+}
+
+/* 큰 잔해도 같은 포물선인데 더 느리고 더 무겁게 떨어진다. 착지 지점에서
+   opacity가 남아 있어야 "떨어졌다"가 보인다 — 공중에서 사라지면 증발이다. */
+@keyframes fxDebris {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.6);
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  42% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--debris-x, 0px) * 0.58), calc(-50% + var(--debris-peak, -18px))) rotate(calc(var(--debris-spin, 360deg) * 0.5)) scale(1);
+  }
+
+  86% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--debris-x, 0px)), calc(-50% + 3px)) rotate(var(--debris-spin, 360deg)) scale(0.92);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--debris-x, 0px)), calc(-50% + 3px)) rotate(var(--debris-spin, 360deg)) scale(0.88);
+  }
+}
+
+@keyframes fxSmoke {
+  0% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--smoke-x, 0px)), -50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(calc(0.34 * var(--smoke-size, 1)));
+  }
+
+  26% {
+    opacity: 0.92;
+    transform: translate(calc(-50% + var(--smoke-x, 0px)), -84%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(calc(1 * var(--smoke-size, 1)));
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--smoke-x, 0px) * 1.8), -186%) rotateX(calc(-1 * var(--board-tilt, 58deg))) scale(calc(2.2 * var(--smoke-size, 1)));
+  }
+}
+
+/* 잔불 흔들림. 왕복(alternate)이라 두 점만 있으면 된다. */
+@keyframes fxEmberFlicker {
+  from {
+    opacity: 0.5;
+    transform: translateX(-50%) scaleY(0.72);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scaleY(1.08);
+  }
+}
+
+/* 맞은 부대의 번쩍임. 흰색으로 날렸다가 제 색으로 돌아온다. */
+@keyframes fxStruck {
+  0% {
+    filter: brightness(3.4) saturate(0.1) drop-shadow(0 0 6px rgb(255 240 200 / 90%));
+  }
+
+  38% {
+    filter: brightness(1.7) saturate(0.7) drop-shadow(0 0 3px rgb(255 210 150 / 60%));
+  }
+
+  100% {
+    filter: none;
+  }
+}
+
+/* 판 번쩍임. 순식간에 켜졌다 꺼진다. */
+@keyframes fxBlast {
+  0% {
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 0.34;
+  }
+
+  100% {
+    opacity: 0;
   }
 }
 
@@ -2642,26 +2927,32 @@ h1 {
   }
 }
 
+/* 격파의 흔들림. 진폭이 첫 두 번에 몰려 있어야 "충격"으로 읽힌다 —
+   고르게 흔들면 지진이고, 앞이 크고 뒤가 잦아들어야 폭발이다. */
 @keyframes fxShakeHeavy {
   0%,
   100% {
     translate: 0 0;
   }
 
-  14% {
-    translate: -5px 3px;
+  10% {
+    translate: -9px 5px;
   }
 
-  34% {
-    translate: 4px -3px;
+  26% {
+    translate: 8px -5px;
   }
 
-  56% {
-    translate: -3px 2px;
+  44% {
+    translate: -6px 3px;
   }
 
-  78% {
-    translate: 2px -1px;
+  62% {
+    translate: 4px -2px;
+  }
+
+  82% {
+    translate: -2px 1px;
   }
 }
 
@@ -2727,16 +3018,23 @@ h1 {
   .unit[class*="fx-fire-"] .unit-icon,
   .unit.fx-hit,
   .unit.fx-hit-counter,
+  .unit.fx-hit .unit-icon,
+  .unit.fx-hit-counter .unit-icon,
   .battlefield.fx-shake-light,
   .battlefield.fx-shake-heavy,
   .fx-muzzle,
   .fx-shot,
+  .fx-glow,
   .fx-flash,
-  .fx-fire,
   .fx-ring,
+  .fx-dust,
+  .fx-column,
   .fx-shard,
+  .fx-ember,
+  .fx-debris,
   .fx-smoke,
   .fx-wreck,
+  .fx-wreck::after,
   .tile.fx-scorched::after,
   .construction-site,
   .construction-site::before,
@@ -2745,7 +3043,18 @@ h1 {
     animation: none;
   }
 
+  /* 튀고 흩어지고 번쩍이는 것은 통째로 지운다. 멀미의 지름길이다.
+     섬광과 충격파 고리도 여기 넣는다 — 애니메이션을 끄면 fill 값이 사라져서
+     둘 다 제 크기 그대로 눌러앉아 버린다. */
   .fx-shard,
+  .fx-ember,
+  .fx-debris,
+  .fx-column,
+  .fx-dust,
+  .fx-glow,
+  .fx-flash,
+  .fx-ring,
+  .fx-blast,
   .fx-smoke,
   .fx-wreck,
   .fx-muzzle,
@@ -2753,8 +3062,40 @@ h1 {
     display: none;
   }
 
+  /* 착탄 자리에는 움직이지 않는 표시 하나만 남긴다. 그냥 animation: none으로
+     끄면 fill 값이 함께 사라져서 불덩이가 가운데가 아니라 타일 왼쪽 위 모서리에
+     달라붙고, 격파는 2.3초를 사는지라 주황색 덩어리가 한참 붙어 있게 된다.
+     여기서는 한 급 작게, 제자리에, 잠깐만 띄운다 — 움직임 없이도 "여기서
+     터졌다"는 읽혀야 하기 때문이다. */
+  .fx-fire {
+    width: calc(20px * var(--fx-scale, 1));
+    height: calc(20px * var(--fx-scale, 1));
+    box-shadow: none;
+    animation: fxImpactStill 560ms steps(1, end) both;
+  }
+
+  .fx-impact.fx-kill .fx-fire {
+    width: calc(30px * var(--fx-scale, 1));
+    height: calc(30px * var(--fx-scale, 1));
+    animation-duration: 900ms;
+  }
+
   .fx-damage {
     animation: fxDamageStill 720ms steps(1, end) both;
+  }
+}
+
+/* 움직임을 끈 사용자용 착탄 표시. 뜨고 꺼지기만 한다 — 커지지도 떠오르지도 않는다. */
+@keyframes fxImpactStill {
+  0%,
+  86% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg)));
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg)));
   }
 }
 
