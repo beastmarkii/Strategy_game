@@ -54,7 +54,9 @@ VOICES = [
 SFX = [
     "move_infantry_1", "move_infantry_2",
     "move_armor_1", "move_armor_2",
-    "move_artillery_1",
+    "move_artillery_1", "move_artillery_2",
+    "move_hq_1", "move_hq_2",
+    "build_start_1", "build_start_2",
     "attack_rifle_1", "attack_rifle_2",
     "attack_tank_1", "attack_tank_2",
     "attack_howitzer_1", "attack_howitzer_2",
@@ -135,25 +137,36 @@ def build_sfx(name):
 
 def main():
     WORK.mkdir(parents=True, exist_ok=True)
-    click = make_click()
-    click_seconds = duration(click)
-    print(f"click {click_seconds:.2f}s")
+    # 이름을 인자로 주면 그것만 다시 굽는다. gen_sfx.py와 같은 이유다 —
+    # 통과한 소리는 건드리지 않는다.
+    only = set(sys.argv[1:])
+    voices = [n for n in VOICES if not only or n in only]
+    sfx = [n for n in SFX if not only or n in only]
+    missing = only - set(VOICES) - set(SFX)
+    if missing:
+        print(f"모르는 이름: {', '.join(sorted(missing))}")
+        return 1
 
     total = 0
-    print("\n-- voices (radio) --")
-    for name in VOICES:
-        dest = build_voice(name, click, click_seconds)
-        total += dest.stat().st_size
-        print(f"{name:<26} {duration(dest):>5.2f}s  {dest.stat().st_size:>6} B")
+    if voices:
+        click = make_click()
+        click_seconds = duration(click)
+        print(f"click {click_seconds:.2f}s")
+        print("\n-- voices (radio) --")
+        for name in voices:
+            dest = build_voice(name, click, click_seconds)
+            total += dest.stat().st_size
+            print(f"{name:<26} {duration(dest):>5.2f}s  {dest.stat().st_size:>6} B")
 
-    print("\n-- sfx --")
-    for name in SFX:
-        dest = build_sfx(name)
-        total += dest.stat().st_size
-        print(f"{name:<26} {duration(dest):>5.2f}s  {dest.stat().st_size:>6} B")
+    if sfx:
+        print("\n-- sfx --")
+        for name in sfx:
+            dest = build_sfx(name)
+            total += dest.stat().st_size
+            print(f"{name:<26} {duration(dest):>5.2f}s  {dest.stat().st_size:>6} B")
 
     shutil.rmtree(WORK, ignore_errors=True)
-    print(f"\n{len(VOICES) + len(SFX)} files, {total / 1024:.0f} KB total -> {ROOT}")
+    print(f"\n{len(voices) + len(sfx)} files, {total / 1024:.0f} KB total -> {ROOT}")
 
 
 if __name__ == "__main__":

@@ -639,8 +639,15 @@ const soundBank = {
     engineer: ["move_infantry_1", "move_infantry_2"],
     armor: ["move_armor_1", "move_armor_2"],
     spArtillery: ["move_armor_1", "move_armor_2"],
-    artillery: ["move_artillery_1"],
-    battalionHQ: ["move_artillery_1"],
+    artillery: ["move_artillery_1", "move_artillery_2"],
+    // 사령부는 야포와 같은 견인차 소리를 쓰고 있었다. 무거운 포를 끄는 차와
+    // 지휘 차량은 무게가 다르므로 소리도 갈라 둔다.
+    battalionHQ: ["move_hq_1", "move_hq_2"],
+  },
+  // 공사 시작. 유닛 종류별로 나눌 이유가 없지만(공병만 짓는다) 같은 표를 쓰면
+  // 재생과 변주 고르기가 한 갈래로 유지된다.
+  build: {
+    engineer: ["build_start_1", "build_start_2"],
   },
   attack: {
     infantry: ["attack_rifle_1", "attack_rifle_2"],
@@ -662,7 +669,7 @@ const soundBank = {
 
 // 종류별 크기. 무전 응답은 말을 알아들어야 하므로 가장 크고, 이동은 한 턴에 여러
 // 부대가 동시에 움직여 겹치므로 가장 작다.
-const soundLevels = { select: 1, move: 0.42, attack: 0.7, destroy: 0.85, notice: 0.95, ui: 0.3 };
+const soundLevels = { select: 1, move: 0.42, attack: 0.7, destroy: 0.85, notice: 0.95, ui: 0.3, build: 0.6 };
 const noticeSounds = ["work_complete", "unit_ready"];
 const uiSounds = ["ui_click", "map_tap"];
 
@@ -3039,6 +3046,9 @@ function engineerBuild(type) {
   engineer.acted = true;
   state.selectedId = null;
   addLog(`공병대가 (${engineer.x}, ${engineer.y})에서 ${constructionName(type)} 공사를 시작했습니다. ${duration}일이 필요합니다.`);
+  // 공사는 여러 턴이 걸려서 명령을 넣어도 화면이 거의 그대로다. 삽질 소리가
+  // 나야 명령이 들어간 것을 안다.
+  if (engineer.owner === "player") playUnitSound(engineer, "build");
   // 적 AI는 안전하지 않은 자리를 아예 고르지 않지만, 플레이어는 막지 않고 경고만 한다.
   // 위험을 알면서 최전선에 창고를 미는 것도 하나의 수다 — 다만 모르고 하면 안 된다.
   if (type === "depot" && !isSafeDepotSite(engineer.owner, engineer.x, engineer.y)) {
