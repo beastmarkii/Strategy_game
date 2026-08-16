@@ -4097,8 +4097,63 @@ function pathsBetween(start, end) {
 
 function bestRaidTarget(unit, owner) {
   return state.bases
-    .filter((base) => base.owner === owner && canRaidBase(unit, base))
+    .filter((base) => base.owner === owner && canRaidBase(unit, base) && raidIsWorthIt(base))
     .sort((a, b) => baseProduction(b) - baseProduction(a))[0];
+}
+
+// 이미 부술 것이 남지 않은 거점은 때려도 아무 일이 일어나지 않는다. 효율은 곱하기로
+// 깎이므로 바닥 근처에서는 한 턴을 온전히 써도 생산이 0.01 줄어드는 식이다.
+// 그 한 턴은 밟으러 가는 데 쓰는 것이 낫다.
+function raidIsWorthIt(base) {
+  return baseProduction(base) * (1 - raidEfficiencyFactor) >= 0.25;
+}
+
+// 거점 하나의 값어치. 효율이 아니라 생산 정수로 잰다 — 습격으로 0%가 된 거점도
+// 밟아서 가져오면 복구되고, 무엇보다 상대에게서 뺏는 것은 내가 얻는 동시에
+// 상대가 잃는 일이라 같은 생산이라도 두 배로 친다.
+// 이 거점을 빼앗으면 그 진영에는 거점이 하나도 남지 않는가. 무주공산 거점은
+// 잃을 진영이 없으므로 언제나 아니다.
+function isLastBaseOf(base) {
+  if (base.owner === "neutral") return false;
+  return !state.bases.some((other) => other.owner === base.owner && other !== base);
+}
+
+function baseSeatValue(base, owner) {
+  return base.production * (base.owner === owner || base.owner === "neutral" ? 1 : 2);
+}
+
+// 눈앞에 열려 있는 무방비 거점. 습격은 효율을 깎을 뿐이고, 효율이 바닥나면 습격은
+// 아무것도 하지 않는다 — 무저항 10턴을 돌려보니 적은 아군 거점을 0%로 만들어 놓고도
+// 끝내 밟지 않았다. 이기고 있으면서 끝내지 않는 모습이다.
+// 지키는 부대가 없고 이번 턴에 발이 닿는다면, 그 칸은 때릴 표적이 아니라 밟을 자리다.
+// 사령부는 뺀다 — 보급의 중심을 최전선 거점에 세우는 것은 점령이 아니라 헌납이다.
+function openBaseSeat(unit) {
+  if (unit.type === "battalionHQ") return null;
+  const reach = reachableTiles(unit);
+  if (!reach.length) return null;
+
+  const seats = state.bases
+    .filter((base) => base.owner !== unit.owner && !getUnitsAt(base.x, base.y).length)
+    // 포병은 최전선 거점에 홀로 서면 반격 한 번에 사라진다. 작전을 끝내는
+    // 마지막 한 곳일 때만 예외로 둔다 — 그때는 잃어도 그걸로 끝이니까.
+    .filter((base) => !isArtilleryUnit(unit) || isLastBaseOf(base))
+    .map((base) => ({ base, seat: reach.find((tile) => tile.x === base.x && tile.y === base.y) }))
+    .filter((entry) => entry.seat)
+    .sort((a, b) => baseSeatValue(b.base, unit.owner) - baseSeatValue(a.base, unit.owner));
+
+  return seats[0]?.seat ?? null;
+}
+
+// 점령은 습격보다 먼저다. tryEnemyStrike를 먼저 부르면 옆칸의 거점을 때리느라 행동을
+// 다 쓰고, 다음 턴에도 또 때린다. 그 반복이 "이기고도 안 끝내는" 적을 만들었다.
+function tryEnemyCapture(unit) {
+  const seat = openBaseSeat(unit);
+  if (!seat) return false;
+  moveEnemyUnit(unit, seat);
+  captureBase(unit);
+  // 밟은 뒤에도 사거리 안에 표적이 있으면 친다. 점령이 공격을 대신하지는 않는다.
+  tryEnemyStrike(unit);
+  return true;
 }
 
 // ── 적 AI 정책 ──────────────────────────────────────────────────────────────
@@ -4654,6 +4709,8 @@ function tryEnemyStrike(unit) {
 // 전투 부대의 한 턴. 어디로 갈지는 임무가, 어떻게 갈지는 병종이,
 // 무엇을 칠지는 표적 점수가 정한다.
 function enemyFieldTurn(unit) {
+  // 무방비 거점이 발밑에 열려 있으면 그것이 이 턴의 최선이다. 사격보다 먼저 본다.
+  if (tryEnemyCapture(unit)) return;
   if (tryEnemyStrike(unit)) return;
 
   const goal = enemyGoalFor(unit);
