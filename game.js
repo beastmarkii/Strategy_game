@@ -643,6 +643,7 @@ const operationModalEl = document.querySelector("#newOperationModal");
 const operationCommanderChoicesEl = document.querySelector("#operationCommanderChoices");
 const operationScenarioChoicesEl = document.querySelector("#operationScenarioChoices");
 const operationDifficultyChoicesEl = document.querySelector("#operationDifficultyChoices");
+const operationConfirmEl = document.querySelector("#confirmOperationSetup");
 const missionNameLabelEl = document.querySelector("#missionNameLabel");
 const missionBriefLabelEl = document.querySelector("#missionBriefLabel");
 const bannerEl = document.createElement("div");
@@ -1023,7 +1024,7 @@ const soundBank = {
 // 숫자를 주면 무전 목소리보다 오히려 얌전하게 들린다. 앞으로 당겨 놓는다.
 const soundLevels = { select: 1, taunt: 1, move: 0.42, attack: 0.7, destroy: 0.85, notice: 0.95, ui: 0.3, build: 0.6, commander: 1.35 };
 const noticeSounds = ["work_complete", "unit_ready", "axis_work_complete", "axis_unit_ready"];
-const uiSounds = ["ui_click", "map_tap"];
+const uiSounds = ["ui_click", "map_tap", "hatch_open"];
 
 const sampleData = new Map();
 const sampleBuffers = new Map();
@@ -1577,28 +1578,109 @@ function localizeRenderedText() {
   if (restartButton) restartButton.textContent = activeLocale === "en" ? "Apply Values & Restart" : activeLocale === "zh" ? "应用数值并重开" : "数値を適用して新作戦";
 }
 
+// ── 명령서는 한 칸씩 열린다 ────────────────────────────────────────
+//
+// 다섯 칸을 한꺼번에 펼쳐 두면 어디부터 정해야 하는지가 안 보이고, 그러면
+// 고르는 화면이 아니라 채우는 양식이 된다. 순서는 명령이 실제로 내려오는
+// 순서다 — 어느 군인지가 먼저 정해져야 그 군의 작전이 나오고, 작전이 정해져야
+// 그 작전에 나갈 장군이 나온다. 마지막 칸(상대 참모부)만 성격이 다르다.
+// 그건 전쟁의 사실이 아니라 이 판을 얼마나 세게 할지라서 맨 끝에 둔다.
+//
+// 앞 칸을 다시 고치면 뒤 칸은 도로 닫히고 골라 둔 것도 지워진다. 진영을 바꿨는데
+// 아까 고른 추축군 장군이 그대로 남아 있으면, 그건 열린 칸이 아니라 남은 찌꺼기다.
+const OPERATION_STAGES = ["side", "scenario", "commander", "deploy", "difficulty"];
+
+function operationStageEl(key) {
+  return operationModalEl?.querySelector(`.stage[data-stage="${key}"]`) ?? null;
+}
+
+function openOperationStage(key) {
+  const el = operationStageEl(key);
+  if (!el || el.classList.contains("is-open")) return;
+  el.classList.remove("is-closing");
+  el.classList.add("is-open");
+  playHatchSound();
+  // 열린 칸이 화면 밖에 있으면 열린 줄을 모른다. 문이 다 갈라진 뒤에 끌어온다.
+  window.setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "nearest" }), 360);
+}
+
+function sealOperationStagesFrom(key) {
+  const from = OPERATION_STAGES.indexOf(key);
+  if (from < 0) return;
+  OPERATION_STAGES.slice(from).forEach((stageKey) => {
+    const el = operationStageEl(stageKey);
+    if (!el) return;
+    if (el.classList.contains("is-open")) {
+      el.classList.add("is-closing");
+      window.setTimeout(() => el.classList.remove("is-closing"), 320);
+    }
+    el.classList.remove("is-open");
+    // 상대 참모부만은 골라 둔 것을 지우지 않는다. 나머지 넷은 앞 칸이 바뀌면
+    // 뜻이 달라지지만, 난이도는 진영을 바꿔도 "보통"이 그대로 보통이다.
+    if (stageKey === "difficulty") return;
+    el.querySelectorAll('input[type="radio"]').forEach((input) => {
+      input.checked = false;
+    });
+  });
+}
+
+// 넷을 다 정하기 전에는 서명할 수 없다. 단추가 눌리는데 아무 일도 안 일어나는
+// 것보다, 아직 눌리지 않는 편이 정직하다.
+function updateOperationReady() {
+  if (!operationConfirmEl) return;
+  const ready = ["operationSide", "operationScenario", "operationCommander", "operationDeploy"].every(
+    (name) => operationModalEl?.querySelector(`input[name="${name}"]:checked`),
+  );
+  operationConfirmEl.disabled = !ready;
+}
+
+function resetOperationStages() {
+  OPERATION_STAGES.forEach((key) => operationStageEl(key)?.classList.remove("is-open", "is-closing"));
+  operationModalEl?.querySelectorAll('input[name="operationSide"], input[name="operationDeploy"]').forEach((input) => {
+    input.checked = false;
+  });
+  if (operationScenarioChoicesEl) operationScenarioChoicesEl.innerHTML = "";
+  if (operationCommanderChoicesEl) operationCommanderChoicesEl.innerHTML = "";
+  updateOperationReady();
+}
+
+// 문이 갈라지는 소리. 화면만 갈라지고 아무 소리도 안 나면 그림이 움직인 것이지
+// 문이 열린 것이 아니다.
+function playHatchSound() {
+  playSample("hatch_open", { level: 0.7, channel: "hatch" });
+}
+
 function openNewOperationSetup() {
-  renderOperationScenarioChoices();
+  resetOperationStages();
   renderOperationDifficultyChoices();
-  renderOperationCommanderChoices(selectedOperationSide());
   if (operationModalEl) operationModalEl.hidden = false;
   briefingMusicPlay();
+  // 창이 뜨자마자 첫 칸이 열린다. 한 박자 늦게 여는 이유는 열리는 동작 자체가
+  // 이 화면의 첫인상이기 때문이다 — 이미 열려 있으면 그냥 양식이다.
+  window.setTimeout(() => openOperationStage("side"), 280);
 }
 
 function selectedOperationScenarioId() {
   return operationModalEl?.querySelector('input[name="operationScenario"]:checked')?.value ?? state?.scenarioId ?? defaultScenarioId;
 }
 
-function renderOperationScenarioChoices() {
+// 이 작전은 어느 군의 작전인가. 작전에 side가 적혀 있으면 그 군의 명령서에만
+// 걸리고, 아직 안 적힌 작전은 양쪽 다에 걸어 둔다 — 열두 작전으로 갈아 끼우는
+// 동안 옛 작전이 목록에서 통째로 사라지지 않게 하는 다리다.
+function scenariosForSide(side) {
+  const picked = scenarios.filter((scenario) => !scenario.side || scenario.side === side);
+  return picked.length ? picked : scenarios;
+}
+
+function renderOperationScenarioChoices(side) {
   if (!operationScenarioChoicesEl) return;
-  const selectedId = selectedOperationScenarioId();
-  operationScenarioChoicesEl.innerHTML = scenarios
+  operationScenarioChoicesEl.innerHTML = scenariosForSide(side)
     .map((scenario) => {
       const size = `${scenario.terrain[0].length}×${scenario.terrain.length}`;
       const deadline = scenario.turnLimit ? `${scenario.turnLimit}턴` : "기한 없음";
       return `
       <label class="scenario-choice">
-        <input type="radio" name="operationScenario" value="${scenario.id}" ${scenario.id === selectedId ? "checked" : ""} />
+        <input type="radio" name="operationScenario" value="${scenario.id}" />
         <span class="scenario-choice-body">
           <strong>${scenario.name}</strong>
           <span class="scenario-choice-meta">${size} · ${deadline} · ${scenarioOutcomeLabel(scenario)}</span>
@@ -1678,16 +1760,26 @@ function defaultCommanderForSide(side) {
   return commanders.find((commander) => commander.id === preferred) ?? commanders.find((commander) => commander.side === commanderSideName(side));
 }
 
-function renderOperationCommanderChoices(side) {
-  if (!operationCommanderChoicesEl) return;
+// 이 작전의 명령서에 이름을 올릴 장군들. 그 군의 상설 명부 전부에, 이 작전에만
+// 나오는 장군이 있으면 맨 앞에 붙인다(only). 파울루스는 스탈린그라드 말고
+// 어디에도 서지 않고, 퍼시벌은 싱가포르 말고 어디에도 서지 않는다 — 그 사람의
+// 전쟁이 거기서 끝났기 때문이다.
+function commandersForOperation(side, scenarioId) {
   const commanderSide = commanderSideName(side);
-  const available = commanders.filter((commander) => commander.side === commanderSide);
-  const checkedId = operationCommanderChoicesEl.querySelector('input[name="operationCommander"]:checked')?.value;
-  const selectedId = available.some((commander) => commander.id === checkedId) ? checkedId : defaultCommanderForSide(side)?.id;
-  operationCommanderChoicesEl.innerHTML = available
+  const roster = commanders.filter((commander) => commander.side === commanderSide);
+  const guests = roster.filter((commander) => commander.only?.includes(scenarioId));
+  const standing = roster.filter((commander) => !commander.only);
+  return [...guests, ...standing];
+}
+
+// 미리 골라 두지 않는다. 이 칸은 문이 열리고 나서 사람이 직접 고르는 칸이라,
+// 열자마자 누가 이미 뽑혀 있으면 고른 것이 아니라 떠맡은 것이 된다.
+function renderOperationCommanderChoices(side, scenarioId) {
+  if (!operationCommanderChoicesEl) return;
+  operationCommanderChoicesEl.innerHTML = commandersForOperation(side, scenarioId)
     .map((commander) => `
       <label class="commander-choice">
-        <input type="radio" name="operationCommander" value="${commander.id}" ${commander.id === selectedId ? "checked" : ""} />
+        <input type="radio" name="operationCommander" value="${commander.id}" />
         <img
           class="commander-photo"
           src="${commanderPhoto(commander)}"
@@ -1705,8 +1797,25 @@ function renderOperationCommanderChoices(side) {
     .join("");
 }
 
+// 한 칸을 정하면 그 뒤는 전부 무효가 된다. 그래서 먼저 뒤를 닫고, 새로 채우고,
+// 바로 다음 칸 하나만 연다. 두 칸을 한꺼번에 열면 순서가 있다는 사실이 지워진다.
 function handleOperationSetupChange(event) {
-  if (event.target.name === "operationSide") renderOperationCommanderChoices(event.target.value);
+  const field = event.target.name;
+  if (field === "operationSide") {
+    sealOperationStagesFrom("scenario");
+    renderOperationScenarioChoices(event.target.value);
+    openOperationStage("scenario");
+  } else if (field === "operationScenario") {
+    sealOperationStagesFrom("commander");
+    renderOperationCommanderChoices(selectedOperationSide(), event.target.value);
+    openOperationStage("commander");
+  } else if (field === "operationCommander") {
+    sealOperationStagesFrom("deploy");
+    openOperationStage("deploy");
+  } else if (field === "operationDeploy") {
+    openOperationStage("difficulty");
+  }
+  updateOperationReady();
 }
 
 // 장군을 누르면 그 사람이 한마디 한다. 명부의 숫자(공격 +2, 보급 -1)는 이 사람이

@@ -165,58 +165,115 @@
           <span class="dialog-stamp">기밀</span>
         </div>
 
+        <!-- 다섯 칸이 한꺼번에 펼쳐져 있으면 어디부터 정해야 하는지가 안 보인다.
+             그래서 한 칸씩만 연다. 앞 칸을 정하기 전까지 뒤 칸은 강판 문 두 짝으로
+             닫혀 있고, 정하는 순간 빗장이 풀리며 두 짝이 좌우로 갈라진다.
+             순서는 명령이 실제로 내려오는 순서다 — 어느 군인지가 먼저 정해져야
+             작전이 정해지고, 작전이 정해져야 그 작전에 나갈 장군이 정해진다.
+             다섯째 칸(상대 참모부)만 성격이 다르다. 그건 전쟁의 사실이 아니라
+             이 판을 얼마나 세게 할지라서, 넷을 다 정한 뒤 맨 끝에 둔다. -->
         <div class="operation-dialog-body">
-          <section class="scenario-section" data-order="1">
+          <section class="scenario-section stage" data-order="1" data-stage="side">
+            <h3>진영</h3>
+            <div class="stage-shell">
+              <div class="stage-content">
+                <div class="side-choice" role="radiogroup" aria-label="진영 선택">
+                  <label>
+                    <input type="radio" name="operationSide" value="allies" />
+                    <span>연합군</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="operationSide" value="axis" />
+                    <span>추축군</span>
+                  </label>
+                </div>
+              </div>
+              <div class="stage-doors" aria-hidden="true">
+                <span class="stage-leaf stage-leaf-l"></span>
+                <span class="stage-leaf stage-leaf-r"></span>
+                <span class="stage-seam"></span>
+                <b class="stage-lock">개방 대기</b>
+              </div>
+            </div>
+          </section>
+
+          <section class="scenario-section stage" data-order="2" data-stage="scenario">
             <h3>작전</h3>
-            <div id="operationScenarioChoices" class="scenario-choice-list" role="radiogroup" aria-label="작전 선택"></div>
+            <div class="stage-shell">
+              <div class="stage-content">
+                <div id="operationScenarioChoices" class="scenario-choice-list" role="radiogroup" aria-label="작전 선택"></div>
+              </div>
+              <div class="stage-doors" aria-hidden="true">
+                <span class="stage-leaf stage-leaf-l"></span>
+                <span class="stage-leaf stage-leaf-r"></span>
+                <span class="stage-seam"></span>
+                <b class="stage-lock">진영 지정 후 개방</b>
+              </div>
+            </div>
+          </section>
+
+          <section class="scenario-section stage" data-order="3" data-stage="commander">
+            <h3>지휘관</h3>
+            <div class="stage-shell">
+              <div class="stage-content">
+                <div id="operationCommanderChoices" class="commander-choice-list"></div>
+              </div>
+              <div class="stage-doors" aria-hidden="true">
+                <span class="stage-leaf stage-leaf-l"></span>
+                <span class="stage-leaf stage-leaf-r"></span>
+                <span class="stage-seam"></span>
+                <b class="stage-lock">작전 지정 후 개방</b>
+              </div>
+            </div>
+          </section>
+
+          <section class="scenario-section stage" data-order="4" data-stage="deploy">
+            <h3>초기 배치</h3>
+            <div class="stage-shell">
+              <div class="stage-content">
+                <div class="side-choice" role="radiogroup" aria-label="초기 배치 방식">
+                  <label>
+                    <input type="radio" name="operationDeploy" value="auto" />
+                    <span>참모부 자동 배치</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="operationDeploy" value="manual" />
+                    <span>직접 배치</span>
+                  </label>
+                </div>
+                <p class="muted">자동 배치는 장군의 보급 역량에 맞춰 부대 간격을 좁힙니다. 직접 배치는 작전 개시 전 배치 단계를 엽니다.</p>
+              </div>
+              <div class="stage-doors" aria-hidden="true">
+                <span class="stage-leaf stage-leaf-l"></span>
+                <span class="stage-leaf stage-leaf-r"></span>
+                <span class="stage-seam"></span>
+                <b class="stage-lock">지휘관 지정 후 개방</b>
+              </div>
+            </div>
           </section>
 
           <!-- 난이도는 상대 참모부의 실력이다. 내 부대 수치는 한 칸도 바뀌지 않고,
                적 전선의 머릿수·보급·증원 주기만 바뀐다. 그래서 칸마다 그 세 숫자를
                그대로 적어 둔다 — 무엇이 어려워지는지 모르고 고르면 찍는 것이다. -->
-          <section class="scenario-section" data-order="2">
+          <section class="scenario-section stage" data-order="5" data-stage="difficulty">
             <h3>상대 참모부</h3>
-            <div id="operationDifficultyChoices" class="difficulty-choice-list" role="radiogroup" aria-label="난이도 선택"></div>
-          </section>
-
-          <section class="scenario-section" data-order="3">
-            <h3>진영</h3>
-            <div class="side-choice" role="radiogroup" aria-label="진영 선택">
-              <label>
-                <input type="radio" name="operationSide" value="allies" checked />
-                <span>연합군</span>
-              </label>
-              <label>
-                <input type="radio" name="operationSide" value="axis" />
-                <span>추축군</span>
-              </label>
+            <div class="stage-shell">
+              <div class="stage-content">
+                <div id="operationDifficultyChoices" class="difficulty-choice-list" role="radiogroup" aria-label="난이도 선택"></div>
+              </div>
+              <div class="stage-doors" aria-hidden="true">
+                <span class="stage-leaf stage-leaf-l"></span>
+                <span class="stage-leaf stage-leaf-r"></span>
+                <span class="stage-seam"></span>
+                <b class="stage-lock">배치 방식 지정 후 개방</b>
+              </div>
             </div>
-          </section>
-
-          <section class="scenario-section" data-order="4">
-            <h3>지휘관</h3>
-            <div id="operationCommanderChoices" class="commander-choice-list"></div>
-          </section>
-
-          <section class="scenario-section" data-order="5">
-            <h3>초기 배치</h3>
-            <div class="side-choice" role="radiogroup" aria-label="초기 배치 방식">
-              <label>
-                <input type="radio" name="operationDeploy" value="auto" checked />
-                <span>참모부 자동 배치</span>
-              </label>
-              <label>
-                <input type="radio" name="operationDeploy" value="manual" />
-                <span>직접 배치</span>
-              </label>
-            </div>
-            <p class="muted">자동 배치는 장군의 보급 역량에 맞춰 부대 간격을 좁힙니다. 직접 배치는 작전 개시 전 배치 단계를 엽니다.</p>
           </section>
         </div>
 
         <div class="operation-dialog-actions">
           <button id="cancelOperationSetup" type="button">취소</button>
-          <button id="confirmOperationSetup" type="button" class="primary">작전 개시</button>
+          <button id="confirmOperationSetup" type="button" class="primary" disabled>작전 개시</button>
         </div>
       </div>
     </div>

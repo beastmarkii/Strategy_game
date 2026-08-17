@@ -38,6 +38,18 @@ JOBS = [
         "with a faint crinkle, close mic, dead room",
         0.20, 0.15, -25, -5,
     ),
+    # 명령서 칸이 열릴 때 나는 소리. 앞의 둘과 성격이 반대다 — 저 둘은 손가락 소리라
+    # 짧고 조용해야 하지만, 이건 빗장이 풀리고 강판 두 짝이 갈라지는 소리라 무거운
+    # 쇳덩이 한 번(빗장) 뒤에 끌리는 소리(문짝)가 붙어야 한다. 화면에서 문이 680ms에
+    # 걸쳐 열리므로 소리도 그 언저리(0.72초)에서 끝난다. 더 길면 문은 다 열렸는데
+    # 소리만 남고, 더 짧으면 문이 소리 없이 미끄러진다.
+    (
+        "hatch_open",
+        "a heavy steel latch snapping open with one solid metallic clunk, "
+        "followed by two thick armored panels sliding apart on rails, "
+        "low mechanical grind, close mic, dry, no reverb tail",
+        0.72, 0.60, -23, -3,
+    ),
 ]
 
 # 앞쪽 무음 제거. ElevenLabs는 요청한 길이를 무음으로 채워서 돌려주므로 그대로 두면
@@ -54,7 +66,12 @@ def key():
 
 def main():
     RAW.mkdir(parents=True, exist_ok=True)
+    # 이름을 인자로 주면 그것만 다시 만든다. 하나가 마음에 안 들 때 나머지 둘까지
+    # 다시 뽑으면 이미 통과한 소리가 매번 다른 소리로 바뀐다(생성이 매번 다르므로).
+    want = set(sys.argv[1:])
     for name, prompt, keep, fade_at, loud, peak in JOBS:
+        if want and name not in want:
+            continue
         r = requests.post(
             "https://api.elevenlabs.io/v1/sound-generation",
             headers={"xi-api-key": key(), "Content-Type": "application/json"},
