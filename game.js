@@ -1603,6 +1603,25 @@ function createUnit(owner, type, x, y) {
   };
 }
 
+// 갓 편성된 부대는 그날 움직이지도 싸우지도 못한다.
+//
+// 이 줄이 없던 동안 사령부는 부대를 뽑는 곳이 아니라 전선으로 쏘는 발사대였다.
+// 사령부 옆 칸에서 태어난 부대가 그 턴에 그대로 달려가 때렸으니, 전차는 사령부에서
+// 6칸, 자주포는 9칸 밖의 적을 그날 쳤다. 거리가 아무 의미도 없어진다는 뜻이다.
+// 이 게임이 하려는 이야기는 보급과 거리인데, 예비대만 거리를 건너뛰고 있었다.
+// 도착 당일 전투에 들어가는 신편 부대는 현실에도 없다.
+//
+// 적은 자기 턴 맨 끝에 뽑아서 이 규칙을 원래부터 지키고 있었다(enemyTurn 순서).
+// 그래서 이건 사람 쪽만 막는 규칙이 아니라, 한쪽 사정으로 지켜지던 것을
+// 양쪽에 적힌 글로 옮기는 일이다.
+function deployReinforcement(owner, type, x, y) {
+  const unit = createUnit(owner, type, x, y);
+  unit.acted = true;
+  unit.moved = true;
+  unit.justArrived = true;
+  return unit;
+}
+
 function makeId() {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
   return `unit-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -3336,7 +3355,7 @@ function renderSelectedCard() {
       ${commanderFor(unit.owner).move ? `<span>장군 이동 <strong>${signedStat(commanderFor(unit.owner).move)}</strong></span>` : ""}
       ${commanderFor(unit.owner).supply ? `<span>장군 보급 <strong>${signedStat(commanderFor(unit.owner).supply)}</strong></span>` : ""}
       ${unit.type === "artillery" ? `<span>상태 <strong>${unit.towed ? "견인" : "전개"}</strong></span>` : ""}
-      <span class="key">행동 <strong>${unit.acted ? "완료" : unit.moved ? "이동 완료 / 공격 가능" : "가능"}</strong></span>
+      <span class="key">행동 <strong>${unit.justArrived ? "편성 중 / 내일부터" : unit.acted ? "완료" : unit.moved ? "이동 완료 / 공격 가능" : "가능"}</strong></span>
       <span class="key">보급 <strong>${supply.label}</strong></span>
       <span>보급선 <strong>${formatSupplyDistance(supply)}</strong></span>
       <span>소모 <strong>${spec.supplyUse}/턴</strong></span>
@@ -3512,6 +3531,21 @@ function handleTileClick(x, y) {
     playUnitSound(clickedUnit, "select");
     state.selectedId = clickedUnit.id;
     state.inspectedId = null;
+    state.inspectedTile = null;
+    render();
+    return;
+  }
+
+  // 오늘 막 뽑은 부대는 고를 수가 없다(행동 완료 상태다). 여기서 조용히 넘어가면
+  // 방금 보급품을 쓴 사람 눈에는 부대가 사라졌거나 클릭이 안 먹는 것으로 보인다.
+  // 그래서 이유를 한 줄 띄우고 부대 카드까지 보여 준다. 고르는 것(selectedId)이
+  // 아니라 들여다보는 것(inspectedId)이라 명령은 여전히 한 줄도 나가지 않는다.
+  const forming = getUnitsAt(x, y).find((unit) => unit.owner === "player" && unit.justArrived);
+  if (forming && !clickedEnemy) {
+    playUnitSound(forming, "select");
+    state.attackNotice = formingNotice(forming);
+    state.selectedId = null;
+    state.inspectedId = forming.id;
     state.inspectedTile = null;
     render();
     return;
@@ -3721,8 +3755,8 @@ function recruit(type) {
   }
 
   state.resources -= spec.cost;
-  state.units.push(createUnit("player", type, spawn.x, spawn.y));
-  addLog(`${unitLabel("player", type)} 증원이 전선에 도착했습니다.`);
+  state.units.push(deployReinforcement("player", type, spawn.x, spawn.y));
+  addLog(`${unitLabel("player", type)} 증원이 전선에 도착했습니다. 편성을 마치는 내일부터 움직입니다.`);
   playNoticeSound("unit_ready");
   render();
 }
@@ -3847,6 +3881,8 @@ function endPlayerTurn() {
     if (unit.owner === "enemy") {
       unit.acted = false;
       unit.moved = false;
+      // 편성은 하룻밤이면 끝난다. 이 줄이 없으면 갓 온 부대는 영영 굳어 있다.
+      unit.justArrived = false;
       // 총구 화염은 한 턴만 간다. 쏜 자리는 그 턴 동안만 상대에게 드러나고,
       // 다음 턴이 오면 다시 안개 속으로 들어간다 — 이게 "쏘고 옮긴다"를 성립시킨다.
       unit.firedFrom = null;
@@ -3932,6 +3968,8 @@ function enemyTurn() {
     if (unit.owner === "player") {
       unit.acted = false;
       unit.moved = false;
+      // 편성은 하룻밤이면 끝난다. 이 줄이 없으면 갓 온 부대는 영영 굳어 있다.
+      unit.justArrived = false;
       unit.firedFrom = null;
     }
   });
@@ -4076,7 +4114,7 @@ function maybeEnemyRecruit() {
   const spawn = findSpawn("enemy", type);
   if (!spawn) return;
   state.enemyResources -= unitTypes[type].cost;
-  state.units.push(createUnit("enemy", type, spawn.x, spawn.y));
+  state.units.push(deployReinforcement("enemy", type, spawn.x, spawn.y));
   addLog(`${sideUnitLabel("enemy", type)} 예비대가 투입되었습니다.`);
 }
 
@@ -4132,7 +4170,7 @@ function maybeEnemyRecruitEngineer() {
   const cost = unitTypes.engineer.cost + (constructionCosts.depot ?? 0);
   if (state.enemyResources < cost) return false;
   state.enemyResources -= unitTypes.engineer.cost;
-  state.units.push(createUnit("enemy", "engineer", spawn.x, spawn.y));
+  state.units.push(deployReinforcement("enemy", "engineer", spawn.x, spawn.y));
   addLog(`${sideName("enemy")} 공병대가 후방 보급 공사를 위해 투입되었습니다.`);
   return true;
 }
@@ -4640,6 +4678,13 @@ function topicParticle(word) {
   const code = String(word).trimEnd().slice(-1).charCodeAt(0);
   if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return "은";
   return (code - 0xac00) % 28 === 0 ? "는" : "은";
+}
+
+// 갓 도착한 부대를 눌렀을 때 하는 말. 오늘은 명령이 안 먹는 부대라, 화면이
+// 조용하면 플레이어는 뽑은 부대가 사라졌거나 버튼이 고장 났다고 생각한다.
+function formingNotice(unit) {
+  const label = unitLabel(unit);
+  return `${label}${topicParticle(label)} 오늘 막 도착해 아직 편성 중입니다. 내일부터 움직이고 쏩니다.`;
 }
 
 function completionMessage(objective) {
@@ -5249,6 +5294,7 @@ function attackBlockReason(attacker, defender) {
   const spec = unitTypes[attacker.type];
   // 행동을 마친 부대는 canAttack이 따지지 않는다(그건 사거리·시야를 보는 함수다).
   // 대신 클릭이 공격까지 가지 못하고 되돌아 나오므로, 이 이유가 가장 먼저다.
+  if (attacker.justArrived) return formingNotice(attacker);
   if (attacker.acted) {
     const label = unitLabel(attacker);
     return `${label}${topicParticle(label)} 이번 턴에 할 일을 이미 마쳤습니다.`;
