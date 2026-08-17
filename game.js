@@ -874,7 +874,11 @@ function fitBoardToScreen() {
   if (room > 80 && tilted.height > room) fit = room / tilted.height;
   // 가로도 본다. 판을 눕히면 앞쪽(아래쪽) 변이 원근 때문에 뒤쪽보다 넓게 벌어져서,
   // 1440 폭 화면에서는 맨 아랫줄 양쪽 끝 한 칸씩이 화면 밖으로 잘려 나가고 있었다.
-  // 판 전체의 네모 칸이 아니라 실제로 칸이 그려진 폭을 재야 필요한 만큼만 줄인다.
+  //
+  // 여기서 오래 틀렸던 것: 칸(.tile)만 재고 있었다. 판에는 칸 말고도 제 몫의
+  // 두께가 있다 — 6px 테두리와 5px 안쪽 여백. 눕힌 판의 앞쪽 변에서는 그 두께도
+  // 원근을 타고 같이 벌어져서, 칸은 다 들어와 있는데 판의 아래 두 모서리만
+  // 틀 밖으로 삐져나왔다. 그래서 칸의 폭과 판 자신의 폭 중 넓은 쪽으로 잰다.
   const cells = boardEl.querySelectorAll(".tile");
   if (cells.length) {
     let left = Infinity;
@@ -884,8 +888,13 @@ function fitBoardToScreen() {
       if (r.left < left) left = r.left;
       if (r.right > right) right = r.right;
     });
-    const span = right - left;
-    const widthRoom = battlefieldWrapEl.clientWidth - 8;
+    const board = boardEl.getBoundingClientRect();
+    const span = Math.max(right - left, board.width);
+    // 판이 들어앉을 자리는 무대(#mapStage)의 안쪽 폭이다. 예전에는 바깥 틀의
+    // 폭에서 8px만 뺐는데, 그 값은 틀의 안쪽 여백(18px×2)을 그대로 품고 있어서
+    // 실제로 쓸 수 있는 자리보다 28px 넓었다 — 딱 그만큼 넘쳐 나오고 있었다.
+    const stageWidth = stageEl?.clientWidth ?? battlefieldWrapEl.clientWidth;
+    const widthRoom = stageWidth - 8;
     if (widthRoom > 200 && span > widthRoom) fit = Math.min(fit, widthRoom / span);
   }
   if (fit < 1) battlefieldWrapEl.style.setProperty("--map-fit-scale", clamp(fit, 0.42, 1).toFixed(3));
@@ -1717,7 +1726,6 @@ function renderOperationScenarioChoices(side) {
         <span class="scenario-choice-body">
           <span class="scenario-choice-head"><strong>${scenario.name}</strong>${badge}</span>
           <span class="scenario-choice-meta">${meta}</span>
-          <span>${scenario.summary}</span>
           <span class="scenario-choice-goal">${scenario.objectiveBrief}</span>
         </span>
       </label>
