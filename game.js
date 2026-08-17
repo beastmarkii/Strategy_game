@@ -692,6 +692,9 @@ const resumeOperationEl = document.querySelector("#resumeOperation");
 const discardOperationEl = document.querySelector("#discardOperation");
 const missionNameLabelEl = document.querySelector("#missionNameLabel");
 const missionBriefLabelEl = document.querySelector("#missionBriefLabel");
+// 저장 알림 띠. 첫 판 안내(coachAllowed)가 이 띠에게 자리를 비켜 주므로,
+// 그쪽보다 먼저 잡아 둔다 — 뒤에 두면 부팅 순서가 조금만 바뀌어도 터진다.
+const storageNoticeEl = document.querySelector("#storageNotice");
 const resultScreenEl = document.querySelector("#resultScreen");
 const resultVerdictEl = document.querySelector("#resultVerdict");
 const resultReasonEl = document.querySelector("#resultReason");
@@ -729,8 +732,9 @@ document.querySelector("#panelScrim")?.addEventListener("click", closeCommandPan
    붙인 사람에게만 단추가 보이고, 그 사실은 이 기계에 적혀서 다음에 켤 때도
    그대로 남는다. ?edit=0으로 다시 감춘다.
 
-   단추만 감추면 충분하다. 창 자체는 화면 밖에 서 있다가 body.editor-open이
-   붙을 때만 밀려 들어오는데, 그 반을 붙이는 것이 저 단추뿐이기 때문이다. */
+   단추만 감춰서는 부족하다. 창은 화면 밖으로 밀려 있을 뿐 살아 있어서, Tab 키만
+   눌러 가면 안쪽 숫자칸 아흔 몇 개에 그대로 닿는다. 그래서 단추를 감출 때 창도
+   같이 잠근다(inert) — 창의 생김새는 건드리지 않고 손잡이만 뗀다. */
 const EDIT_TOOLS_KEY = "ww2TacticalCommand.editTools";
 
 function syncEditTools() {
@@ -742,9 +746,13 @@ function syncEditTools() {
   } catch (error) {
     on = false;
   }
-  document.body.classList.toggle("edit-tools", on);
   const button = document.querySelector("#toggleEditorPanel");
   if (button) button.hidden = !on;
+  // 창을 통째로 잠근다. inert가 걸린 동안에는 Tab도, 클릭도, 화면 읽어 주는
+  // 프로그램도 그 안으로 들어가지 못한다. 창은 aria-hidden="true"인 채 서 있으므로
+  // 이걸 안 걸면 "없다고 말해 놓은 곳"에 손이 닿는 상태가 된다.
+  const panel = document.querySelector("#editorPanel");
+  if (panel) panel.inert = !on;
   // 감추는 김에 열려 있던 창도 닫는다. ?edit=0으로 껐는데 창이 남아 있으면
   // 그건 끈 것이 아니다.
   if (!on) document.body.classList.remove("editor-open");
@@ -1758,6 +1766,11 @@ function openNewOperationSetup() {
   renderResumeNotice();
   if (operationCancelEl) operationCancelEl.hidden = !operationCommenced;
   if (operationModalEl) operationModalEl.hidden = false;
+  // 명령서가 올라온 순간 아래에 깔린 것들을 물린다. 게임을 켤 때는 판이 먼저
+  // 그려지고(render → 띠가 뜬다) 명령서가 그 다음에 오므로, 여기서 다시 묻지
+  // 않으면 띠가 명령서 밑에 깔린 채 「작전 개시」를 덮는다.
+  storageNoticeSync();
+  coachSync();
   briefingMusicPlay();
   // 창이 뜨자마자 첫 칸이 열린다. 한 박자 늦게 여는 이유는 열리는 동작 자체가
   // 이 화면의 첫인상이기 때문이다 — 이미 열려 있으면 그냥 양식이다.
@@ -1834,6 +1847,7 @@ function closeNewOperationSetup() {
   // 판은 명령서가 닫히기 전에 이미 그려진다. 그때는 명령서가 아직 화면을 덮고
   // 있어서 안내가 스스로 물러나 있고, 그 뒤로는 다시 그릴 일이 없다 — 즉 여기서
   // 한 번 더 부르지 않으면 첫 마디는 플레이어가 무엇이든 누를 때까지 안 뜬다.
+  storageNoticeSync();
   coachSync();
 }
 
@@ -2013,9 +2027,13 @@ function confirmNewOperationSetup() {
 // 그래서 하루가 넘어갈 때마다 판을 통째로 적어 둔다. 저장 단추는 없다 — 저장을
 // 사람이 챙겨야 하는 순간, 안 챙긴 사람은 반드시 한 번 잃는다.
 
+// 「기록 지우기」가 켜 두는 빗장. 지운 뒤로는 무슨 일이 있어도 다시 적지 않는다.
+let storageErased = false;
+
 function saveOperation() {
   // 아직 명령서에 서명하지 않은 판(게임을 켜면 뒤에 깔리는 배경)은 적지 않는다.
   // 고른 적 없는 작전을 「중단된 작전」이라고 내미는 건 거짓말이다.
+  if (storageErased) return;
   if (!operationCommenced || !state || state.gameOver) return;
   try {
     const { deployZones, commanders: leaders, ...rest } = state;
@@ -2199,19 +2217,25 @@ const coachSteps = [
     body: "내 부대를 하나 누른다. 갈 수 있는 칸이 지도에 밝게 뜬다.",
     target: () => document.querySelector("#mapStage"),
     // 눌렀는지는 눌렀는지로 안다. 「다음」을 눌러 넘기는 길은 두지 않는다.
-    done: () => Boolean(selectedUnit()?.owner === "player"),
+    // 마디를 띄우기 전에 이미 골라 둔 부대는 셈하지 않는다(base).
+    done: (base) => {
+      const unit = selectedUnit();
+      return Boolean(unit && unit.owner === "player" && unit.id !== base.selected);
+    },
   },
   {
     id: "move",
     title: "고른 부대를 옮긴다",
     body: "밝은 칸 하나를 누르면 그리로 간다. 한 부대는 하루에 한 번만 움직인다.",
     target: () => document.querySelector("#mapStage"),
-    done: () => state?.units?.some((unit) => unit.owner === "player" && unit.moved),
+    done: (base) => coachMovedCount() > base.moved,
   },
   {
     id: "attack",
     title: "적을 친다",
-    body: "붉은 부대가 사거리 안에 들어오면, 그 부대를 누르는 것이 곧 공격이다. 안 되면 왜 안 되는지 지도 밑에 뜬다.",
+    // 안내 쪽지가 화면 아래를 쓰는 동안에는 명령 안내줄이 가려질 수 있다.
+    // 그래서 "지도 밑에 뜬다"고 가리키지 않고, 여기서 바로 말해 준다.
+    body: "붉은 부대가 사거리 안에 들어오면, 그 부대를 누르는 것이 곧 공격이다. 사거리 밖이면 눌러도 아무 일도 일어나지 않는다.",
     target: () => document.querySelector("#mapStage"),
   },
   {
@@ -2219,7 +2243,7 @@ const coachSteps = [
     title: "하루를 끝낸다",
     body: "「턴 종료」를 누르면 적이 움직이고 다음 날 아침이 온다. 판은 그때마다 저절로 저장된다.",
     target: () => document.querySelector("#endTurn"),
-    done: () => (state?.turn ?? 1) > 1,
+    done: (base) => (state?.turn ?? 1) > base.turn,
   },
   {
     id: "supply",
@@ -2230,6 +2254,27 @@ const coachSteps = [
 ];
 
 let coachIndex = -1;
+
+/* 「했는가」는 판의 상태가 아니라 이 마디를 띄운 뒤에 했는가여야 한다.
+   판의 상태로 물으면 사흘째 판에서 「조작 안내」를 다시 눌렀을 때 「하루를
+   끝낸다」가 이미 끝난 것으로 셈해져 통째로 건너뛰고, 번호가 1 → 4 → 6으로
+   튄다. 그래서 마디가 바뀌는 순간의 판을 적어 두고 그것과 견준다. */
+let coachBaseIndex = -1;
+let coachBase = { turn: 1, moved: 0, selected: null };
+
+function coachMovedCount() {
+  return state?.units?.filter((unit) => unit.owner === "player" && unit.moved).length ?? 0;
+}
+
+function coachBaseline() {
+  const unit = selectedUnit();
+  return {
+    turn: state?.turn ?? 1,
+    moved: coachMovedCount(),
+    selected: unit?.id ?? null,
+  };
+}
+
 const coachEl = document.querySelector("#coach");
 const coachTitleEl = document.querySelector("#coachTitle");
 const coachBodyEl = document.querySelector("#coachBody");
@@ -2270,8 +2315,10 @@ function coachFinish() {
 
 function coachStart(fromScratch = false) {
   if (fromScratch) coachWrite("0");
-  coachIndex = fromScratch ? 0 : Number(coachRead() ?? 0) || 0;
+  // 저장값이 망가져 음수로 들어오면(외부에서 손댄 경우) 안내가 영영 안 뜬다.
+  coachIndex = fromScratch ? 0 : Math.max(0, Number(coachRead() ?? 0) || 0);
   if (coachIndex >= coachSteps.length) coachIndex = 0;
+  coachBaseIndex = -1;
   coachSync();
 }
 
@@ -2283,6 +2330,9 @@ function coachAllowed() {
   if (state.phase !== "player") return false;
   if (operationModalEl && !operationModalEl.hidden) return false;
   if (resultScreenEl && !resultScreenEl.hidden) return false;
+  // 저장 알림 띠와 안내 쪽지는 화면 같은 자리(아래)를 쓴다. 둘이 겹치면 둘 다
+  // 못 읽으므로, 띠가 물러날 때까지 안내는 기다린다.
+  if (storageNoticeEl && !storageNoticeEl.hidden) return false;
   return true;
 }
 
@@ -2293,9 +2343,18 @@ function coachSync() {
     if (coachSpotEl) coachSpotEl.hidden = true;
     return;
   }
-  // 시킨 것을 이미 해 버린 마디는 건너뛴다. 「부대를 고른다」를 읽기도 전에
-  // 부대를 골라 버린 사람에게 그걸 또 시키면 안내가 아니라 방해다.
-  while (coachIndex < coachSteps.length && coachSteps[coachIndex].done?.()) coachIndex += 1;
+  // 마디가 바뀌었으면 그 순간의 판을 적어 둔다. 이 다음 줄의 물음은 전부
+  // 이 기준선과의 비교다.
+  if (coachBaseIndex !== coachIndex) {
+    coachBaseIndex = coachIndex;
+    coachBase = coachBaseline();
+  }
+  // 마디를 띄운 뒤에 시킨 것을 해냈으면 다음으로 넘어간다.
+  while (coachIndex < coachSteps.length && coachSteps[coachIndex].done?.(coachBase)) {
+    coachIndex += 1;
+    coachBaseIndex = coachIndex;
+    coachBase = coachBaseline();
+  }
   if (coachIndex >= coachSteps.length) {
     coachFinish();
     return;
@@ -2310,7 +2369,33 @@ function coachSync() {
   // 해내야 넘어가는 마디에는 「다음」이 없다. 버튼이 있으면 그걸 누르지, 시킨 것을
   // 하지 않는다.
   if (coachNextEl) coachNextEl.hidden = Boolean(step.done);
+  dockAboveHudActions(coachEl);
   coachPlaceSpot(step.target?.());
+}
+
+/* ── 화면 아래에 붙는 쪽지가 무엇을 덮는가 ──────────────────────────────────
+   폰에서는 「턴 종료」·「지휘」 띠가 화면 바닥에 못 박혀 있다(styles.css의
+   860px 이하). 그 위에 안내 쪽지를 겹쳐 놓으면, 쪽지가 누르라고 시킨 바로 그
+   단추를 쪽지가 막는다 — 층이 1500 대 45라 언제나 쪽지가 이긴다.
+
+   띠의 높이는 화면 폭과 안전 영역(노치)에 따라 달라지므로 CSS에 숫자로 적어
+   둘 수 없다. 그래서 그때그때 재서 그만큼 위에 앉힌다. 넓은 화면에서는 띠가
+   바닥에 붙지 않으므로(position이 fixed가 아니다) 손대지 않고 CSS에 맡긴다. */
+function hudActionsClearance() {
+  const bar = document.querySelector(".hud-actions");
+  if (!bar || bar.hidden) return 0;
+  if (getComputedStyle(bar).position !== "fixed") return 0;
+  const rect = bar.getBoundingClientRect();
+  if (!rect.height) return 0;
+  return Math.max(0, Math.round(window.innerHeight - rect.top));
+}
+
+function dockAboveHudActions(el) {
+  if (!el) return;
+  const clearance = hudActionsClearance();
+  // 0이면 CSS가 정한 자리를 그대로 쓴다. 여기서 값을 적어 두면 화면을 넓혔을 때
+  // 그 값이 남아 CSS를 이긴다.
+  el.style.bottom = clearance ? `${clearance + 10}px` : "";
 }
 
 function coachPlaceSpot(target) {
@@ -2343,8 +2428,123 @@ showCoachEl?.addEventListener("click", () => {
 
 // 테두리는 화면에 그린 것이라, 화면이 움직이면 같이 따라가야 한다. 안 따라가면
 // 엉뚱한 곳을 짚은 채로 남는다.
-window.addEventListener("resize", () => coachSync());
-window.addEventListener("scroll", () => coachSync(), true);
+//
+// 다만 손가락으로 지도를 한 번 밀면 스크롤이 수십 번 들어온다. 그때마다 자리를
+// 재고(getBoundingClientRect) 곧바로 자리를 적으면(style) 브라우저가 매번 화면
+// 계산을 다시 한다 — 미는 손이 뻑뻑해진다. 그래서 한 번 그리는 사이에 한 번만
+// 한다.
+let coachFrame = 0;
+
+function coachSyncSoon() {
+  if (coachFrame) return;
+  coachFrame = window.requestAnimationFrame(() => {
+    coachFrame = 0;
+    // 알림 띠도 같은 자리(화면 아래)에 붙으므로 같이 다시 앉힌다.
+    if (storageNoticeEl && !storageNoticeEl.hidden) dockAboveHudActions(storageNoticeEl);
+    coachSync();
+  });
+}
+
+window.addEventListener("resize", coachSyncSoon);
+window.addEventListener("scroll", coachSyncSoon, true);
+
+/* ── 이 기계에 무엇을 적어 두는지 ─────────────────────────────────────────────
+   이 게임은 계정도 없고 서버로 보내는 것도 없다. 그래도 판을 이어서 하려면
+   몇 가지를 브라우저에 적어 둬야 하고, 그 사실은 처음 온 사람에게 한 번은
+   말해야 한다.
+
+   동의를 받는 창이 아니다. 받을 동의가 없기 때문이다 — 여기 적어 두는 넷은
+   전부 게임이 굴러가는 데 필요한 것이고 광고도 추적도 아니다. 그래서 「거부」
+   단추를 두지 않는다. 아무것도 안 하면서 거부 단추만 세워 두는 쪽이 오히려
+   거짓말이다. 대신 무엇을 적는지 다 적어 둔 문서(privacy.html)로 가는 길과,
+   그것을 통째로 지우는 단추를 준다.
+
+   명령서가 닫힌 뒤에 뜬다. 명령서 위에 겹쳐 띄우면 화면 아래에 있는 「작전
+   개시」를 이 띠가 덮는다. */
+
+const STORAGE_NOTICE_KEY = "ww2TacticalCommand.storageNotice";
+
+// 「기록 지우기」가 지우는 것 전부. 새 저장 항목을 만들면 여기에도 넣어야 한다 —
+// 안 넣으면 지웠다고 말해 놓고 남겨 두는 것이 된다.
+const GAME_STORAGE_KEYS = [
+  DEFAULT_BALANCE_STORAGE_KEY,
+  SAVED_OPERATION_KEY,
+  EDIT_TOOLS_KEY,
+  COACH_KEY,
+  STORAGE_NOTICE_KEY,
+];
+
+// storageNoticeEl은 첫 판 안내가 먼저 참조하므로 파일 위쪽에서 잡아 둔다.
+const storageNoticeOkEl = document.querySelector("#storageNoticeOk");
+const clearStoredDataEl = document.querySelector("#clearStoredData");
+
+function storageNoticeSeen() {
+  try {
+    return localStorage.getItem(STORAGE_NOTICE_KEY) === "seen";
+  } catch (error) {
+    // 저장이 막힌 브라우저라면 적어 두는 것 자체가 없다. 알릴 것도 없다.
+    return true;
+  }
+}
+
+function storageNoticeSync() {
+  if (!storageNoticeEl) return;
+  const show =
+    !storageNoticeSeen() &&
+    (!operationModalEl || operationModalEl.hidden) &&
+    (!resultScreenEl || resultScreenEl.hidden);
+  storageNoticeEl.hidden = !show;
+  // 폰에서는 「턴 종료」 띠가 화면 바닥에 붙어 있다. 그 위에 겹치면 이 띠가
+  // 단추를 먹는다.
+  if (show) dockAboveHudActions(storageNoticeEl);
+}
+
+storageNoticeOkEl?.addEventListener("click", () => {
+  try {
+    localStorage.setItem(STORAGE_NOTICE_KEY, "seen");
+  } catch (error) {
+    /* 못 적어도 이번 판에서는 닫힌 채로 간다. */
+  }
+  if (storageNoticeEl) storageNoticeEl.hidden = true;
+  // 띠가 비켜야 첫 판 안내가 그 자리에 들어온다.
+  coachSync();
+});
+
+// 한 번 누르면 지워지지 않는다. 여기서 지우는 것에는 하다 만 판도 들어 있어서,
+// 잘못 누른 사람은 그 판을 잃는다. 그래서 두 번 누르게 하고, 잠깐 두면 저절로
+// 원래 단추로 돌아간다.
+let clearArmed = false;
+let clearArmedTimer = 0;
+
+function clearArmReset() {
+  clearArmed = false;
+  window.clearTimeout(clearArmedTimer);
+  if (clearStoredDataEl) clearStoredDataEl.textContent = "기록 지우기";
+}
+
+clearStoredDataEl?.addEventListener("click", () => {
+  if (!clearArmed) {
+    clearArmed = true;
+    clearStoredDataEl.textContent = "정말 지운다 · 하던 판도 사라짐";
+    clearArmedTimer = window.setTimeout(clearArmReset, 6000);
+    return;
+  }
+  window.clearTimeout(clearArmedTimer);
+  // 먼저 저장을 끈다. 아래에서 다시 켤 때 화면이 내려가는데, 그 내려가는 길에
+  // 「하던 판을 적어 두는」 손이 한 번 더 돈다(visibilitychange). 그러면 방금
+  // 지운 판이 지우자마자 다시 적혀서, 지웠다는 말이 거짓말이 된다.
+  storageErased = true;
+  for (const key of GAME_STORAGE_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      /* 지울 수 없는 브라우저라면 애초에 적힌 것도 없다. */
+    }
+  }
+  // 지운 다음에는 다시 켠다. 안 그러면 지금 화면이 쥐고 있는 판이 다음 턴에
+  // 그대로 다시 저장되어, 지운 것이 지운 것이 아니게 된다.
+  location.reload();
+});
 
 function startGame(config = {}) {
   applyLocale();
@@ -3204,6 +3404,7 @@ function render() {
   // 첫 판 안내는 화면이 바뀔 때마다 "이제 다음 걸 배울 차례인가"를 스스로 본다.
   // 클릭 자리마다 안내를 부르지 않는 이유는, 그러면 조작 하나를 새로 만들 때마다
   // 안내를 부르는 줄도 같이 넣어야 하고 언젠가 빼먹기 때문이다.
+  storageNoticeSync();
   coachSync();
 }
 
