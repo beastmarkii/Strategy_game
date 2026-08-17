@@ -56,8 +56,6 @@ let enemyRecruitSurplus = 24;
 // 창고 공사는 3일이 걸리고 그동안 공병대는 움직이지 못한다. 이 거리 안에 적이
 // 있으면 안전한 자리가 아니다 — AI는 아예 짓지 않고, 플레이어에게는 경고만 한다.
 let depotSafeDistance = 4;
-// 사령부 엄호 규칙 켜기(1)/끄기(0). 자세한 설명은 isScreenedHQ에.
-let hqScreening = 1;
 // 수비 미션의 적이 초소에 붙박이면 플레이어는 사거리 밖에서 안전하게 갉아먹는다.
 // 이 반경 안으로 들어온 상대에게는 적이 나가서 맞선다. 0에 가까울수록 붙박이,
 // 크게 잡을수록 초소를 비우고 쫓아나간다.
@@ -355,7 +353,6 @@ const defaultBalance = {
     baseEfficiencyRepair,
     enemyBaseSeekRange,
     depotSafeDistance,
-    hqScreening,
     playerBattalionHQ: episodeLimits.playerBattalionHQ,
     enemyBattalionHQ: episodeLimits.enemyBattalionHQ,
   },
@@ -439,7 +436,6 @@ const ruleEditorFields = [
   ["baseEfficiencyRepair", "거점 효율 턴당 복구 (0=끔)", 0, 0.5, 0.05],
   ["enemyBaseSeekRange", "적 중립 거점 확보 반경 (0=안 감)", 0, 20, 1],
   ["depotSafeDistance", "보급창고 안전 거리", 1, 12, 1],
-  ["hqScreening", "사령부 엄호 (0=끔)", 0, 1, 1],
   ["playerBattalionHQ", "연합군 HQ 한도", 0, 9, 1],
   ["enemyBattalionHQ", "적군 HQ 한도", 0, 9, 1],
 ];
@@ -2916,7 +2912,6 @@ function balanceSnapshot() {
       baseEfficiencyRepair,
       enemyBaseSeekRange,
       depotSafeDistance,
-      hqScreening,
       playerBattalionHQ: episodeLimits.playerBattalionHQ,
       enemyBattalionHQ: episodeLimits.enemyBattalionHQ,
     },
@@ -2972,7 +2967,6 @@ function ruleValue(key) {
     baseEfficiencyRepair,
     enemyBaseSeekRange,
     depotSafeDistance,
-    hqScreening,
     playerBattalionHQ: episodeLimits.playerBattalionHQ,
     enemyBattalionHQ: episodeLimits.enemyBattalionHQ,
   };
@@ -3034,7 +3028,6 @@ function setRuleValue(key, value) {
   if (key === "baseEfficiencyRepair") baseEfficiencyRepair = value;
   if (key === "enemyBaseSeekRange") enemyBaseSeekRange = value;
   if (key === "depotSafeDistance") depotSafeDistance = value;
-  if (key === "hqScreening") hqScreening = value;
   if (key === "playerBattalionHQ") episodeLimits.playerBattalionHQ = value;
   if (key === "enemyBattalionHQ") episodeLimits.enemyBattalionHQ = value;
   unitTypes.battalionHQ.supplyRange = hqSupplyRange;
@@ -3352,7 +3345,6 @@ function renderSelectedCard() {
       ${supply.level === "cut" ? `<span>다음 턴 붕괴 피해 <strong>${collapseDamageFor({ hqOutTurns: (unit.hqOutTurns ?? 0) + 1 })}</strong></span>` : ""}
       ${unit.type === "battalionHQ" ? `<span>지휘 범위 <strong>${spec.commandRange}</strong></span>` : ""}
       ${unit.type === "battalionHQ" ? `<span>보급권 <strong>${battalionCoverageText(unit)}</strong></span>` : ""}
-      ${unit.type === "battalionHQ" && hqScreening ? `<span>엄호 <strong>${isScreenedHQ(unit) ? "받는 중 (직접 피격 불가)" : "없음 (직접 피격 가능)"}</strong></span>` : ""}
       ${hqMoraleBonus(unit) ? `<span>사령부 보너스 <strong>+${hqMoraleBonus(unit)}%</strong></span>` : ""}
     </div>
   `;
@@ -5228,23 +5220,13 @@ function isBridgeableWater(x, y) {
   return horizontalBanks || verticalBanks;
 }
 
-// 사령부 엄호. 사령부는 예하 부대 뒤에 선다 — 인접한 아군 전투부대가 하나라도
-// 있으면 직접 사격 대상이 되지 않는다. 호위를 먼저 걷어내야 사령부에 닿는다.
-// 이 규칙이 없으면 "고립 사령부 구조"는 미션이 아니라 처형이다. 체력 9짜리
-// 사령부에 네 부대가 화력을 모으면 플레이어가 손도 대기 전에 첫 턴에 끝난다.
-// 부수 효과도 의도한 것이다: 사령부 사냥이 "호위를 뚫는 작전"이 되고,
-// 보급의 중심인 사령부를 앞에 세우면 안 된다는 압력이 양쪽에 똑같이 걸린다.
-// 에디터에서 0으로 두면 규칙이 꺼져 예전처럼 사령부를 바로 칠 수 있다.
-function isScreenedHQ(unit) {
-  if (!hqScreening || unit.type !== "battalionHQ") return false;
-  return neighbors(unit.x, unit.y).some((spot) =>
-    getUnitsAt(spot.x, spot.y).some((other) => other.owner === unit.owner && other.type !== "battalionHQ"),
-  );
-}
+// 사령부 엄호 규칙은 걷어냈다. 옆에 호위가 붙어 있다고 해서 사거리 안에 든 사령부를
+// 못 치는 전장은 없다 — 포탄은 옆 부대를 보고 비켜 가지 않는다. 규칙으로 사령부를
+// 가려 주는 대신, 사령부는 제 방어력과 거점 위 방어 보너스로 버틴다.
+// 그 자리에 있던 함수(isScreenedHQ)와 에디터 값(hqScreening)도 같이 없앴다.
 
 function canAttack(attacker, defender) {
   if (!attacker || !defender || attacker.owner === defender.owner) return false;
-  if (isScreenedHQ(defender)) return false;
   if (attacker.type === "artillery" && attacker.moved) return false;
   if (isTowedArtillery(attacker)) return false;
   if (supplyStatus(attacker).level === "isolated" && unitTypes[attacker.type].range > 1) return false;
@@ -5272,7 +5254,6 @@ function attackBlockReason(attacker, defender) {
     return `${label}${topicParticle(label)} 이번 턴에 할 일을 이미 마쳤습니다.`;
   }
   if (canAttack(attacker, defender)) return null;
-  if (isScreenedHQ(defender)) return "적 사령부는 옆에 붙은 호위 부대를 먼저 걷어내야 칠 수 있습니다.";
   if (attacker.type === "artillery" && attacker.moved) return "야포는 움직인 턴에는 쏘지 못합니다. 자리를 잡고 다음 턴에 쏘십시오. 자주포는 움직인 턴에도 쏩니다.";
   if (isTowedArtillery(attacker)) return "야포가 트럭에 걸린 채입니다. 전개해야 쏩니다.";
   if (supplyStatus(attacker).level === "isolated" && spec.range > 1) return "보급이 끊겨 포탄이 없습니다. 보급이 닿는 곳으로 물러나야 다시 쏩니다.";
@@ -6118,13 +6099,6 @@ function enemyGoalFor(unit) {
 // 반쯤 죽은 전차를 두고 멀쩡한 보병을 쳤다.
 function bestEnemyStrike(unit) {
   const prey = enemyPreyUnits();
-  // 사냥감이 엄호를 받고 있으면 사냥감 자체는 못 친다. 그럴 때 아무나 치면
-  // 사냥이 흐지부지된다(사령부 사냥이 무승부로 끝나던 이유). 엄호하는 부대를
-  // 표적으로 승격시켜, 호위를 걷어내는 것이 곧 사냥이 되게 한다.
-  const screens = prey
-    .filter((target) => isScreenedHQ(target))
-    .flatMap((target) => neighbors(target.x, target.y).flatMap((spot) => getUnitsAt(spot.x, spot.y)))
-    .filter((guard) => guard.owner !== unit.owner && unitVisibleTo(guard, unit.owner));
   let best = null;
   visibleFoes(unit.owner).forEach((foe) => {
     if (attackIsSuicidal(unit, foe)) return;
@@ -6133,7 +6107,6 @@ function bestEnemyStrike(unit) {
     let score = forecast.damage - forecast.counter;
     if (forecast.kills) score += 8;
     if (prey.includes(foe)) score += 12; // 미션이 지목한 사냥감
-    if (screens.includes(foe)) score += 10; // 사냥감을 가린 호위 — 이걸 걷어내야 닿는다
     if (foe.type === "battalionHQ") score += 6; // 보급의 중심
     if (foe.type === "engineer") score += 3; // 경제를 짓는 손
     if (!best || score > best.score) best = { foe, score };
