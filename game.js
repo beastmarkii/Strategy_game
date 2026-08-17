@@ -675,6 +675,11 @@ selectedCardEl?.addEventListener("click", () => {
   if (!selectedCardEl.querySelector(".unit-stats")) return;
   selectedCardEl.classList.toggle("expanded");
 });
+// 임무줄도 같은 이치다. 이기는 조건은 늘 보여야 하지만, 휴대폰에서 두 줄을
+// 계속 펴 두면 그 한 줄이 지도 한 칸이다. 평소에는 한 줄만 두고 누르면 펴진다.
+document.querySelector("#missionBar")?.addEventListener("click", (event) => {
+  event.currentTarget.classList.toggle("expanded");
+});
 document.querySelector("#toggleEditorPanel")?.addEventListener("click", toggleEditorPanel);
 battlefieldWrapEl?.addEventListener("wheel", handleMapWheel, { passive: false });
 document.addEventListener("pointerdown", handleGlobalPointerSound, true);
@@ -3263,13 +3268,23 @@ function updateOperationHud() {
   if (hudResourceLabelEl) hudResourceLabelEl.textContent = formatNumber(state.resources);
   if (hudBaseLabelEl) hudBaseLabelEl.textContent = formatNumber(projectedIncome("player"));
   if (hudForceLabelEl) hudForceLabelEl.textContent = forceDisplay("player");
-  if (hudAlertLabelEl) hudAlertLabelEl.textContent = operationAlertText();
+  // 경보칸은 두 얼굴이다. 실제로 경보가 떴을 때는 노란 불이 들어와야 하고,
+  // 아무 일도 없을 때는 "전장 이상 없음" 한 줄이 화면 34px을 차지한다.
+  // 휴대폰에서는 그 34px이 지도 두 칸 반이라, 조용할 때는 칸째로 접는다
+  // (styles.css의 .hud-alerts.clear). 넓은 화면에서는 그대로 둔다.
+  if (hudAlertLabelEl) {
+    const alerts = operationAlerts();
+    hudAlertLabelEl.textContent = alerts.length ? alerts.join(" · ") : "전장 이상 없음";
+    hudAlertLabelEl.classList.toggle("clear", alerts.length === 0);
+  }
   if (missionNameLabelEl) missionNameLabelEl.textContent = state.mission?.name ?? "작전";
   // 브리핑은 한 번 뜨고 로그에 묻힌다. 목표는 매 턴 보이는 자리에 있어야 한다.
   if (missionBriefLabelEl) missionBriefLabelEl.textContent = missionBriefText();
 }
 
-function operationAlertText() {
+// 경보 목록. 비어 있으면 "이상 없음"이라는 뜻이고, 그 판단을 부르는 쪽에서
+// 하도록 문자열이 아니라 목록으로 돌려준다.
+function operationAlerts() {
   const playerUnits = state.units.filter((unit) => unit.owner === "player");
   const isolated = playerUnits.filter((unit) => supplyStatus(unit).level === "isolated").length;
   const cut = playerUnits.filter((unit) => supplyStatus(unit).level === "cut");
@@ -3291,7 +3306,7 @@ function operationAlertText() {
   if (cut.length - collapsing > 0) parts.push(`보급 두절 ${cut.length - collapsing}`);
   if (strained) parts.push(`보급 불안 ${strained}`);
   if (constructing) parts.push(`건설 중 ${constructing}`);
-  return parts.length ? parts.join(" · ") : "전장 이상 없음";
+  return parts;
 }
 
 // 좁은 화면에서 지휘칸은 아래에서 올라오는 서랍이다. 넓은 화면에서는 예전처럼

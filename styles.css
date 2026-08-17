@@ -3826,15 +3826,38 @@ h1 {
   /* 임무는 한 줄이면 된다. 자세한 내용은 서랍 안 전투 기록에 남는다. */
   .mission-bar {
     flex: 0 0 auto;
-    padding: 5px 10px;
+    /* 오른쪽만 넓게 비운다 — 펴고 접는 화살표가 앉을 자리다. */
+    padding: 5px 23px 5px 10px;
   }
 
-  /* 임무 내용은 두 줄까지 보인다. 이기는 조건을 못 읽으면 게임이 안 된다. */
+  /* 임무 내용은 평소 한 줄이다. 이기는 조건을 못 읽으면 게임이 안 되지만,
+     두 줄을 계속 펴 두면 그 한 줄이 지도 한 칸이다. 임무줄을 누르면 펴진다. */
   .mission-bar span {
     display: -webkit-box;
     overflow: hidden;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
+  }
+
+  .mission-bar.expanded span {
+    -webkit-line-clamp: 4;
+  }
+
+  /* 누를 수 있는 줄이라는 표시. 임무줄은 세로로 쌓이는 칸이라 화살표를 흐름에
+     넣으면 줄이 하나 더 생긴다 — 오른쪽 위 구석에 얹어 자리를 안 쓰게 한다. */
+  .mission-bar::after {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    color: var(--engrave-dim);
+    font-size: 13px;
+    font-weight: 800;
+    transform: translateY(-50%);
+    content: "▾";
+  }
+
+  .mission-bar.expanded::after {
+    content: "▴";
   }
 
   /* 계기는 한 띠다. 라벨 위에 숫자를 얹는 대신 나란히 놓아 칸 높이를 48px에서
@@ -3870,6 +3893,13 @@ h1 {
     padding: 3px 9px;
   }
 
+  /* "전장 이상 없음"은 아무것도 알려 주지 않으면서 한 줄을 통째로 쓴다.
+     조용할 때는 접고, 경보가 실제로 뜨면 그때 나타난다 — 나타나는 것 자체가
+     신호가 되므로 오히려 눈에 더 잘 띈다. (넓은 화면에서는 늘 켜 둔다.) */
+  .hud-alerts.clear {
+    display: none;
+  }
+
   /* 고른 부대는 지도 '위에' 떠서 지도 아랫단을 덮는다. 줄 세워 놓으면 부대 정보
      열아홉 줄이 펼쳐지는 순간 지도가 150px로 눌려서, 정작 어디로 갈지 볼 수가
      없다. 떠 있으면 지도의 크기는 늘 그대로다 — 전략게임이 다 이렇게 한다.
@@ -3897,6 +3927,47 @@ h1 {
     display: none;
   }
 
+  /* ── 접힌 부대 카드는 '쪽지'가 아니라 '띠'다 ────────────────────
+     여섯 줄을 표로 세워 두면 그림 한 장과 합쳐 200px이 되고, 그 200px이
+     전부 지도 위를 덮는다. 390px 화면에서 전장이 300px밖에 안 남는다는 뜻이다.
+     접혔을 때는 그림을 손톱만큼 줄이고 여섯 항목을 한 줄로 흘려서 100px 안에
+     담는다. 글자 크기는 한 곳도 건드리지 않았다 — 줄어든 것은 그림과 빈 자리와
+     표의 세로줄뿐이다. 누르면 예전 그대로의 표가 펴진다. */
+  .unit-card:not(.expanded) .unit-card-visual {
+    grid-template-columns: 40px 1fr;
+    gap: 9px;
+    margin-bottom: 7px;
+  }
+
+  .unit-card:not(.expanded) .unit-card-image {
+    width: 40px;
+    height: 32px;
+    border-width: 2px;
+  }
+
+  .unit-card:not(.expanded) .unit-card-image .unit-icon {
+    width: 32px;
+    height: 26px;
+  }
+
+  .unit-card:not(.expanded) h2 {
+    padding-bottom: 3px;
+  }
+
+  /* 표를 눕힌다. 세로줄 여섯 개가 가로줄 두 개가 된다. */
+  .unit-card:not(.expanded) .unit-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 12px;
+  }
+
+  /* 눕힌 항목에는 점선 밑줄이 필요 없다 — 이름과 값이 붙어 다니므로
+     따라갈 줄이 없다. 밑줄을 빼면 줄마다 4px씩 돌아온다. */
+  .unit-card:not(.expanded) .unit-stats > span {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
   .unit-card:has(.unit-stats)::after {
     display: block;
     margin-top: 6px;
@@ -3905,6 +3976,10 @@ h1 {
     font-weight: 800;
     text-align: right;
     content: "자세히 ▾";
+  }
+
+  .unit-card:not(.expanded):has(.unit-stats)::after {
+    margin-top: 3px;
   }
 
   .unit-card.expanded::after {
