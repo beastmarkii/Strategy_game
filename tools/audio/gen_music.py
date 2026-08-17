@@ -77,6 +77,23 @@ JOBS = [
      "snare drums and heavy pounding timpani, low brass ostinato in a dark minor key, menacing "
      "rising string figures, iron marching feel, around 140 BPM, oppressive and monumental rather "
      "than triumphant, intensity held level all the way through, loopable, instrumental only, no vocals"),
+
+    # ── 작전 명령서 ──────────────────────────────────────────────────────
+    # 명령서를 읽는 동안 흐르는 곡. 여태 이 화면에서는 평시곡이 돌았는데,
+    # 판이 시작되면 같은 곡이 그대로 이어져서 "작전이 시작됐다"가 소리로는
+    # 안 들렸다. 그래서 이 화면만의 곡을 따로 둔다.
+    #
+    # 교전곡과도 갈라야 한다. 교전곡은 빠른 스네어로 손을 재촉하는 소리인데,
+    # 명령서 화면에서는 손이 할 일이 없다 — 읽고 고르는 시간이다. 그래서
+    # 급한 것을 북이 아니라 저음이 낸다: 콘트라베이스와 저음 금관이 눌러
+    # 깔리고, 그 위에 초침 같은 짧은 음이 규칙적으로 떨어진다. 빠르지 않은데
+    # 조급한 소리, 진영을 고르기 전이라 어느 편도 아닌 소리다.
+    ("music_briefing",
+     "Dark tense orchestral cue for a war room briefing before an operation. Heavy low strings and "
+     "contrabass ostinato deep in the bass register, low brass swells, quiet ticking clock-like "
+     "pizzicato pulse, distant low timpani hits, brooding minor key, slow around 70 BPM, building "
+     "pressure without any fast drums and without releasing into a climax, even loopable texture "
+     "throughout, cinematic and grave, instrumental only, no vocals"),
 ]
 
 

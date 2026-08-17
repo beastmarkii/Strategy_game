@@ -504,12 +504,36 @@ h1 {
   line-height: 1.35;
 }
 
-.commander-entry {
+/* 둘뿐이므로 나란히 세운다. 위아래로 쌓으면 사진을 키운 만큼 명부가 길어져서
+   그 아래 무전 기록을 밀어낸다 — 나란히 두면 사진은 두 배가 되고 높이는 그대로다.
+   맞은편에 누가 있는지를 한눈에 견주어 보는 자리이기도 하다. */
+.commander-grid {
   display: grid;
-  grid-template-columns: 46px 1fr;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.commander-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+/* 사진은 칸을 꽉 채운다. 얼굴은 위쪽에 있으므로 세로가 조금 긴 편이 낫다. */
+.commander-entry .commander-photo {
+  width: 100%;
+  height: auto;
+  margin-bottom: 5px;
+  aspect-ratio: 4 / 5;
+}
+
+/* 어느 쪽이 내 장군인지. 사진만 둘 놓으면 그것부터 헷갈린다. */
+.commander-tag {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
 }
 
 .commander-photo {
@@ -546,13 +570,16 @@ h1 {
     linear-gradient(135deg, #6a6553, #302d28);
 }
 
+/* 사진이 안 열렸을 때 대신 세우는 실루엣. 자리를 퍼센트로 잡는 이유는 이 틀이
+   두 곳에서 크기가 다르기 때문이다 — 장군 고르는 화면에서는 작고, 명부에서는 크다.
+   px로 박아 두면 큰 쪽에서 모자만 조그맣게 붙은 꼴이 된다. */
 .commander-photo.fallback::before {
   content: "";
   position: absolute;
-  left: 9px;
-  right: 9px;
-  top: 7px;
-  height: 11px;
+  left: 20%;
+  right: 20%;
+  top: 15%;
+  height: 24%;
   border-radius: 10px 10px 3px 3px;
   background:
     linear-gradient(90deg, transparent 0 38%, #d9c676 39% 61%, transparent 62%),
@@ -565,10 +592,10 @@ h1 {
 
 .commander-silhouette {
   position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 9px;
-  height: 15px;
+  left: 22%;
+  right: 22%;
+  bottom: 19%;
+  height: 33%;
   border-radius: 5px;
   background:
     linear-gradient(90deg, transparent 0 44%, #d9c676 45% 55%, transparent 56%),
@@ -582,9 +609,10 @@ h1 {
   content: "";
   position: absolute;
   left: 50%;
-  top: -14px;
-  width: 12px;
-  height: 12px;
+  bottom: 78%;
+  width: 44%;
+  height: auto;
+  aspect-ratio: 1;
   border-radius: 50%;
   background: #d7c49c;
   box-shadow: 0 0 0 2px rgb(47 56 41 / 88%);
@@ -1946,14 +1974,40 @@ h1 {
 
 /* 불덩이 ─ 부풀면서 위로 뜬다. 카메라를 마주 보게 되세운다.
    가운데가 흰색에서 주황으로, 다시 검게 식는 것이 화구의 생김새다 — 색이
-   한 겹이면 아무리 키워도 주황 동그라미다. */
+   한 겹이면 아무리 키워도 주황 동그라미다.
+   다만 이건 이제 폭발의 전부가 아니라 뿌리다. 예전에는 이 원 하나가 커졌다
+   사라지는 것이 폭발이었는데, 완전한 원은 아무리 색을 겹쳐도 장난감으로 보인다 —
+   터지는 것에 컴퍼스로 그린 테두리가 있을 리 없다. 그래서 크기를 줄이고
+   테두리를 일그러뜨린 뒤, 뻗어 나가는 불길(.fx-flame)을 그 위에 얹는다. */
 .fx-fire {
-  width: calc(34px * var(--fx-scale, 1));
-  height: calc(34px * var(--fx-scale, 1));
+  width: calc(23px * var(--fx-scale, 1));
+  height: calc(21px * var(--fx-scale, 1));
+  border-radius: 56% 44% 62% 38% / 46% 58% 42% 54%;
   background:
     radial-gradient(circle at 50% 62%, #fffdf0 0 11%, #ffd96e 12% 25%, #ffa227 26% 40%, #dd4a15 41% 58%, rgb(108 38 18 / 72%) 59% 76%, rgb(48 28 18 / 0%) 84%);
   box-shadow: 0 0 calc(16px * var(--fx-scale, 1)) rgb(255 146 52 / 52%);
   animation: fxFire 520ms cubic-bezier(0.18, 0.72, 0.3, 1) both;
+}
+
+/* 불길 ─ 폭발의 몸통. 화구에서 여러 갈래가 제각각 다른 길이와 굵기로 뻗는다.
+   길이·굵기·방향·시작 시각을 자바스크립트가 하나씩 다르게 주기 때문에 같은
+   폭발이 두 번 나오지 않는다. 그것이 원 하나와의 차이다.
+
+   뿌리를 왼쪽 끝(0% 50%)에 두는 이유는, 불길이 화구 자리에서 바깥으로 자라야
+   하기 때문이다. 가운데를 기준으로 두면 커질 때 뿌리도 같이 뒤로 물러나서
+   화구와 불길 사이가 벌어진다. 끝으로 갈수록 뾰족한 것은 모서리 반지름으로
+   만든다 — 왼쪽은 둥글게, 오른쪽은 거의 각지게. */
+.fx-flame {
+  width: var(--flame-len, 26px);
+  height: var(--flame-girth, 11px);
+  border-radius: 70% 5% 5% 70% / 64% 50% 50% 36%;
+  background:
+    linear-gradient(90deg, #fff7dc 0 8%, #ffd062 24%, #ff9524 48%, rgb(205 64 18 / 76%) 74%, rgb(96 34 16 / 0%) 100%);
+  filter: blur(calc(0.8px * var(--fx-scale, 1)));
+  mix-blend-mode: screen;
+  transform-origin: 0% 50%;
+  animation: fxFlame 540ms cubic-bezier(0.1, 0.8, 0.26, 1) both;
+  animation-delay: var(--flame-delay, 0ms);
 }
 
 /* 충격파 ─ 땅에 붙어 퍼진다. 그래서 되세우지 않는다. 눕힌 판 위에서
@@ -2100,6 +2154,11 @@ h1 {
     radial-gradient(circle at 50% 62%, #fffdf4 0 14%, #ded0b0 15% 34%, #9a8f76 35% 58%, rgb(78 74 64 / 0%) 74%);
 }
 
+.fx-impact.fx-counter .fx-flame {
+  background:
+    linear-gradient(90deg, #fffdf4 0 8%, #ded0b0 26%, #a89d84 52%, rgb(122 116 100 / 70%) 76%, rgb(78 74 64 / 0%) 100%);
+}
+
 .fx-impact.fx-counter .fx-shard {
   background: linear-gradient(90deg, #f3ead2, #7d7461);
 }
@@ -2128,6 +2187,12 @@ h1 {
     radial-gradient(circle at 50% 60%, #fff4d8 0 12%, #dcc08a 13% 32%, rgb(150 122 78 / 72%) 33% 58%, rgb(96 84 62 / 0%) 76%);
 }
 
+/* 건물이 무너질 때 뻗는 것은 불이 아니라 흙먼지다. 갈래는 그대로 두되 색을 바꾼다. */
+.fx-impact.fx-base .fx-flame {
+  background:
+    linear-gradient(90deg, #fff4d8 0 8%, #dcc08a 26%, rgb(164 136 90 / 78%) 52%, rgb(120 102 74 / 56%) 78%, rgb(96 84 62 / 0%) 100%);
+}
+
 .fx-impact.fx-base .fx-ring {
   border-color: rgb(255 208 92 / 78%);
 }
@@ -2142,9 +2207,11 @@ h1 {
 /* 격파 ─ 한 급이 아니라 두 급 위다. 부대 하나가 사라지는 일이니 화면에서도
    그만큼의 사건이어야 한다. 불덩이는 타일을 넘어서고, 빛무리가 주변을 밝히고,
    먼지는 세 칸을 훑는다. */
+/* 격파의 화구도 예전의 절반이다. 56px짜리 원은 타일을 통째로 덮어서, 크다기보다
+   그냥 커다란 동그라미였다. 크기는 뻗어 나가는 갈래(격파는 열 갈래)가 대신 낸다. */
 .fx-impact.fx-kill .fx-fire {
-  width: calc(56px * var(--fx-scale, 1));
-  height: calc(56px * var(--fx-scale, 1));
+  width: calc(38px * var(--fx-scale, 1));
+  height: calc(33px * var(--fx-scale, 1));
   animation-duration: 760ms;
 }
 
@@ -2817,6 +2884,31 @@ h1 {
   }
 }
 
+/* 불길은 뻗으면서 가늘어진다. 가로로 늘어나는 동안 세로가 줄어들어야 "퍼진다"로
+   보인다 — 가로세로가 같이 커지면 그냥 커지는 얼룩이다. 끝에서는 뿌리 쪽부터
+   식으므로 위로 살짝 뜨면서 사라진다. */
+@keyframes fxFlame {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(var(--flame-angle, 0deg)) scale(0.2, 0.45);
+  }
+
+  22% {
+    opacity: 1;
+    transform: translateY(-53%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(var(--flame-angle, 0deg)) scale(0.78, 1.06);
+  }
+
+  62% {
+    opacity: 0.82;
+    transform: translateY(-58%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(var(--flame-angle, 0deg)) scale(1.18, 0.82);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-64%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(var(--flame-angle, 0deg)) scale(1.5, 0.42);
+  }
+}
+
 /* 고리는 눕힌 판 위에 그대로 둔다 — 저절로 타원이 되어 지면을 따라 퍼진다. */
 @keyframes fxRing {
   0% {
@@ -3218,6 +3310,7 @@ h1 {
   .fx-shard,
   .fx-ember,
   .fx-debris,
+  .fx-flame,
   .fx-column,
   .fx-dust,
   .fx-glow,
@@ -3459,6 +3552,120 @@ h1 {
 
 .banner.show {
   display: block;
+}
+
+/* ── 턴이 넘어간 표시 ─────────────────────────────────────────────
+   「작전 종료」를 눌러도 화면이 그대로였다. 숫자 하나가 조용히 1 올라갈 뿐이라,
+   눌렀는데 아무 일도 안 일어난 것처럼 보였다. 판 한가운데를 잠깐 덮어서
+   "여기서 하루가 끊겼다"를 눈으로 보여준다.
+
+   확인 창이 아니다. pointer-events를 꺼서 이 판 위로 그냥 다음 수를 둘 수 있게
+   한다 — 급한 사람을 2초 넘게 세워 두면 그건 표시가 아니라 방해다.
+
+   시간 배분: 0.62초에 걸쳐 떠오르고, 1초를 온전히 서 있다가, 0.9초에 걸쳐
+   진다. 뜨는 것보다 지는 것을 느리게 잡은 이유는, 눈은 나타나는 것을 먼저
+   알아채고 사라지는 것은 늦게 알아채기 때문이다. 같은 속도로 빼면 뚝 끊긴
+   것처럼 느껴진다. game.js의 turnCardFadeInMs·HoldMs·FadeOutMs와 짝이다. */
+.turn-card {
+  /* 지도 칸 안에 얹는다(.battlefield-wrap 기준). fixed로 창에 얹으면 왼쪽
+     지휘판 너비만큼 밀려서 판 한가운데가 아니라 판 왼쪽 어깨에 뜬다. */
+  position: absolute;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  pointer-events: none;
+  /* 가운데를 눌러 어둡게. 이게 옅으면 밝은 들판 위에서 글자가 지형에 섞인다.
+     네 귀퉁이는 비워 둬서 부대와 목표는 계속 보이게 한다 — 판을 가리는 것이
+     아니라 판 위에 도장을 한 번 찍는 것이다. */
+  background: radial-gradient(ellipse 72% 55% at 50% 50%, rgb(8 10 6 / 82%), rgb(8 10 6 / 0%) 76%);
+  opacity: 0;
+  /* 여기 적힌 시간은 "지는" 속도다. 되돌아갈 곳의 규칙이 되돌아가는 속도를
+     정하기 때문이다. 뜨는 속도는 아래 .show에 따로 적는다. */
+  transition:
+    opacity 900ms ease-in,
+    transform 900ms ease-in;
+  transform: scale(1.04);
+}
+
+.turn-card.show {
+  opacity: 1;
+  transform: scale(1);
+  /* 뜨는 속도. 끝에서 느려지게(ease-out) 해야 글자가 제자리에 내려앉는다. */
+  transition:
+    opacity 620ms ease-out,
+    transform 620ms ease-out;
+}
+
+.turn-card p {
+  margin: 0;
+  text-align: center;
+  text-shadow: 0 2px 10px rgb(0 0 0 / 85%);
+}
+
+/* 작전 이름. 날짜가 주인공이라 작게 두되 색까지 죽이지는 않는다 — 지도 위에
+   얹히는 글자라, 흐린 회색으로 두면 지형 무늬에 먹혀 아예 안 보인다. */
+.turn-card-eyebrow {
+  color: var(--engrave);
+  font-family: var(--tech);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 4px;
+}
+
+/* 계기판의 숫자와 같은 호박색. 이 색은 화면에서 "지금 읽어야 할 값"에만 쓴다. */
+.turn-card-main {
+  color: var(--readout);
+  font-family: var(--tech);
+  font-size: 76px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  line-height: 1;
+  /* 날짜는 자릿수가 들쭉날쭉하면 매 턴 글자가 춤춘다. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* 위아래로 가는 줄을 그어 전문(電文) 용지처럼 끊는다. */
+.turn-card-sub {
+  margin-top: 4px;
+  padding-top: 7px;
+  border-top: 1px solid rgb(203 210 186 / 28%);
+  color: var(--engrave);
+  font-family: var(--tech);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 2.4px;
+}
+
+@media (max-width: 860px) {
+  .turn-card-main {
+    font-size: 54px;
+    letter-spacing: 4px;
+  }
+
+  .turn-card-eyebrow {
+    font-size: 13px;
+    letter-spacing: 3px;
+  }
+
+  .turn-card-sub {
+    font-size: 15px;
+  }
+}
+
+/* 움직임을 줄여 달라고 해 둔 사람에게는 크기 변화 없이 밝기만 바꾼다. */
+@media (prefers-reduced-motion: reduce) {
+  .turn-card {
+    transition: opacity 900ms ease-in;
+    transform: none;
+  }
+
+  .turn-card.show {
+    transition: opacity 620ms ease-out;
+    transform: none;
+  }
 }
 
 .operation-modal {
@@ -4500,6 +4707,22 @@ h1 {
   line-height: 1.55;
 }
 
+/* 작전 지령 ─ 이 창에서 유일하게 색이 붙는 줄이다. 나머지는 "무슨 일이 있었다"이고
+   이것만 "무엇을 하라"이기 때문에, 지나간 기록 사이에서 이 한 줄만 눈에 걸려야 한다.
+   색은 계기판 글자색(호박색)을 그대로 쓴다 — 이 화면에서 이미 "읽으라"는 뜻인 색이다.
+
+   왼쪽 세로줄과 여백은 색과 별개로 필요하다. 색만으로 가르면 색을 잘 못 보는 눈에는
+   그냥 같은 줄 열두 개다. 굵기와 자리도 같이 달라야 색 없이도 구분된다. */
+.log p.log-order {
+  margin-bottom: 10px;
+  padding: 3px 0 3px 9px;
+  border-left: 3px solid var(--readout);
+  background: linear-gradient(90deg, rgb(240 200 106 / 12%), rgb(240 200 106 / 0%) 72%);
+  color: var(--readout);
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
 .log::before {
   position: sticky;
   top: 0;
@@ -4719,6 +4942,7 @@ body {
     position: absolute;
     top: calc(var(--card-top, 210px) + 10px);
     right: 18px;
+    left: auto;
     z-index: 24;
     width: 216px;
     min-height: 0;
@@ -4739,6 +4963,15 @@ body {
 
   /* 아무 부대도 안 골랐을 때는 "부대를 선택하세요" 한 줄만 남는다.
      그 한 줄을 지도 위에 계속 띄워 둘 이유가 없다 — 통째로 감춘다. */
+  /* 오른쪽 끝에 선 부대를 누르면 그 부대가 카드 밑으로 들어간다 — 보려고 누른 것이
+     보려던 것을 가린다. 지도를 셋으로 나눠 오른쪽 칸일 때만 카드를 왼쪽으로 옮긴다
+     (game.js의 placeCardAwayFromUnit). right를 auto로 풀지 않으면 좌우가 동시에
+     박혀서 옮겨지는 대신 카드가 옆으로 늘어난다. */
+  .battlefield-wrap.card-left .unit-card {
+    right: auto;
+    left: 18px;
+  }
+
   .battlefield-wrap .unit-card:not(:has(.unit-stats)) {
     display: none;
   }
@@ -4823,6 +5056,10 @@ body {
 
   .battlefield-wrap .unit-card {
     right: 10px;
+  }
+
+  .battlefield-wrap.card-left .unit-card {
+    left: 10px;
   }
 }
 
@@ -5421,17 +5658,23 @@ body {
     0 1px 0 rgb(255 255 255 / 8%);
 }
 
-/* 도장. 비뚤게 찍혀야 도장으로 보인다 — 반듯하면 그냥 빨간 상자다. */
+/* 도장. 비뚤게 찍혀야 도장으로 보인다 — 반듯하면 그냥 빨간 상자다.
+   글자를 키웠다(15 → 21px). 도장은 읽으라고 찍는 것이 아니라 이 문서가 어떤
+   문서인지 한눈에 알리려고 찍는 것이라, 작으면 찍은 뜻이 없다. 테두리와 여백도
+   같이 키운다 — 글자만 키우면 상자가 글자에 끼여서 도장이 아니라 표가 된다. */
 .dialog-stamp {
   order: 3;
   margin-left: auto;
-  padding: 3px 11px 2px;
-  border: 2px solid rgb(168 51 43 / 82%);
-  border-radius: 3px;
+  padding: 5px 15px 4px;
+  border: 3px solid rgb(168 51 43 / 82%);
+  border-radius: 4px;
   color: rgb(203 84 74 / 92%);
-  font-size: 15px;
+  font-size: 21px;
   font-weight: 900;
-  letter-spacing: 4px;
+  letter-spacing: 5px;
+  /* letter-spacing은 마지막 글자 뒤에도 붙는다. 그대로 두면 오른쪽 여백만
+     넓어져서 도장이 왼쪽으로 쏠린 것처럼 보인다. */
+  text-indent: 5px;
   opacity: 0.9;
   transform: rotate(-6deg);
 }

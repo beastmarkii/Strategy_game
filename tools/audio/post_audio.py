@@ -100,10 +100,21 @@ SFX = [
     "destroy_vehicle_1", "destroy_vehicle_2",
 ]
 
-# 배경음악. 진영 둘 × 상황 둘.
+# 배경음악. 진영 둘 × 상황 둘 + 작전 명령서 한 장.
 #   <진영>_calm   평시 — 지도를 들여다보는 시간
 #   <진영>_alert  교전 — 적이 보이는 시간
-MUSIC = ["music_allies_calm", "music_allies_alert", "music_axis_calm", "music_axis_alert"]
+#   briefing      명령서 — 판을 고르는 시간. 진영을 고르기 전이라 진영이 없다.
+MUSIC = ["music_allies_calm", "music_allies_alert", "music_axis_calm", "music_axis_alert", "music_briefing"]
+
+# 지휘관 한마디. 이것만 무전 처리를 안 거친다 — 부대는 무전기 너머에 있지만
+# 장군은 지금 이 방에서 명령서를 앞에 두고 말하는 사람이다. 같은 잡음을 씌우면
+# 사령부가 아니라 또 하나의 무전 채널로 들린다.
+COMMANDERS = [
+    "cmd_patton", "cmd_montgomery", "cmd_eisenhower", "cmd_bradley",
+    "cmd_zhukov", "cmd_rokossovsky", "cmd_slim",
+    "cmd_rommel", "cmd_guderian", "cmd_manstein", "cmd_model",
+    "cmd_yamashita", "cmd_student",
+]
 
 
 def run(args):
@@ -202,6 +213,25 @@ def build_music(name):
     return dest
 
 
+def build_plain(name):
+    """무전을 안 거치는 목소리. 앞뒤 무음만 자르고 크기만 맞춘다.
+
+    딸깍음도 잡음도 대역 제한도 없다. 이 사람은 방 안에 있기 때문이다.
+    다만 크기는 부대 무전과 같은 -18 LUFS로 맞춘다 — 같은 화면에서 번갈아
+    들리는 소리라, 장군만 크면 명부를 넘길 때마다 깜짝 놀라게 된다.
+    관현악 명령서 음악 위에 겹치므로 모노가 아니라 스테레오로 남긴다.
+    """
+    src = RAW / f"{name}.mp3"
+    dest = ROOT / f"{name}.mp3"
+    run([
+        FFMPEG, "-y", "-i", str(src),
+        "-af", f"{TRIM_HEAD},{TRIM_TAIL},{LOUD_VOICE}",
+        "-c:a", "libmp3lame", "-b:a", "112k", "-ac", "2", "-ar", "44100",
+        str(dest),
+    ])
+    return dest
+
+
 def main():
     WORK.mkdir(parents=True, exist_ok=True)
     # 이름을 인자로 주면 그것만 다시 굽는다. gen_sfx.py와 같은 이유다 —
@@ -210,7 +240,8 @@ def main():
     voices = [n for n in VOICES if not only or n in only]
     sfx = [n for n in SFX if not only or n in only]
     music = [n for n in MUSIC if not only or n in only]
-    missing = only - set(VOICES) - set(SFX) - set(MUSIC)
+    plain = [n for n in COMMANDERS if not only or n in only]
+    missing = only - set(VOICES) - set(SFX) - set(MUSIC) - set(COMMANDERS)
     if missing:
         print(f"모르는 이름: {', '.join(sorted(missing))}")
         return 1
@@ -240,8 +271,15 @@ def main():
             total += dest.stat().st_size
             print(f"{name:<26} {duration(dest):>5.2f}s  {dest.stat().st_size:>7} B")
 
+    if plain:
+        print("\n-- commanders (no radio) --")
+        for name in plain:
+            dest = build_plain(name)
+            total += dest.stat().st_size
+            print(f"{name:<26} {duration(dest):>5.2f}s  {dest.stat().st_size:>6} B")
+
     shutil.rmtree(WORK, ignore_errors=True)
-    print(f"\n{len(voices) + len(sfx) + len(music)} files, {total / 1024:.0f} KB total -> {ROOT}")
+    print(f"\n{len(voices) + len(sfx) + len(music) + len(plain)} files, {total / 1024:.0f} KB total -> {ROOT}")
 
 
 if __name__ == "__main__":
