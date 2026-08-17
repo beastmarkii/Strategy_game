@@ -890,15 +890,27 @@ const audioBasePath = "assets/audio/";
 // 이동·공격·파괴는 "무엇이 움직이고 무엇이 터지는가"로 묶인다 — 공병대는 걸어서
 // 이동하고, 자주포는 궤도로 굴러가므로 각각 보병·전차 소리를 나눠 쓴다.
 // 변주를 둘씩 둔 것은 같은 소리가 연달아 나면 귀가 금방 지치기 때문이다.
+// 무전 응답은 두 가지로 갈린다.
+//
+//   내 부대를 눌렀다 -> 명령을 기다리는 보고.       (select)
+//   적 부대를 눌렀다 -> 방해받은 쪽의 쏘아붙임.     (taunt)
+//
+// 그리고 진영마다 쓰는 말이 다르다. 적이 나에게 영어로 "준비되었습니다"라고
+// 대답하면 그건 적이 아니라 내 부대다 — 독일군은 독일어로, 자기들 투로 말한다.
+// 플레이어가 추축군을 골라 시작할 수도 있으므로(state.playerSide) 네 벌이 다 있다.
+const voiceUnitTypes = ["infantry", "armor", "artillery", "spArtillery", "engineer", "battalionHQ"];
+
+function voiceLines(prefix, kind) {
+  return Object.fromEntries(
+    voiceUnitTypes.map((type) => [type, [1, 2, 3].map((i) => `${prefix}${type}_${kind}_${i}`)]),
+  );
+}
+
 const soundBank = {
-  select: {
-    infantry: ["infantry_select_1", "infantry_select_2", "infantry_select_3"],
-    armor: ["armor_select_1", "armor_select_2", "armor_select_3"],
-    artillery: ["artillery_select_1", "artillery_select_2", "artillery_select_3"],
-    spArtillery: ["spArtillery_select_1", "spArtillery_select_2", "spArtillery_select_3"],
-    engineer: ["engineer_select_1", "engineer_select_2", "engineer_select_3"],
-    battalionHQ: ["battalionHQ_select_1", "battalionHQ_select_2", "battalionHQ_select_3"],
-  },
+  select: voiceLines("", "select"),          // 연합군, 내 부대
+  taunt: voiceLines("", "taunt"),            // 연합군, 적 부대
+  axisSelect: voiceLines("axis_", "select"), // 추축군, 내 부대
+  axisTaunt: voiceLines("axis_", "taunt"),   // 추축군, 적 부대
   move: {
     infantry: ["move_infantry_1", "move_infantry_2"],
     engineer: ["move_infantry_1", "move_infantry_2"],
@@ -934,8 +946,9 @@ const soundBank = {
 
 // 종류별 크기. 무전 응답은 말을 알아들어야 하므로 가장 크고, 이동은 한 턴에 여러
 // 부대가 동시에 움직여 겹치므로 가장 작다.
-const soundLevels = { select: 1, move: 0.42, attack: 0.7, destroy: 0.85, notice: 0.95, ui: 0.3, build: 0.6 };
-const noticeSounds = ["work_complete", "unit_ready"];
+// taunt 는 select 와 같은 자리에서 나는 소리이므로 같은 크기를 쓴다.
+const soundLevels = { select: 1, taunt: 1, move: 0.42, attack: 0.7, destroy: 0.85, notice: 0.95, ui: 0.3, build: 0.6 };
+const noticeSounds = ["work_complete", "unit_ready", "axis_work_complete", "axis_unit_ready"];
 const uiSounds = ["ui_click", "map_tap"];
 
 const sampleData = new Map();
@@ -944,9 +957,18 @@ const samplePending = new Map();
 const lastVariantPick = new Map();
 const channelSources = new Map();
 
-function allSoundNames() {
+// 한 판에 쓰이는 무전은 네 벌 중 두 벌뿐이다 — 내 진영의 보고와, 상대 진영의 쏘아붙임.
+// 나머지 두 벌은 진영을 바꿔 잡아야 나오므로 미리 받아 둘 이유가 없다. 목소리 한 벌이
+// 열여덟 개라, 다 받으면 첫 화면에서 쓸데없이 두 배를 내려받는다.
+function selectVoiceBanks(playerSide) {
+  return playerSide === "axis" ? ["axisSelect", "taunt"] : ["select", "axisTaunt"];
+}
+
+function allSoundNames(playerSide = state?.playerSide ?? "allies") {
   const names = new Set([...noticeSounds, ...uiSounds]);
-  Object.values(soundBank).forEach((group) => {
+  const wanted = new Set([...selectVoiceBanks(playerSide), "move", "build", "attack", "destroy"]);
+  Object.entries(soundBank).forEach(([bank, group]) => {
+    if (!wanted.has(bank)) return;
     Object.values(group).forEach((list) => list.forEach((name) => names.add(name)));
   });
   return [...names];
@@ -955,8 +977,9 @@ function allSoundNames() {
 // 파일은 첫 클릭 전에 미리 받아 둔다. 브라우저는 사용자가 화면을 건드리기 전에는
 // 소리를 내주지 않지만, 내려받는 데는 그런 제약이 없다. 이걸 안 해두면 첫 클릭에서만
 // 대답이 늦게 온다.
-function prefetchSounds() {
-  allSoundNames().forEach((name) => {
+function prefetchSounds(playerSide) {
+  allSoundNames(playerSide).forEach((name) => {
+    if (sampleData.has(name)) return;
     fetch(`${audioBasePath}${name}.mp3`)
       .then((response) => (response.ok ? response.arrayBuffer() : null))
       .then((data) => {
@@ -1076,12 +1099,24 @@ function playMapTapSound() {
   playSample("map_tap", { level: soundLevels.ui });
 }
 
+// 어느 무전을 틀 것인가. 말은 부대가 선 진영이 정하고(독일군은 독일어), 말투는
+// 그 부대가 내 것인지 적 것인지가 정한다(보고냐 쏘아붙임이냐).
+function selectVoiceBank(unit) {
+  const german = sideKeyForUnit(unit) === "axis";
+  const foe = unit?.owner !== "player";
+  if (german) return foe ? "axisTaunt" : "axisSelect";
+  return foe ? "taunt" : "select";
+}
+
 function playUnitSound(unitOrMove, action) {
   const type = unitOrMove?.type;
   if (!type) return;
-  const group = soundBank[action];
+  // 무전 응답만 진영과 상황을 따진다. 나머지는 무엇이 굴러가고 무엇이 터지는가일 뿐이라
+  // 미군 전차나 독일군 전차나 같은 소리가 난다.
+  const bank = action === "select" ? selectVoiceBank(unitOrMove) : action;
+  const group = soundBank[bank];
   if (!group) return;
-  const name = pickVariant(`${action}:${type}`, group[type]);
+  const name = pickVariant(`${bank}:${type}`, group[type]);
   if (!name) return;
   // 무전 응답은 한 번에 하나만 나가야 한다. 나머지는 전장에서 동시에 나는 소리이므로
   // 겹쳐도 상관없다 — 오히려 겹쳐야 여러 부대가 함께 움직이는 것으로 들린다.
@@ -1098,7 +1133,9 @@ function playDestroySound(unit) {
 // 무전으로 넘어오는 알림. 내 쪽 소식만 들린다 — 적의 공사 완료를 우리 무전병이
 // 알려줄 리 없다.
 function playNoticeSound(name) {
-  playSample(name, { level: soundLevels.notice, channel: "voice" });
+  // 알림은 내 쪽 소식이다. 추축군을 잡고 두는 판이면 내 무전병도 독일어를 쓴다.
+  const prefix = (state?.playerSide ?? "allies") === "axis" ? "axis_" : "";
+  playSample(`${prefix}${name}`, { level: soundLevels.notice, channel: "voice" });
 }
 
 prefetchSounds();
@@ -1333,6 +1370,9 @@ function startGame(config = {}) {
   enemyPlan = new Map();
   const playerSide = config.playerSide ?? state?.playerSide ?? "allies";
   const aiSide = playerSide === "axis" ? "allies" : "axis";
+  // 어느 진영을 잡는지가 여기서 정해진다. 첫 화면에서는 연합군 몫만 미리 받아 두었으므로,
+  // 추축군을 골랐다면 이제부터 쓸 무전을 마저 받는다(이미 받아 둔 것은 건너뛴다).
+  prefetchSounds(playerSide);
   const playerCommander = commanders.find((commander) => commander.id === config.playerCommanderId && commander.side === commanderSideName(playerSide)) ?? defaultCommanderForSide(playerSide);
   const aiCommander = defaultCommanderForSide(aiSide);
   const scenario = findScenario(config.scenarioId ?? state?.scenarioId ?? defaultScenarioId);

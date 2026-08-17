@@ -45,11 +45,21 @@ TRIM_TAIL = "areverse," + TRIM_HEAD + ",areverse"
 LOUD_VOICE = "loudnorm=I=-18:TP=-1.5:LRA=11"
 LOUD_SFX = "loudnorm=I=-17:TP=-1.5:LRA=11"
 
+UNITS = ("infantry", "armor", "artillery", "spArtillery", "engineer", "battalionHQ")
+
+# 네 벌 다 같은 무전 처리를 거친다. 연합군 것만 또렷하고 추축군 것은 안 그렇다면
+# 두 소리가 다른 기계에서 나오는 것으로 들린다 — 같은 무전기여야 한다.
+#   <병종>_select        연합군, 내 부대 (보고)
+#   <병종>_taunt         연합군, 적 부대 (쏘아붙임)
+#   axis_<병종>_select   추축군, 내 부대
+#   axis_<병종>_taunt    추축군, 적 부대
 VOICES = [
-    f"{unit}_select_{i}"
-    for unit in ("infantry", "armor", "artillery", "spArtillery", "engineer", "battalionHQ")
+    f"{prefix}{unit}_{kind}_{i}"
+    for prefix in ("", "axis_")
+    for kind in ("select", "taunt")
+    for unit in UNITS
     for i in (1, 2, 3)
-] + ["work_complete", "unit_ready"]
+] + ["work_complete", "unit_ready", "axis_work_complete", "axis_unit_ready"]
 
 SFX = [
     "move_infantry_1", "move_infantry_2",
