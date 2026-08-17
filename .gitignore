@@ -12,3 +12,7 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# 초상 사진의 원본. 게임에 실리는 것은 assets/commanders 아래로 잘라낸
+# 144x160 한 장뿐이고, 원본이 필요하면 tools/portraits 스크립트로 다시 받으면 된다.
+tools/portraits/raw/
