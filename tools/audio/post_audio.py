@@ -44,6 +44,15 @@ TRIM_TAIL = "areverse," + TRIM_HEAD + ",areverse"
 # 옆에서 말하는 사람이 된다 — 잡음 너머로 희미하게 넘어와야 무전이다.
 LOUD_VOICE = "loudnorm=I=-18:TP=-1.5:LRA=11"
 LOUD_SFX = "loudnorm=I=-17:TP=-1.5:LRA=11"
+# 음악은 이 셋 중 가장 아래에 깐다. 효과음과 같은 크기로 구우면 무전 대사가
+# 음악에 묻혀서 무슨 말인지 안 들린다 — 배경음악은 들리는 것이 아니라
+# 있는 줄도 모르다가 꺼 보면 허전한 것이어야 한다.
+LOUD_MUSIC = "loudnorm=I=-24:TP=-2:LRA=9"
+# 되감을 때의 이음매. 곡 끝에서 뚝 끊고 처음으로 돌아가면 딸깍 소리가 나고,
+# 그 딸깍이 매 100초마다 규칙적으로 들리면 사람이 그것만 기다리게 된다.
+# 앞뒤를 짧게 여닫아 숨을 한 번 쉬게 한다.
+FADE_IN = 1.5
+FADE_OUT = 2.5
 
 UNITS = ("infantry", "armor", "artillery", "spArtillery", "engineer", "battalionHQ")
 
@@ -90,6 +99,11 @@ SFX = [
     "destroy_gun_1", "destroy_gun_2",
     "destroy_vehicle_1", "destroy_vehicle_2",
 ]
+
+# 배경음악. 진영 둘 × 상황 둘.
+#   <진영>_calm   평시 — 지도를 들여다보는 시간
+#   <진영>_alert  교전 — 적이 보이는 시간
+MUSIC = ["music_allies_calm", "music_allies_alert", "music_axis_calm", "music_axis_alert"]
 
 
 def run(args):
@@ -162,6 +176,32 @@ def build_sfx(name):
     return dest
 
 
+def build_music(name):
+    """음악은 효과음과 두 군데가 다르다 — 스테레오로 남기고, 훨씬 낮게 굽는다.
+
+    관현악을 모노로 접으면 현과 금관이 한 점에 뭉쳐서 소리가 답답해진다.
+    효과음은 지도 위 한 칸에서 나는 소리라 모노가 맞지만, 음악은 화면 전체에
+    깔리는 것이므로 폭이 있어야 한다.
+    """
+    src = RAW / f"{name}.mp3"
+    body = WORK / f"{name}.body.wav"
+    run([
+        FFMPEG, "-y", "-i", str(src),
+        "-af", f"{TRIM_HEAD},{TRIM_TAIL},{LOUD_MUSIC}",
+        "-ac", "2", "-ar", "44100", str(body),
+    ])
+    # 페이드아웃 시작점은 다듬은 뒤의 길이에서 역산한다. 원본 길이로 잡으면
+    # 뒤쪽 무음을 잘라낸 만큼 어긋나서 곡이 끝나기 전에 소리가 빠진다.
+    seconds = duration(body)
+    dest = ROOT / f"{name}.mp3"
+    run([
+        FFMPEG, "-y", "-i", str(body),
+        "-af", f"afade=t=in:st=0:d={FADE_IN},afade=t=out:st={max(0, seconds - FADE_OUT):.3f}:d={FADE_OUT}",
+        "-c:a", "libmp3lame", "-b:a", "112k", "-ac", "2", "-ar", "44100", str(dest),
+    ])
+    return dest
+
+
 def main():
     WORK.mkdir(parents=True, exist_ok=True)
     # 이름을 인자로 주면 그것만 다시 굽는다. gen_sfx.py와 같은 이유다 —
@@ -169,7 +209,8 @@ def main():
     only = set(sys.argv[1:])
     voices = [n for n in VOICES if not only or n in only]
     sfx = [n for n in SFX if not only or n in only]
-    missing = only - set(VOICES) - set(SFX)
+    music = [n for n in MUSIC if not only or n in only]
+    missing = only - set(VOICES) - set(SFX) - set(MUSIC)
     if missing:
         print(f"모르는 이름: {', '.join(sorted(missing))}")
         return 1
@@ -192,8 +233,15 @@ def main():
             total += dest.stat().st_size
             print(f"{name:<26} {duration(dest):>5.2f}s  {dest.stat().st_size:>6} B")
 
+    if music:
+        print("\n-- music --")
+        for name in music:
+            dest = build_music(name)
+            total += dest.stat().st_size
+            print(f"{name:<26} {duration(dest):>5.2f}s  {dest.stat().st_size:>7} B")
+
     shutil.rmtree(WORK, ignore_errors=True)
-    print(f"\n{len(voices) + len(sfx)} files, {total / 1024:.0f} KB total -> {ROOT}")
+    print(f"\n{len(voices) + len(sfx) + len(music)} files, {total / 1024:.0f} KB total -> {ROOT}")
 
 
 if __name__ == "__main__":
