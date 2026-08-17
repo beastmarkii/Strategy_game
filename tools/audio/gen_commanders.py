@@ -39,66 +39,76 @@ def key():
 
 # (지휘관 id, 보이스 id, 대사)
 #
-# 대사는 한 호흡이다. 고르는 화면에서 장군을 여럿 눌러 보게 되는데, 길면 두 번째
-# 클릭에서 이미 방해가 된다.
+# 딱 한마디다. 처음에는 두세 문장을 시켰는데, 고르는 화면에서는 장군을 여럿
+# 눌러 보게 되므로 두 번째 클릭에서 이미 길다. 그리고 긴 설명은 어차피 명부의
+# 숫자가 하고 있다 — 여기서 알고 싶은 것은 이 사람이 어떤 사람인가뿐이다.
+#
+# 그래서 실제로 남긴 말이 있으면 그 말을 쓴다. 아래 대부분이 그 사람이 실제로
+# 한 말이다(패튼의 "지금 거칠게 실행한 좋은 계획", 아이젠하워의 "계획은 쓸모없되
+# 계획하는 일은 전부다", 구데리안의 "클로첸 니히트 클레커른", 야마시타가
+# 싱가포르에서 퍼시벌에게 던진 "예스냐 노냐"). 남긴 말을 못 찾은 둘(만슈타인·
+# 슈투덴트)만 그 사람의 방식대로 한 줄을 지어 넣었다.
 #
 # stability를 사람마다 다르게 준다. 낮으면 억양이 살아나고(패튼·구데리안처럼
 # 몰아붙이는 사람), 높으면 평탄해진다(아이젠하워·모델처럼 눌러 말하는 사람).
 # 목소리만 바꾸고 이걸 똑같이 두면 열세 명이 다 같은 온도로 말한다.
 JOBS = [
     # ── 연합군 ──────────────────────────────────────────────────────────
-    # 패튼: 측면을 걱정하지 않는 사람이다. 그래서 첫마디가 측면 이야기다.
+    # 패튼이 실제로 한 말. 이 한 줄이 그 사람의 전부다 — 완벽을 기다리지 않는다.
     ("patton", "3bYmxTIwiCkFjkct32A2", 0.32,
-     "Forget your flanks, gentlemen. We drive straight through, and we do not stop to admire it."),
+     "A good plan violently executed now is better than a perfect plan next week."),
 
-    # 몽고메리: 준비가 끝나기 전에는 한 발도 안 뗀다. 신중이 곧 이 사람의 계수다.
+    # 몽고메리가 엘 알라메인에 부임해 처음 내린 말. 뒤로 물러날 계획을 태워 버렸다.
     ("montgomery", "dVvfgwuNNviTdZB4tqJt", 0.62,
-     "We will not move one yard until every gun and every round is in position. Then we will not stop."),
+     "Here we will stand and fight. There will be no further withdrawal."),
 
-    # 아이젠하워: 명령하는 사람이 아니라 붙여 놓는 사람이다. 말투가 평탄한 이유다.
+    # 아이젠하워가 남긴 말. 명령하는 사람이 아니라 붙여 놓는 사람의 문장이다.
     ("eisenhower", "zlNWXcnnZStiyXG49qLv", 0.7,
-     "This is a coalition, not an army. Everyone advances together, or nobody advances at all."),
+     "Plans are worthless, but planning is everything."),
 
-    # 브래들리: 병사 쪽에서 말한다. 땅을 얼마나 먹었는가가 아니라 몇 명이 돌아오는가.
+    # 브래들리가 남긴 말. 병사 쪽에서 전쟁을 본 사람이라 용기를 이렇게 정의한다.
     ("bradley", "weNdhGmYaizQlfiLlyJq", 0.6,
-     "Take the ground. Hold the ground. And bring as many of them home as you can."),
+     "Bravery is the capacity to perform properly even when scared half to death."),
 
-    # 주코프: 포병이 먼저다. 짧고 거칠게.
+    # 주코프가 아이젠하워에게 했다는 그 말. 서방 장군들이 가장 오래 기억한 한 줄이다.
     ("zhukov", "v51ymEttSm5ZPov6wHYz", 0.4,
-     "Сначала артиллерия. Потом танки. Мы прорвём фронт там, где они нас не ждут."),
+     "Если впереди минное поле, пехота идёт так, будто его нет."),
 
-    # 로코솝스키: 같은 소련이지만 정반대의 사람이다. 정면으로 안 간다.
+    # 로코솝스키가 스탈린 앞에서 물러서지 않고 되풀이한 말(바그라티온 작전 계획).
+    # 두 번 불려 나갔다 두 번 다 같은 말을 했고, 결국 그대로 됐다.
     ("rokossovsky", "TpZlRcB7rTBboAYWa2DC", 0.6,
-     "Лобовой атаки не будет. Обойдём с флангов и замкнём кольцо."),
+     "Настаиваю на двух главных ударах."),
 
-    # 슬림: 조건이 나쁘다는 것을 먼저 인정하고, 그래도 간다고 말한다.
+    # 슬림이 남긴 말. 진 군대를 다시 세운 사람의 문장이다.
     ("slim", "508nf3VEPxbaS0lpX17L", 0.62,
-     "The ground is against us. The weather is against us. We are going anyway."),
+     "There are no bad regiments, only bad officers."),
 
     # ── 추축군 ──────────────────────────────────────────────────────────
-    # 롬멜: 속도가 무기라고 말하는 사람.
+    # 롬멜이 남긴 말. 속도를 말하는 사람인데, 정작 아끼는 것은 사람이다.
     ("rommel", "H3SlaMKe61Xu9asSseVc", 0.42,
-     "Geschwindigkeit ist unsere stärkste Waffe. Wir schlagen zu, bevor sie sich eingraben können."),
+     "Schweiß spart Blut, Blut spart Leben, Verstand spart beides."),
 
-    # 구데리안: 전차를 흩지 말라. 급하게, 밀어붙이듯.
+    # 구데리안의 그 한마디. "찔끔거리지 말고 뭉쳐서 쳐라" — 전차를 흩지 말라는 뜻이다.
     ("guderian", "3Yd4qpEiwKewi1JIdeMY", 0.3,
-     "Panzer werden konzentriert eingesetzt, niemals verzettelt. Alles auf einen Punkt. Vorwärts!"),
+     "Klotzen, nicht kleckern!"),
 
-    # 만슈타인: 차갑고 정확하다. 적이 기대하는 곳을 말한 다음 반대를 말한다.
+    # 만슈타인은 짧게 남긴 말이 마땅치 않아 그의 방식대로 지었다. 땅을 붙들고
+    # 있는 것이 아니라 때를 골라 치는 것이 이 사람의 전쟁이다.
     ("manstein", "5hobNnfFWAwxjwZSecAE", 0.66,
-     "Der Gegner erwartet uns im Norden. Genau deshalb kommen wir aus dem Süden."),
+     "Nicht das Halten von Raum entscheidet, sondern der Schlag zur rechten Zeit."),
 
-    # 모델: 방어전의 사람. 문장이 짧고 끝이 닫혀 있다.
+    # 모델이 마지막에 남긴 말. 방어전의 사람답게 끝이 닫혀 있다.
     ("model", "DUAKkudcC2PI6KEqJ60K", 0.72,
-     "Diese Stellung wird gehalten. Keinen Schritt zurück. Das ist kein Vorschlag."),
+     "Ein deutscher Feldmarschall kapituliert nicht."),
 
-    # 야마시타: 결단의 속도를 말한다.
+    # 야마시타가 싱가포르 항복 회담에서 퍼시벌을 몰아붙인 그 말.
     ("yamashita", "OrIijq7uyVaGDbu9tqly", 0.55,
-     "迷えば負ける。決断は今、この場で下す。"),
+     "イエスかノーか、それだけだ。"),
 
-    # 슈투덴트: 하늘에서 내려오는 사람이라, 전선이라는 말 자체를 다르게 쓴다.
+    # 슈투덴트도 남긴 한마디가 마땅치 않아 지었다. 하늘에서 내려오는 사람이라
+    # 전선이라는 말 자체를 다르게 쓴다.
     ("student", "bGkjVHUyQ9rRhorWJufM", 0.5,
-     "Wir landen hinter ihren Linien. Für uns gibt es keine Front, nur den Himmel."),
+     "Wir kommen von oben. Für uns gibt es keine Front."),
 ]
 
 
