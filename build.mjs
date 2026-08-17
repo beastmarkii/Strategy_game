@@ -11,7 +11,17 @@ const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, "dist");
 
 // 게임을 이루는 파일. 하나라도 빠지면 배포본은 조용히 옛날 게임이 된다.
-const clientFiles = ["index.html", "privacy.html", "styles.css", "scenarios.js", "game.js"];
+// favicon.svg와 manifest는 index.html이 이름으로 불러오는 파일이다. 여기 안 적으면
+// 배포본에서만 조용히 빠져서, 창 꼭지 그림과 「홈 화면에 추가」가 사라진다.
+const clientFiles = [
+  "index.html",
+  "privacy.html",
+  "styles.css",
+  "scenarios.js",
+  "game.js",
+  "favicon.svg",
+  "manifest.webmanifest",
+];
 // 호스팅이 어느 쪽을 정적 루트로 잡는지는 플랫폼 설정에 있어서 저장소에서는 알 수 없다.
 // 둘 다 내보낸다 — 어느 쪽인지 확실해지면 이 배열에서 한 줄만 지우면 된다.
 const clientDirs = ["client", "public"];

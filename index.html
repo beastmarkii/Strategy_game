@@ -4,6 +4,64 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>1944 전선 사령부</title>
+
+    <!-- ── 겉표지 ────────────────────────────────────────────────────────────
+         주소를 카카오톡·엑스·디스코드에 붙이거나 검색 결과에 뜰 때, 상대 쪽
+         프로그램이 이 페이지를 긁어 가서 만드는 것이 아래 정보다. 이게 없으면
+         주소 한 줄만 남아서, 눌러 보기 전에는 무엇인지 알 수 없다.
+
+         그림 주소는 https부터 전부 적는다. 「assets/cover.png」처럼 짧게 적으면
+         긁어 가는 쪽이 자기네 주소에서 그 파일을 찾다가 실패해서, 겉표지에
+         그림만 빠진 채로 뜬다.
+
+         cover.png는 그려 낸 장면이 아니라 실제 게임 화면을 찍은 것이다.
+         겉표지가 안에 없는 것을 보여 주면 눌러 본 사람이 속았다고 느낀다. -->
+    <meta
+      name="description"
+      content="제2차 세계대전 턴제 전술 게임. 연합군·추축군 12개 작전에서 부대를 움직이고 보급선을 지켜 목표 거점을 잡는다. 브라우저에서 바로 — 내려받기도 가입도 없다."
+    />
+    <link rel="canonical" href="https://beastmarkii.github.io/Strategy_game/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="1944 전선 사령부" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:title" content="1944 전선 사령부" />
+    <meta
+      property="og:description"
+      content="연합군·추축군 12개 작전. 부대를 움직이고 보급선을 지켜 목표 거점을 잡는 제2차 세계대전 턴제 전술 게임."
+    />
+    <meta property="og:url" content="https://beastmarkii.github.io/Strategy_game/" />
+    <meta
+      property="og:image"
+      content="https://beastmarkii.github.io/Strategy_game/assets/cover.png"
+    />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="아르덴의 뫼즈 강이 그려진 작전 지도판. 강 건너편에 기갑·보병 부대 말이 늘어서 있고 강에는 다리 둘이 놓여 있다."
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="1944 전선 사령부" />
+    <meta
+      name="twitter:description"
+      content="연합군·추축군 12개 작전. 부대를 움직이고 보급선을 지켜 목표 거점을 잡는 제2차 세계대전 턴제 전술 게임."
+    />
+    <meta
+      name="twitter:image"
+      content="https://beastmarkii.github.io/Strategy_game/assets/cover.png"
+    />
+
+    <!-- 창 꼭지의 그림. SVG 하나면 어느 크기로 줄여도 뭉개지지 않는다.
+         아이폰은 SVG를 안 읽으므로 「홈 화면에 추가」용 그림을 따로 준다. -->
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icon-180.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#202317" />
+    <meta name="apple-mobile-web-app-title" content="전선 사령부" />
+
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -72,7 +130,9 @@
           <!-- 이 기계에 적어 둔 것을 통째로 지우는 단추와, 무엇을 적어 두는지 다
                적힌 문서. 「지웠다」고 말하려면 지우는 방법이 게임 안에 있어야 한다. -->
           <div class="privacy-row">
-            <button id="clearStoredData" type="button">기록 지우기</button>
+            <!-- 한 번 누르면 글씨가 「정말 지운다」로 바뀐다. 그 바뀐 글씨가
+                 경고 그 자체이므로, 화면을 못 보는 사람에게도 읽히도록 알린다. -->
+            <button id="clearStoredData" type="button" aria-live="polite">기록 지우기</button>
             <a href="privacy.html" target="_blank" rel="noopener">개인정보 처리방침</a>
           </div>
         </div>

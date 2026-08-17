@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>1944 전선 사령부</title>
+  <rect width="32" height="32" rx="7" fill="#232817"/>
+  <path d="M-2 27 L19 -2 H27 L5 34 Z" fill="#497486"/>
+  <rect x="8.5" y="8.5" width="15" height="15" rx="2.5"
+        fill="none" stroke="#d0b46c" stroke-width="3"/>
+</svg>

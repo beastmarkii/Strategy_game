@@ -6,6 +6,32 @@
     <title>개인정보 처리방침 · 1944 전선 사령부</title>
     <meta name="description" content="1944 전선 사령부가 무엇을 저장하고 무엇을 저장하지 않는지." />
     <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://beastmarkii.github.io/Strategy_game/privacy.html" />
+
+    <!-- 이 문서도 링크로 돌아다닌다. 겉표지를 안 달아 두면 「처리방침」이라는
+         제목만 뜨고 어느 게임의 것인지 안 보인다. 그림은 게임 겉표지를
+         그대로 쓴다 — 같은 곳의 문서라는 것이 한눈에 보여야 한다. -->
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="1944 전선 사령부" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:title" content="개인정보 처리방침 · 1944 전선 사령부" />
+    <meta
+      property="og:description"
+      content="모으는 것은 없다. 진행 중인 작전과 설정만 이 기계 안에 적어 둔다."
+    />
+    <meta
+      property="og:url"
+      content="https://beastmarkii.github.io/Strategy_game/privacy.html"
+    />
+    <meta
+      property="og:image"
+      content="https://beastmarkii.github.io/Strategy_game/assets/cover.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icon-180.png" />
+    <meta name="theme-color" content="#202317" />
     <!-- 게임 화면(styles.css)을 끌어오지 않는다. 저 파일은 전투 화면 하나를 위해
          짜인 것이라 여기서는 쓸 데가 없고, 게임이 바뀔 때마다 이 문서가 같이
          흔들린다. 이 문서는 혼자 서 있어야 하는 종이다. -->
@@ -122,8 +148,13 @@
 
       /* 폰에서는 세 칸짜리 표가 화면에 안 들어간다. 옆으로 밀어서 보게 두면
          「언제 사라지나」가 숨는데, 사람이 알아야 하는 건 그 칸이다. 그래서
-         좁은 화면에서는 줄마다 한 장씩 펴고 각 칸에 제 이름을 붙여 준다. */
-      @media (max-width: 560px) {
+         좁은 화면에서는 줄마다 한 장씩 펴고 각 칸에 제 이름을 붙여 준다.
+
+         경계를 640px로 잡는다. 표는 최소 520px이고 본문 좌우 여백이 60px씩이라
+         640px는 있어야 표가 통째로 들어간다. 예전에는 560px에서 갈랐는데, 그
+         사이(561~639px)에서는 표가 여전히 가로로 붙어 있으면서 맨 오른쪽
+         「언제 사라지나」 칸만 잘려 나갔다 — 가장 중요한 칸이 잘렸다. */
+      @media (max-width: 639px) {
         .table-wrap {
           overflow-x: visible;
         }
@@ -237,10 +268,16 @@
       <h2>이 기계에만 적어 두는 것</h2>
       <p>
         판을 이어서 하려면 게임이 몇 가지를 기억해야 합니다. 그 기억은 브라우저가
-        이 주소에 대해 따로 쥐고 있는 저장 공간(웹 저장소)에 들어가며, 다른 사이트도
-        우리도 그것을 읽을 수 없습니다.
+        이 주소에 대해 따로 쥐고 있는 저장 공간(웹 저장소)에 들어갑니다. 다른 주소의
+        웹사이트는 그것을 읽을 수 없고, 우리에게도 오지 않습니다. 다만 이 게임은
+        <code>beastmarkii.github.io</code> 아래에 있어서, 같은 계정이 같은 주소에
+        올려 둔 다른 페이지가 있다면 그 페이지와는 저장 공간을 함께 씁니다. 지금
+        거기 올라가 있는 것은 이 게임뿐입니다.
       </p>
-      <div class="table-wrap">
+      <!-- tabindex를 준 이유: 화면이 좁아 표가 옆으로 밀리는 상태일 때, 마우스나
+           손가락이 없는 사람은 이 칸에 초점을 넣을 수 없으면 오른쪽 칸을 영영 못
+           본다. 초점이 들어오면 화살표 키로 밀 수 있다. -->
+      <div class="table-wrap" tabindex="0" role="group" aria-label="이 기계에 적어 두는 것">
         <table>
           <thead>
             <tr>
@@ -270,11 +307,16 @@
               <td data-label="왜 필요한가">만드는 사람이 켜 둔 상태를 유지하기 위해</td>
               <td data-label="언제 사라지나">직접 지울 때까지</td>
             </tr>
+            <tr>
+              <td>이 안내를 봤는지<br /><code>storageNotice</code></td>
+              <td data-label="왜 필요한가">한 번 「알겠다」를 누른 안내 띠를 다시 띄우지 않기 위해</td>
+              <td data-label="언제 사라지나">직접 지울 때까지</td>
+            </tr>
           </tbody>
         </table>
       </div>
       <p>
-        네 가지 모두 게임을 굴리는 데 필요한 것이고, 당신이 누구인지 알아내는 데는 쓰이지
+        다섯 가지 모두 게임을 굴리는 데 필요한 것이고, 당신이 누구인지 알아내는 데는 쓰이지
         않습니다. 광고를 위한 것도, 사람을 뒤쫓기 위한 것도 없습니다.
       </p>
 
@@ -283,9 +325,19 @@
 
       <h2>밖으로 나가는 것</h2>
       <p>
-        없습니다. 게임은 자기 파일(화면·지도·소리)을 내려받는 것 말고는 어떤 서버와도
-        이야기하지 않습니다. 당신이 몇 판을 했는지, 어디서 졌는지, 어떤 장군을 골랐는지는
-        이 기계 밖으로 나가지 않습니다.
+        없습니다. 게임이 받아 오는 파일 — 화면, 지도 그림, 장군 사진, 무전 소리, 배경음악 —
+        은 전부 이 게임이 올라가 있는 그 주소 한 곳에서만 옵니다. 다른 회사의 서버는
+        하나도 부르지 않습니다. 광고도, 이용 기록 측정 도구도, 글꼴을 빌려 오는 곳도,
+        지도 서비스도 없습니다. 당신이 몇 판을 했는지, 어디서 졌는지, 어떤 작전과 어떤
+        장군을 골랐는지는 이 기계 밖으로 나가지 않습니다.
+      </p>
+      <p>
+        <strong>2026년 8월 18일에 고친 것:</strong> 그전까지는 판을 그릴 때마다
+        OpenStreetMap의 서버에서 지도 그림 스물다섯 장을 받아 오고 있었습니다. 그 그림은
+        화면에 한 픽셀도 나오지 않도록 가려져 있어서 아무도 본 적이 없지만, 받아 오는 일
+        자체는 그대로 일어나고 있었고, 그 주소에는 당신이 어느 작전을 골랐는지가 좌표로
+        담겨 있었습니다. 위의 「없습니다」가 그동안 사실이 아니었다는 뜻입니다. 지금은
+        그 부분을 게임에서 들어냈고, 화면은 전과 똑같습니다.
       </p>
 
       <h2>이 게임이 올라가 있는 곳</h2>
@@ -300,7 +352,7 @@
 
       <h2>지우는 법</h2>
       <ul>
-        <li>게임 안에서: 「지휘」 서랍의 <strong>「기록 지우기」</strong>를 누르면 위 표의 네 가지가 한 번에 지워집니다. 하다 만 작전도 함께 사라집니다.</li>
+        <li>게임 안에서: 「지휘」 서랍의 <strong>「기록 지우기」</strong>를 누르면 위 표의 다섯 가지가 한 번에 지워집니다. 하다 만 작전도 함께 사라집니다.</li>
         <li>브라우저에서: 이 사이트의 저장된 데이터를 삭제하면 같은 결과가 됩니다.</li>
       </ul>
 

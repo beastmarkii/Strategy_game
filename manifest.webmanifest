@@ -1,0 +1,21 @@
+{
+  "name": "1944 전선 사령부",
+  "short_name": "전선 사령부",
+  "description": "연합군·추축군 12개 작전. 부대를 움직이고 보급선을 지켜 목표 거점을 잡는 제2차 세계대전 턴제 전술 게임.",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#202317",
+  "theme_color": "#202317",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

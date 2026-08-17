@@ -225,12 +225,11 @@ const episodeLimits = {
   playerBattalionHQ: 1,
   enemyBattalionHQ: 1,
 };
+// 「지도 모드」를 켤지만 정한다. 켜면 칸이 지형 그림 대신 지도 표식으로 그려지고
+// 안개도 옅어진다. 위도·경도·확대율도 예전에는 여기 있었는데, 그건 남의 지도
+// 서버에서 그림을 받아 오던 시절의 값이라 지금은 쓰이지 않아 뺐다.
 let mapConfig = {
   enabled: true,
-  centerLat: 49.18,
-  centerLon: -0.36,
-  zoom: 10,
-  radius: 2,
 };
 
 let terrainMap = findScenario(defaultScenarioId).terrain;
@@ -527,6 +526,18 @@ const localePacks = {
     hint: "Click a unit to show available commands.",
     select: "Select a unit",
     editor: "Game Values Editor",
+    // 저장 안내와 「기록 지우기」. 이건 게임 규칙이 아니라 이 기계에 무엇을 적어
+    // 두는지 알리는 글이라, 읽는 사람이 못 읽으면 알린 것이 아니다.
+    privacy: {
+      noticeTitle: "Nothing is sent to a server",
+      noticeBody:
+        "A few things are written to this device so you can resume an unfinished operation. No cookies are used.",
+      noticeMore: "See what is stored",
+      noticeOk: "Got it",
+      clear: "Erase stored data",
+      clearArmed: "Confirm — your saved operation goes too",
+      policy: "Privacy Policy",
+    },
   },
   zh: {
     title: "1944 前线司令部",
@@ -563,6 +574,15 @@ const localePacks = {
     hint: "点击部队显示可用命令。",
     select: "选择部队",
     editor: "游戏数值编辑器",
+    privacy: {
+      noticeTitle: "不会发送到任何服务器",
+      noticeBody: "为了让你能接着玩未完成的作战，只在本机记录几项内容。不使用 Cookie。",
+      noticeMore: "查看记录了什么",
+      noticeOk: "知道了",
+      clear: "清除记录",
+      clearArmed: "确认清除 · 未完成的作战也会消失",
+      policy: "隐私政策",
+    },
   },
   ja: {
     title: "1944 前線司令部",
@@ -599,6 +619,16 @@ const localePacks = {
     hint: "部隊をクリックすると使用可能な命令が表示されます。",
     select: "部隊を選択",
     editor: "ゲーム数値エディター",
+    privacy: {
+      noticeTitle: "サーバーへ送るものはありません",
+      noticeBody:
+        "途中の作戦を後で続けられるように、いくつかだけこの端末に記録します。クッキーは使いません。",
+      noticeMore: "何を記録するか見る",
+      noticeOk: "了解",
+      clear: "記録を消す",
+      clearArmed: "本当に消す · 途中の作戦も消えます",
+      policy: "プライバシーポリシー",
+    },
   },
 };
 
@@ -752,7 +782,13 @@ function syncEditTools() {
   // 프로그램도 그 안으로 들어가지 못한다. 창은 aria-hidden="true"인 채 서 있으므로
   // 이걸 안 걸면 "없다고 말해 놓은 곳"에 손이 닿는 상태가 된다.
   const panel = document.querySelector("#editorPanel");
-  if (panel) panel.inert = !on;
+  if (panel) {
+    panel.inert = !on;
+    // 잠금을 풀 때 aria-hidden도 같이 푼다. 안 그러면 창은 열려서 눈에는
+    // 보이는데 화면을 읽어 주는 프로그램에는 "여기 아무것도 없다"고 적혀
+    // 있어서, 눈으로 못 보는 사람에게만 창이 통째로 사라진다.
+    panel.setAttribute("aria-hidden", on ? "false" : "true");
+  }
   // 감추는 김에 열려 있던 창도 닫는다. ?edit=0으로 껐는데 창이 남아 있으면
   // 그건 끈 것이 아니다.
   if (!on) document.body.classList.remove("editor-open");
@@ -1651,6 +1687,20 @@ function applyLocale() {
   document.querySelector("#endTurn").textContent = activePack.buttons.endTurn;
   document.querySelector("#restart").textContent = activePack.buttons.restart;
 
+  // 저장 안내와 「기록 지우기」. 다른 글자는 다 바뀌는데 이 넷만 한국어로 남아
+  // 있으면, 무엇을 적어 두는지 알리는 글을 정작 그 사람은 못 읽는다.
+  const privacyPack = activePack.privacy;
+  if (privacyPack) {
+    setText("#storageNoticeTitle", privacyPack.noticeTitle);
+    setText("#storageNotice .storage-notice-text p", privacyPack.noticeBody);
+    setText("#storageNotice .storage-notice-actions a", privacyPack.noticeMore);
+    setText("#storageNoticeOk", privacyPack.noticeOk);
+    setText(".privacy-row a", privacyPack.policy);
+    // 「정말 지운다」로 바뀌어 있는 중이라면 그 글자를 덮어쓰지 않는다.
+    // 덮어쓰면 경고가 사라진 채로 다음 누름이 진짜 지우는 누름이 된다.
+    if (clearStoredDataEl && !clearArmed) clearStoredDataEl.textContent = privacyPack.clear;
+  }
+
   const legend = document.querySelector(".legend");
   if (legend) {
     legend.innerHTML = `
@@ -1662,6 +1712,12 @@ function applyLocale() {
       <span><i class="terrain base"></i>${terrain.B.name}</span>
     `;
   }
+}
+
+// 글자만 갈아 끼운다. 그 자리가 없는 화면(다른 페이지)에서도 조용히 넘어간다.
+function setText(selector, text) {
+  const node = document.querySelector(selector);
+  if (node) node.textContent = text;
 }
 
 function setButtonText(selector, text) {
@@ -2217,18 +2273,15 @@ const coachSteps = [
     body: "내 부대를 하나 누른다. 갈 수 있는 칸이 지도에 밝게 뜬다.",
     target: () => document.querySelector("#mapStage"),
     // 눌렀는지는 눌렀는지로 안다. 「다음」을 눌러 넘기는 길은 두지 않는다.
-    // 마디를 띄우기 전에 이미 골라 둔 부대는 셈하지 않는다(base).
-    done: (base) => {
-      const unit = selectedUnit();
-      return Boolean(unit && unit.owner === "player" && unit.id !== base.selected);
-    },
+    // 마디를 띄운 뒤에 부대를 누른 횟수가 늘었는가만 본다(coachSelectTicks).
+    done: (base) => coachSelectTicks > base.selected,
   },
   {
     id: "move",
     title: "고른 부대를 옮긴다",
     body: "밝은 칸 하나를 누르면 그리로 간다. 한 부대는 하루에 한 번만 움직인다.",
     target: () => document.querySelector("#mapStage"),
-    done: (base) => coachMovedCount() > base.moved,
+    done: (base) => coachMoveTicks > base.moved,
   },
   {
     id: "attack",
@@ -2260,18 +2313,25 @@ let coachIndex = -1;
    끝낸다」가 이미 끝난 것으로 셈해져 통째로 건너뛰고, 번호가 1 → 4 → 6으로
    튄다. 그래서 마디가 바뀌는 순간의 판을 적어 두고 그것과 견준다. */
 let coachBaseIndex = -1;
-let coachBase = { turn: 1, moved: 0, selected: null };
+let coachBase = { turn: 1, moved: 0, selected: 0 };
 
-function coachMovedCount() {
-  return state?.units?.filter((unit) => unit.owner === "player" && unit.moved).length ?? 0;
-}
+/* 「골랐다」와 「옮겼다」는 판을 들여다봐서 알아내지 않고, 그 일이 실제로
+   일어난 자리에서 하나씩 센다. 판을 보는 방식은 두 군데서 새는데 —
+
+   하나. 옮긴 부대 수는 아침마다 0으로 돌아간다. 기준선을 3에서 잡아 두고
+   그날 밤이 지나면, 다음 날에는 넷을 옮겨야 「옮겼다」가 된다.
+   둘. 이미 골라 둔 부대를 다시 누르는 것은 「고른 부대가 바뀌었나」로는
+   영영 안 잡힌다. 그 사람은 아무리 눌러도 다음으로 못 넘어간다.
+
+   세어 둔 수는 되돌아가지 않으므로 둘 다 안 생긴다. */
+let coachMoveTicks = 0;
+let coachSelectTicks = 0;
 
 function coachBaseline() {
-  const unit = selectedUnit();
   return {
     turn: state?.turn ?? 1,
-    moved: coachMovedCount(),
-    selected: unit?.id ?? null,
+    moved: coachMoveTicks,
+    selected: coachSelectTicks,
   };
 }
 
@@ -2453,7 +2513,7 @@ window.addEventListener("scroll", coachSyncSoon, true);
    몇 가지를 브라우저에 적어 둬야 하고, 그 사실은 처음 온 사람에게 한 번은
    말해야 한다.
 
-   동의를 받는 창이 아니다. 받을 동의가 없기 때문이다 — 여기 적어 두는 넷은
+   동의를 받는 창이 아니다. 받을 동의가 없기 때문이다 — 여기 적어 두는 다섯은
    전부 게임이 굴러가는 데 필요한 것이고 광고도 추적도 아니다. 그래서 「거부」
    단추를 두지 않는다. 아무것도 안 하면서 거부 단추만 세워 두는 쪽이 오히려
    거짓말이다. 대신 무엇을 적는지 다 적어 둔 문서(privacy.html)로 가는 길과,
@@ -2478,7 +2538,16 @@ const GAME_STORAGE_KEYS = [
 const storageNoticeOkEl = document.querySelector("#storageNoticeOk");
 const clearStoredDataEl = document.querySelector("#clearStoredData");
 
+/* 「알겠다」를 눌렀다는 사실은 이 판이 도는 동안에도 따로 쥐고 있어야 한다.
+   저장이 막힌 브라우저(사파리 비공개 창, 저장 공간이 꽉 찬 경우)에서는 적어
+   두기만 실패하고 읽기는 멀쩡히 도는 일이 있다. 그러면 눌러서 띠를 닫아도
+   화면을 다시 그리는 순간 storageNoticeSync가 "아직 안 봤다"고 판단해 도로
+   띄운다. 띠가 서 있는 동안에는 첫 판 안내도 못 나오므로(coachAllowed),
+   그 사람은 안내 1번에서 영영 못 벗어난다. */
+let storageNoticeDismissed = false;
+
 function storageNoticeSeen() {
+  if (storageNoticeDismissed) return true;
   try {
     return localStorage.getItem(STORAGE_NOTICE_KEY) === "seen";
   } catch (error) {
@@ -2489,8 +2558,12 @@ function storageNoticeSeen() {
 
 function storageNoticeSync() {
   if (!storageNoticeEl) return;
+  // 배치 중에는 안 띄운다. 그때는 화면 아래쪽 칸에 부대를 손으로 놓는 중이라,
+  // 이 띠가 그 칸들을 덮으면 놓을 자리가 안 보인다. 배치가 끝나면 그때 나온다.
+  const deploying = state?.phase === "deploy";
   const show =
     !storageNoticeSeen() &&
+    !deploying &&
     (!operationModalEl || operationModalEl.hidden) &&
     (!resultScreenEl || resultScreenEl.hidden);
   storageNoticeEl.hidden = !show;
@@ -2500,6 +2573,7 @@ function storageNoticeSync() {
 }
 
 storageNoticeOkEl?.addEventListener("click", () => {
+  storageNoticeDismissed = true;
   try {
     localStorage.setItem(STORAGE_NOTICE_KEY, "seen");
   } catch (error) {
@@ -2515,20 +2589,38 @@ storageNoticeOkEl?.addEventListener("click", () => {
 // 원래 단추로 돌아간다.
 let clearArmed = false;
 let clearArmedTimer = 0;
+let clearArmedAt = 0;
+
+// 두 번째 누름을 이만큼은 기다린다. 이게 없으면 두 번 눌러야 한다는 규칙이
+// 아무 소용이 없다 — 폰에서 손가락이 튀거나 마우스로 따닥 두 번 누르면 두
+// 번의 누름이 한 동작으로 들어와서, 읽을 새도 없이 판이 지워진다.
+const CLEAR_MIN_GAP_MS = 700;
+
+// 화면 글자가 다른 말로 바뀌어 있으면 그 말로 되돌린다. 한국어로 보고 있으면
+// activePack이 없으므로 아래 기본값이 그대로 쓰인다.
+function clearLabel(kind) {
+  const pack = activePack?.privacy;
+  if (kind === "armed") return pack?.clearArmed ?? "정말 지운다 · 하던 판도 사라짐";
+  return pack?.clear ?? "기록 지우기";
+}
 
 function clearArmReset() {
   clearArmed = false;
+  clearArmedAt = 0;
   window.clearTimeout(clearArmedTimer);
-  if (clearStoredDataEl) clearStoredDataEl.textContent = "기록 지우기";
+  if (clearStoredDataEl) clearStoredDataEl.textContent = clearLabel("idle");
 }
 
 clearStoredDataEl?.addEventListener("click", () => {
   if (!clearArmed) {
     clearArmed = true;
-    clearStoredDataEl.textContent = "정말 지운다 · 하던 판도 사라짐";
+    clearArmedAt = Date.now();
+    clearStoredDataEl.textContent = clearLabel("armed");
     clearArmedTimer = window.setTimeout(clearArmReset, 6000);
     return;
   }
+  // 아직 읽을 시간이 안 됐다. 못 본 척하고 그대로 세워 둔다.
+  if (Date.now() - clearArmedAt < CLEAR_MIN_GAP_MS) return;
   window.clearTimeout(clearArmedTimer);
   // 먼저 저장을 끈다. 아래에서 다시 켤 때 화면이 내려가는데, 그 내려가는 길에
   // 「하던 판을 적어 두는」 손이 한 번 더 돈다(visibilitychange). 그러면 방금
@@ -2543,7 +2635,14 @@ clearStoredDataEl?.addEventListener("click", () => {
   }
   // 지운 다음에는 다시 켠다. 안 그러면 지금 화면이 쥐고 있는 판이 다음 턴에
   // 그대로 다시 저장되어, 지운 것이 지운 것이 아니게 된다.
-  location.reload();
+  //
+  // 그냥 새로고침하면 안 된다. 주소 끝에 ?edit=1을 붙여 둔 채로 지운 사람은,
+  // 새로 켜지는 길에 그 주소가 다시 읽혀서 「편집 연장을 켰다」가 즉시 도로
+  // 적힌다. 방금 지운 것이 눈앞에서 되살아나는 셈이다. 그래서 그 한 조각만
+  // 주소에서 떼고 켠다 — 언어(?lang) 같은 나머지는 그대로 둔다.
+  const next = new URL(location.href);
+  next.searchParams.delete("edit");
+  location.replace(next.toString());
 });
 
 function startGame(config = {}) {
@@ -3254,8 +3353,13 @@ function applyWaterRibbon(riverCells, bankCells, cols, rows) {
 
 function render() {
   boardEl.innerHTML = "";
+  // map-enabled는 판의 생김새(칸 그림·격자·표식)를 바꾸는 표시다. 예전에는 여기서
+  // 항공사진 격 실제 지도 타일도 같이 깔았는데, 그 층(.map-underlay)은 display:none이라
+  // 화면에 한 픽셀도 안 나오면서 화면을 다시 그릴 때마다 남의 서버에서 그림 스물다섯
+  // 장을 받아 오고 있었다. 보이지도 않는 그림 때문에 "밖으로 나가는 것은 없다"는
+  // 처리방침이 거짓말이 되고, 어느 작전을 골랐는지가 그 좌표로 남의 기록에 남았다.
+  // 그래서 받아 오는 일을 없앴다 — 화면은 그대로다.
   boardEl.classList.toggle("map-enabled", mapConfig.enabled);
-  if (mapConfig.enabled) renderMapUnderlay();
   renderMapLabels();
   // 물줄기는 칸을 그리기 전에 깔아야 부대와 이동 표시가 그 위에 온다.
   {
@@ -3408,29 +3512,6 @@ function render() {
   coachSync();
 }
 
-function renderMapUnderlay() {
-  const underlay = document.createElement("div");
-  underlay.className = "map-underlay";
-  const center = lonLatToTile(mapConfig.centerLon, mapConfig.centerLat, mapConfig.zoom);
-  const diameter = mapConfig.radius * 2 + 1;
-
-  for (let y = -mapConfig.radius; y <= mapConfig.radius; y += 1) {
-    for (let x = -mapConfig.radius; x <= mapConfig.radius; x += 1) {
-      const tile = document.createElement("img");
-      tile.alt = "";
-      tile.draggable = false;
-      tile.src = `https://tile.openstreetmap.org/${mapConfig.zoom}/${center.x + x}/${center.y + y}.png`;
-      tile.style.left = `${((x + mapConfig.radius) / diameter) * 100}%`;
-      tile.style.top = `${((y + mapConfig.radius) / diameter) * 100}%`;
-      tile.style.width = `${100 / diameter}%`;
-      tile.style.height = `${100 / diameter}%`;
-      underlay.appendChild(tile);
-    }
-  }
-
-  boardEl.appendChild(underlay);
-}
-
 // 판에 깔린 그림(operation-map.svg)은 어느 작전에서나 같은 한 장이다. 예전에는
 // 거기 노르망디 지명이 박혀 있어서, 엘 알라메인 사막에서도 「CAEN」이 보였다.
 // 이제 자리는 코드가 정하고 이름은 작전이 들고 온다. 자리는 그림 속 마을 점과
@@ -3491,15 +3572,6 @@ function renderMapLabels() {
   layer.setAttribute("aria-hidden", "true");
   layer.appendChild(group);
   boardEl.appendChild(layer);
-}
-
-function lonLatToTile(lon, lat, zoom) {
-  const scale = 2 ** zoom;
-  const latRad = (lat * Math.PI) / 180;
-  return {
-    x: Math.floor(((lon + 180) / 360) * scale),
-    y: Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * scale),
-  };
 }
 
 function renderBase(cell, base) {
@@ -4974,6 +5046,7 @@ function handleTileClick(x, y) {
 
   if (clickedUnit) {
     playUnitSound(clickedUnit, "select");
+    if (clickedUnit.owner === "player") coachSelectTicks += 1;
     state.selectedId = clickedUnit.id;
     state.inspectedId = null;
     state.inspectedTile = null;
@@ -5073,6 +5146,7 @@ function handleTileClick(x, y) {
     selected.x = stopAt.x;
     selected.y = stopAt.y;
     selected.moved = true;
+    coachMoveTicks += 1;
     selected.acted = selected.type === "artillery";
     captureBase(selected);
     state.selectedId = selected.acted ? null : selected.id;
@@ -5097,6 +5171,7 @@ function handleDeployClick(x, y) {
   const mine = getSelectableUnitAt(x, y, "player");
   if (mine) {
     playUnitSound(mine, "select");
+    coachSelectTicks += 1;
     state.selectedId = mine.id;
     state.inspectedId = null;
     state.inspectedTile = null;
