@@ -1852,6 +1852,8 @@ function startGame(config = {}) {
   bannerEl.classList.remove("show");
   // 숨기는 것만으로는 지난 작전의 승패 문구가 DOM에 남는다. 새 작전은 백지에서 시작한다.
   bannerEl.textContent = "";
+  // 첫날도 날짜부터 찍는다. 가장 먼저 넣어야 기록의 맨 아래에 깔린다.
+  logDayLine();
   addLog(`${sideName("player")} › 작전 개시 · 지휘 ${state.commanders.player.name}`);
   addLog(`작전 「${scenario.name}」 — ${scenario.summary}`);
   addLog(missionBriefText());
@@ -4570,6 +4572,11 @@ function enemyTurn() {
   replenishNearBattalionHQ("player");
   refitOnOwnBase("player");
   repairOwnBases("player");
+  // 하루가 넘어간 자리를 기록에도 남긴다. 판 가운데 뜨는 날짜는 1초면 사라져서,
+  // 나중에 기록을 훑을 때 이 열두 줄이 며칠 일인지 알 길이 없었다.
+  // 자리는 그날 맨 처음이다. 기록은 새 줄이 위로 쌓이므로, 이 줄 위쪽이 곧
+  // 그날 있었던 일이 된다 — 아래로 내려갈수록 어제로 간다.
+  logDayLine();
   addLog(`보급 +${formatNumber(income)}`);
   render();
   showTurnCard();
@@ -4615,6 +4622,13 @@ function missionDate(turn) {
     month: String(date.getMonth() + 1).padStart(2, "0"),
     day: String(date.getDate()).padStart(2, "0"),
   };
+}
+
+// 무전 기록에 남기는 날짜 줄. 가운데 뜨는 날짜 판과 같은 날짜를 쓴다 — 둘이
+// 다르면 어느 쪽이 맞는지 확인할 방법이 플레이어에게 없다.
+function logDayLine() {
+  const { year, month, day } = missionDate(state.turn);
+  addLog(`${year}.${month}.${day}`, "day");
 }
 
 function showTurnCard() {

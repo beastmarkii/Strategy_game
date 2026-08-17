@@ -4723,6 +4723,29 @@ h1 {
   letter-spacing: 0.2px;
 }
 
+/* 날짜가 바뀐 자리. 판 가운데 뜨는 날짜는 1초면 사라지므로 기록에도 같은 날짜를
+   남긴다. 이 줄 위쪽이 그날 있었던 일이다 — 새 줄이 위로 쌓이기 때문이다.
+
+   색은 주지 않는다. 이 창에서 색이 붙는 줄은 작전 지령 하나여야 한다(색이 둘이면
+   둘 다 안 걸린다). 대신 양옆에 줄을 그어 글이 아니라 칸막이로 읽히게 한다. */
+.log p.log-day {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0 8px;
+  color: #a7b394;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.log p.log-day::before,
+.log p.log-day::after {
+  flex: 1;
+  height: 1px;
+  background: rgb(216 224 198 / 22%);
+  content: "";
+}
+
 .log::before {
   position: sticky;
   top: 0;
