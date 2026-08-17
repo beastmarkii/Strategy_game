@@ -61,16 +61,33 @@ VOICES = [
     for i in (1, 2, 3)
 ] + ["work_complete", "unit_ready", "axis_work_complete", "axis_unit_ready"]
 
+# 이동과 파괴는 병종만 가른다 — 궤도가 굴러가는 소리와 포탄이 터지는 소리에는
+# 국적이 없다. 사격만 진영을 따라간다: 총은 나라마다 소리가 다르고, 그 차이가
+# "지금 쏘는 쪽이 누구인가"를 눈으로 확인하기 전에 알려 준다.
 SFX = [
     "move_infantry_1", "move_infantry_2",
+    "move_engineer_1", "move_engineer_2",
     "move_armor_1", "move_armor_2",
+    "move_spart_1", "move_spart_2",
     "move_artillery_1", "move_artillery_2",
     "move_hq_1", "move_hq_2",
     "build_start_1", "build_start_2",
     "attack_rifle_1", "attack_rifle_2",
+    "attack_carbine_1", "attack_carbine_2",
+    "attack_sidearm_1", "attack_sidearm_2",
     "attack_tank_1", "attack_tank_2",
     "attack_howitzer_1", "attack_howitzer_2",
+    "attack_spg_1", "attack_spg_2",
+    "axis_attack_rifle_1", "axis_attack_rifle_2",
+    "axis_attack_carbine_1", "axis_attack_carbine_2",
+    "axis_attack_sidearm_1", "axis_attack_sidearm_2",
+    "axis_attack_tank_1", "axis_attack_tank_2",
+    "axis_attack_howitzer_1", "axis_attack_howitzer_2",
+    "axis_attack_spg_1", "axis_attack_spg_2",
     "destroy_infantry_1", "destroy_infantry_2",
+    "destroy_engineer_1", "destroy_engineer_2",
+    "destroy_hq_1", "destroy_hq_2",
+    "destroy_gun_1", "destroy_gun_2",
     "destroy_vehicle_1", "destroy_vehicle_2",
 ]
 

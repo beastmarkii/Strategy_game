@@ -911,11 +911,14 @@ const soundBank = {
   taunt: voiceLines("", "taunt"),            // 연합군, 적 부대
   axisSelect: voiceLines("axis_", "select"), // 추축군, 내 부대
   axisTaunt: voiceLines("axis_", "taunt"),   // 추축군, 적 부대
+  // 이동은 병종이 정한다. 공병은 삽과 곡괭이를 지고 걷고, 자주포는 전차보다
+  // 얇은 궤도로 빠르게 굴러간다. 국적은 보지 않는다 — 궤도가 굴러가는 소리에
+  // 국적은 없고, 나누면 파일만 두 배가 되고 아무도 차이를 못 듣는다.
   move: {
     infantry: ["move_infantry_1", "move_infantry_2"],
-    engineer: ["move_infantry_1", "move_infantry_2"],
+    engineer: ["move_engineer_1", "move_engineer_2"],
     armor: ["move_armor_1", "move_armor_2"],
-    spArtillery: ["move_armor_1", "move_armor_2"],
+    spArtillery: ["move_spart_1", "move_spart_2"],
     artillery: ["move_artillery_1", "move_artillery_2"],
     // 사령부는 야포와 같은 견인차 소리를 쓰고 있었다. 무거운 포를 끄는 차와
     // 지휘 차량은 무게가 다르므로 소리도 갈라 둔다.
@@ -926,20 +929,33 @@ const soundBank = {
   build: {
     engineer: ["build_start_1", "build_start_2"],
   },
+  // 사격만 진영을 따라간다. 총은 나라마다 소리가 다르고, 그 차이가 눈으로
+  // 확인하기 전에 "지금 쏘는 쪽이 누구인가"를 알려 준다 — MG42의 톱질 소리와
+  // M1 소총의 낱발 소리는 한 번 들으면 헷갈리지 않는다.
   attack: {
     infantry: ["attack_rifle_1", "attack_rifle_2"],
-    engineer: ["attack_rifle_1", "attack_rifle_2"],
-    battalionHQ: ["attack_rifle_1", "attack_rifle_2"],
+    engineer: ["attack_carbine_1", "attack_carbine_2"],
+    battalionHQ: ["attack_sidearm_1", "attack_sidearm_2"],
     armor: ["attack_tank_1", "attack_tank_2"],
     artillery: ["attack_howitzer_1", "attack_howitzer_2"],
-    spArtillery: ["attack_howitzer_1", "attack_howitzer_2"],
+    spArtillery: ["attack_spg_1", "attack_spg_2"],
   },
+  axisAttack: {
+    infantry: ["axis_attack_rifle_1", "axis_attack_rifle_2"],
+    engineer: ["axis_attack_carbine_1", "axis_attack_carbine_2"],
+    battalionHQ: ["axis_attack_sidearm_1", "axis_attack_sidearm_2"],
+    armor: ["axis_attack_tank_1", "axis_attack_tank_2"],
+    artillery: ["axis_attack_howitzer_1", "axis_attack_howitzer_2"],
+    spArtillery: ["axis_attack_spg_1", "axis_attack_spg_2"],
+  },
+  // 파괴도 병종만 본다. 공병 진지가 날아가면 쌓아 둔 자재가 무너지고, 지휘소가
+  // 날아가면 천막과 무전기가 부서지고, 야포가 죽으면 옆의 포탄이 따라 터진다.
   destroy: {
     infantry: ["destroy_infantry_1", "destroy_infantry_2"],
-    engineer: ["destroy_infantry_1", "destroy_infantry_2"],
-    battalionHQ: ["destroy_infantry_1", "destroy_infantry_2"],
+    engineer: ["destroy_engineer_1", "destroy_engineer_2"],
+    battalionHQ: ["destroy_hq_1", "destroy_hq_2"],
     armor: ["destroy_vehicle_1", "destroy_vehicle_2"],
-    artillery: ["destroy_vehicle_1", "destroy_vehicle_2"],
+    artillery: ["destroy_gun_1", "destroy_gun_2"],
     spArtillery: ["destroy_vehicle_1", "destroy_vehicle_2"],
   },
 };
@@ -964,9 +980,11 @@ function selectVoiceBanks(playerSide) {
   return playerSide === "axis" ? ["axisSelect", "taunt"] : ["select", "axisTaunt"];
 }
 
+// 사격음은 무전과 달리 두 벌 다 필요하다. 한 판에서 내 부대도 쏘고 적 부대도 쏘므로,
+// 미제 총소리와 독일제 총소리가 같은 판에서 번갈아 난다.
 function allSoundNames(playerSide = state?.playerSide ?? "allies") {
   const names = new Set([...noticeSounds, ...uiSounds]);
-  const wanted = new Set([...selectVoiceBanks(playerSide), "move", "build", "attack", "destroy"]);
+  const wanted = new Set([...selectVoiceBanks(playerSide), "move", "build", "attack", "axisAttack", "destroy"]);
   Object.entries(soundBank).forEach(([bank, group]) => {
     if (!wanted.has(bank)) return;
     Object.values(group).forEach((list) => list.forEach((name) => names.add(name)));
@@ -1099,21 +1117,27 @@ function playMapTapSound() {
   playSample("map_tap", { level: soundLevels.ui });
 }
 
-// 어느 무전을 틀 것인가. 말은 부대가 선 진영이 정하고(독일군은 독일어), 말투는
-// 그 부대가 내 것인지 적 것인지가 정한다(보고냐 쏘아붙임이냐).
-function selectVoiceBank(unit) {
+// 어느 소리표를 볼 것인가.
+//
+//   무전 응답 — 말은 부대가 선 진영이 정하고(독일군은 독일어), 말투는 그 부대가
+//               내 것인지 적 것인지가 정한다(보고냐 쏘아붙임이냐). 네 갈래.
+//   사격     — 진영만 본다. 내 것이든 적 것이든 독일군 총은 독일군 총소리다.
+//   나머지   — 이동과 파괴에는 국적이 없다. 표가 하나뿐이다.
+function soundBankFor(unit, action) {
   const german = sideKeyForUnit(unit) === "axis";
-  const foe = unit?.owner !== "player";
-  if (german) return foe ? "axisTaunt" : "axisSelect";
-  return foe ? "taunt" : "select";
+  if (action === "select") {
+    const foe = unit?.owner !== "player";
+    if (german) return foe ? "axisTaunt" : "axisSelect";
+    return foe ? "taunt" : "select";
+  }
+  if (action === "attack") return german ? "axisAttack" : "attack";
+  return action;
 }
 
 function playUnitSound(unitOrMove, action) {
   const type = unitOrMove?.type;
   if (!type) return;
-  // 무전 응답만 진영과 상황을 따진다. 나머지는 무엇이 굴러가고 무엇이 터지는가일 뿐이라
-  // 미군 전차나 독일군 전차나 같은 소리가 난다.
-  const bank = action === "select" ? selectVoiceBank(unitOrMove) : action;
+  const bank = soundBankFor(unitOrMove, action);
   const group = soundBank[bank];
   if (!group) return;
   const name = pickVariant(`${bank}:${type}`, group[type]);
