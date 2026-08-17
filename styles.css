@@ -6323,3 +6323,232 @@ body {
     flex: 1 1 0;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   작전 종료 보고 — 판이 끝나면 화면 한가운데에 도장을 찍는다
+
+   예전에는 화면 아래 구석에 한 줄짜리 띠가 떴다. 서른 번 턴을 넘긴 끝이
+   구석의 한 줄이면, 그건 끝난 것이 아니라 그냥 멈춘 것이다. 그래서 결과를
+   화면 한복판에 크게 찍고, 그 아래로 이번 작전에 실제로 있었던 일을 날짜와
+   함께 한 줄씩 흘린다. 승패 두 글자는 서류에 찍는 도장이라 살짝 기울여 둔다 —
+   반듯하게 놓으면 화면의 다른 글자들과 같은 무게가 되어 눈에 안 걸린다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.result-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  padding: 16px;
+  place-items: center;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 44%, rgb(10 13 8 / 78%), rgb(6 8 5 / 94%) 78%);
+  opacity: 0;
+  transition: opacity 420ms ease;
+}
+
+.result-screen.show { opacity: 1; }
+.result-screen[hidden] { display: none; }
+
+.result-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(620px, 100%);
+  max-height: calc(100dvh - 32px);
+  padding: 22px 22px 16px;
+  border: 1px solid rgb(0 0 0 / 82%);
+  border-top: 3px solid var(--engrave-dim);
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 3%) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #3a4133, #22261c 62%, #171a12);
+  box-shadow:
+    inset 0 1px 0 rgb(226 232 214 / 18%),
+    0 30px 80px rgb(0 0 0 / 72%);
+  text-align: center;
+}
+
+/* 이긴 판과 진 판은 색으로 먼저 갈린다. 글자를 읽기 전에 결과를 안다. */
+.result-screen[data-verdict="win"] .result-sheet { border-top-color: var(--lamp-on); }
+.result-screen[data-verdict="lose"] .result-sheet { border-top-color: var(--command-red, #a8332b); }
+.result-screen[data-verdict="draw"] .result-sheet { border-top-color: var(--readout); }
+
+.result-eyebrow {
+  margin: 0;
+  color: var(--engrave-dim);
+  font-family: var(--tech);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 4px;
+}
+
+/* 도장. 테두리와 글자가 같은 색이고, 종이에 눌러 찍은 것처럼 조금 기울어 있다. */
+.result-verdict {
+  align-self: center;
+  margin: 2px 0 0;
+  padding: 6px 22px 8px;
+  border: 3px solid currentcolor;
+  border-radius: 3px;
+  color: var(--engrave);
+  font-family: var(--tech);
+  font-size: 54px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  line-height: 1;
+  text-indent: 8px;
+  transform: rotate(-2.2deg);
+}
+
+.result-screen[data-verdict="win"] .result-verdict {
+  color: var(--lamp-on);
+  text-shadow: 0 0 26px rgb(134 214 143 / 45%);
+}
+
+.result-screen[data-verdict="lose"] .result-verdict {
+  color: #d2564a;
+  text-shadow: 0 0 26px rgb(168 51 43 / 50%);
+}
+
+.result-screen[data-verdict="draw"] .result-verdict {
+  color: var(--readout);
+  text-shadow: 0 0 26px rgb(240 200 106 / 38%);
+}
+
+/* 왜 그렇게 됐는지. 도장이 결과라면 이 줄이 사유서다. */
+.result-reason {
+  margin: 6px 0 0;
+  color: var(--engrave);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.result-tally {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgb(0 0 0 / 55%);
+  box-shadow: 0 1px 0 rgb(226 232 214 / 10%);
+  color: var(--readout);
+  font-family: var(--tech);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1.6px;
+}
+
+/* 이력. 전문 용지처럼 왼쪽에 날짜, 오른쪽에 내용. 날짜 폭을 고정해야 서른
+   줄이 쌓였을 때 눈이 한 줄로 내려갈 수 있다. */
+.result-log {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 42dvh;
+  padding: 4px 2px;
+  overflow-y: auto;
+  text-align: left;
+  cursor: pointer;
+}
+
+.result-line {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 4px 8px 4px 9px;
+  border-left: 3px solid rgb(226 232 214 / 14%);
+  color: var(--engrave);
+  font-family: var(--tech);
+  font-size: 14px;
+  line-height: 1.45;
+  opacity: 0;
+  transition:
+    opacity 260ms ease,
+    transform 260ms ease;
+  transform: translateY(6px);
+}
+
+.result-line.show {
+  opacity: 1;
+  transform: none;
+}
+
+.result-line b {
+  color: var(--engrave-dim);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 내가 이룬 일과 내가 잃은 것만 색이 붙는다. 셋 이상 칠하면 아무것도 안 보인다. */
+.result-kill { border-left-color: rgb(134 214 143 / 62%); }
+.result-loss {
+  border-left-color: rgb(210 86 74 / 62%);
+  color: #e7c6c0;
+}
+.result-start,
+.result-end {
+  border-left-color: rgb(240 200 106 / 70%);
+  color: var(--readout);
+  font-weight: 700;
+}
+
+.result-actions {
+  display: flex;
+  flex: 0 0 auto;
+  padding-top: 4px;
+}
+
+.result-actions .primary {
+  flex: 1 1 auto;
+  min-height: 46px;
+  border: 1px solid rgb(8 10 6 / 76%);
+  border-radius: 5px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 16%), transparent 44%),
+    linear-gradient(180deg, #3f7a4a, #24512f);
+  color: #f2f8ea;
+  font-family: var(--tech);
+  font-size: 16px;
+  letter-spacing: 3px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 24%),
+    inset 0 -3px 0 rgb(0 0 0 / 42%),
+    0 3px 0 rgb(0 0 0 / 55%),
+    0 0 18px rgb(94 168 110 / 34%);
+}
+
+.result-actions .primary:active {
+  transform: translateY(3px);
+  box-shadow: inset 0 3px 7px rgb(0 0 0 / 65%);
+}
+
+@media (max-width: 860px) {
+  .result-sheet {
+    padding: 18px 14px 12px;
+  }
+
+  .result-verdict {
+    font-size: 42px;
+    letter-spacing: 6px;
+  }
+
+  .result-log {
+    max-height: 46dvh;
+  }
+
+  .result-line {
+    grid-template-columns: 76px minmax(0, 1fr);
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-screen,
+  .result-line {
+    transition: none;
+  }
+
+  .result-line {
+    opacity: 1;
+    transform: none;
+  }
+}

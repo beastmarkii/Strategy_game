@@ -646,6 +646,11 @@ const operationDifficultyChoicesEl = document.querySelector("#operationDifficult
 const operationConfirmEl = document.querySelector("#confirmOperationSetup");
 const missionNameLabelEl = document.querySelector("#missionNameLabel");
 const missionBriefLabelEl = document.querySelector("#missionBriefLabel");
+const resultScreenEl = document.querySelector("#resultScreen");
+const resultVerdictEl = document.querySelector("#resultVerdict");
+const resultReasonEl = document.querySelector("#resultReason");
+const resultTallyEl = document.querySelector("#resultTally");
+const resultLogEl = document.querySelector("#resultLog");
 const bannerEl = document.createElement("div");
 bannerEl.className = "banner";
 document.body.appendChild(bannerEl);
@@ -685,6 +690,10 @@ document.querySelector("#toggleEditorPanel")?.addEventListener("click", toggleEd
 battlefieldWrapEl?.addEventListener("wheel", handleMapWheel, { passive: false });
 document.addEventListener("pointerdown", handleGlobalPointerSound, true);
 operationModalEl?.addEventListener("change", handleOperationSetupChange);
+document.querySelector("#resultDone")?.addEventListener("click", closeResultScreen);
+// 이력이 흐르는 도중에 목록을 누르면 남은 줄이 한꺼번에 뜬다. 30일짜리 작전의
+// 이력을 끝까지 앉아서 기다리게 하면, 두 번째 판부터는 아무도 안 읽는다.
+resultLogEl?.addEventListener("click", revealWholeChronicle);
 document.querySelector("#cancelOperationSetup")?.addEventListener("click", closeNewOperationSetup);
 document.querySelector("#confirmOperationSetup")?.addEventListener("click", confirmNewOperationSetup);
 balanceEditorEl?.addEventListener("input", handleBalanceEditorInput);
@@ -1947,6 +1956,10 @@ function startGame(config = {}) {
       objectives: deployment.objectives,
     },
     log: [],
+    // 작전 이력. 끝나고 결과 화면에서 통째로 읽는 물건이라 무전 기록과 달리
+    // 밀려나지 않는다. 새 판은 반드시 백지에서 시작한다 — 지난 작전의 전사자가
+    // 이번 보고서에 섞이면 그 보고서는 아무 말도 안 하는 것이 된다.
+    chronicle: [],
     // 이미 내려간 작전 지령. 새 판에서는 비워야 지령이 처음부터 다시 내려온다.
     ordersGiven: {},
   };
@@ -1961,9 +1974,11 @@ function startGame(config = {}) {
   bannerEl.classList.remove("show");
   // 숨기는 것만으로는 지난 작전의 승패 문구가 DOM에 남는다. 새 작전은 백지에서 시작한다.
   bannerEl.textContent = "";
+  hideResultScreen();
   // 첫날도 날짜부터 찍는다. 가장 먼저 넣어야 기록의 맨 아래에 깔린다.
   logDayLine();
   addLog(`${sideName("player")} › 작전 개시 · 지휘 ${state.commanders.player.name}`);
+  addChronicle(`작전 「${scenario.name}」 개시 · ${sideName("player")} ${state.commanders.player.name} 지휘`, "start");
   addLog(`작전 「${scenario.name}」 — ${scenario.summary}`);
   addLog(missionBriefText());
   // 맞은편 장군 이름은 여기서 안 알려 준다. 개전 전문에 이름을 박아 두면 사령부를
@@ -5048,6 +5063,7 @@ function attack(attacker, defender) {
     window.setTimeout(() => playDestroySound(defender), 260);
     state.units = state.units.filter((unit) => unit.id !== defender.id);
     addLog(`${sideUnitLabel(defender)} 격파`);
+    chronicleKill(attacker, defender);
     if (deckShare) damageDeck(deck, deckShare);
     return;
   }
@@ -5129,6 +5145,7 @@ function resolveCounterattack(attacker, defender) {
     window.setTimeout(() => playDestroySound(attacker), 260);
     state.units = state.units.filter((unit) => unit.id !== attacker.id);
     addLog(`${sideUnitLabel(attacker)} 반격에 격파`);
+    chronicleKill(defender, attacker, { counter: true });
   }
 }
 
@@ -5366,6 +5383,10 @@ function captureBase(unit) {
   base.owner = unit.owner;
   if (wasNeutral) {
     addLog(`${sideName(unit.owner)} › (${unit.x},${unit.y}) 무혈 접수 · 효율 ${Math.round(base.efficiency * 100)}%`);
+    addChronicle(
+      `${sideUnitLabel(unit)} › (${unit.x},${unit.y}) 보급 거점 무혈 접수`,
+      unit.owner === "player" ? "kill" : "loss",
+    );
     return;
   }
   // 예전에는 여기서 무조건 raidEfficiencyFactor를 한 번 더 곱했다. 이중청구였다 —
@@ -5374,6 +5395,10 @@ function captureBase(unit) {
   // 값을 두 번 매기면 뺏은 거점이 껍데기가 되고, 부수기만 하는 쪽이 언제나 이긴다.
   applyBaseEfficiencyLoss(base, captureEfficiencyLoss);
   addLog(`${sideName(unit.owner)} › (${unit.x},${unit.y}) 거점 장악 · 효율 ${Math.round(base.efficiency * 100)}%`);
+  addChronicle(
+    `${sideUnitLabel(unit)} › (${unit.x},${unit.y}) 보급 거점 탈취`,
+    unit.owner === "player" ? "kill" : "loss",
+  );
 }
 
 function missionObjectives() {
@@ -5651,9 +5676,99 @@ function baseLossCollapsed(owner) {
 
 function finishGame(message) {
   state.gameOver = true;
-  bannerEl.textContent = message;
-  bannerEl.classList.add("show");
   addLog(message);
+  addChronicle(message, "end");
+  showResultScreen(message);
+}
+
+// ── 작전 종료 보고 ────────────────────────────────────────────────
+// 승패 문구는 "승리: …" / "패배: …" 꼴로 온다. 앞의 두 글자는 크게 찍고 뒤는
+// 이유로 쓴다. 문구를 만드는 자리(completionMessage 등)가 여럿이라, 판정을
+// 여기 한 곳에서만 읽어야 새 문구가 생겨도 화면이 어긋나지 않는다.
+let chronicleTimer = null;
+let chronicleCursor = 0;
+
+function verdictOf(message) {
+  if (message.startsWith("승리")) return { key: "win", word: "승 리" };
+  if (message.startsWith("패배")) return { key: "lose", word: "패 배" };
+  return { key: "draw", word: "무승부" };
+}
+
+function showResultScreen(message) {
+  if (!resultScreenEl) return;
+  const verdict = verdictOf(message);
+  const reason = message.replace(/^(승리|패배|무승부)\s*[::]\s*/, "");
+  const chronicle = state.chronicle ?? [];
+  const kills = chronicle.filter((entry) => entry.kind === "kill").length;
+  const losses = chronicle.filter((entry) => entry.kind === "loss").length;
+
+  resultScreenEl.dataset.verdict = verdict.key;
+  if (resultVerdictEl) resultVerdictEl.textContent = verdict.word;
+  if (resultReasonEl) resultReasonEl.textContent = reason;
+  // 셋 다 "얼마나 걸렸고 무엇을 주고받았는가"다. 이긴 판과 진 판을 비교할 수 있는
+  // 최소한의 숫자이자, 아래 이력을 다 읽지 않아도 남는 한 줄이다.
+  if (resultTallyEl) {
+    resultTallyEl.textContent = `작전 ${state.turn}일 · 적 격파·탈취 ${kills} · 아군 손실 ${losses}`;
+  }
+  if (resultLogEl) resultLogEl.innerHTML = "";
+  chronicleCursor = 0;
+  window.clearInterval(chronicleTimer);
+
+  resultScreenEl.hidden = false;
+  // 한 프레임 쉬고 클래스를 준다. 붙이자마자 주면 브라우저가 처음 상태를 못 보고
+  // 건너뛰어서, 떠오르는 것이 아니라 그냥 나타난다(턴 날짜판과 같은 이치).
+  requestAnimationFrame(() => resultScreenEl.classList.add("show"));
+
+  // 한 줄씩 흘린다. 260ms는 "읽히는 속도"가 아니라 "일이 벌어지는 속도"다 —
+  // 이력은 정독하는 글이 아니라 지나가는 전문이고, 눈에 걸리는 줄에서 손이
+  // 멈추면 그때 눌러서 전부 펴면 된다.
+  chronicleTimer = window.setInterval(() => {
+    if (chronicleCursor >= chronicle.length) {
+      window.clearInterval(chronicleTimer);
+      chronicleTimer = null;
+      return;
+    }
+    appendChronicleLine(chronicle[chronicleCursor]);
+    chronicleCursor += 1;
+  }, 260);
+}
+
+function appendChronicleLine(entry) {
+  if (!resultLogEl || !entry) return;
+  const line = document.createElement("p");
+  line.className = `result-line${entry.kind ? ` result-${entry.kind}` : ""}`;
+  line.innerHTML = `<b>${entry.date}</b><span>${entry.text}</span>`;
+  resultLogEl.appendChild(line);
+  requestAnimationFrame(() => line.classList.add("show"));
+  resultLogEl.scrollTop = resultLogEl.scrollHeight;
+}
+
+function revealWholeChronicle() {
+  const chronicle = state?.chronicle ?? [];
+  if (chronicleCursor >= chronicle.length) return;
+  window.clearInterval(chronicleTimer);
+  chronicleTimer = null;
+  while (chronicleCursor < chronicle.length) {
+    appendChronicleLine(chronicle[chronicleCursor]);
+    chronicleCursor += 1;
+  }
+}
+
+// 「완료」는 이력이 흐르는 도중에도 눌린다. 누르면 곧바로 새 작전 명령서로 간다 —
+// 끝난 판을 다시 들여다볼 이유는 없고, 여기서 멈춰 세우면 그 자리가 막다른 길이 된다.
+function closeResultScreen() {
+  hideResultScreen();
+  openNewOperationSetup();
+}
+
+function hideResultScreen() {
+  window.clearInterval(chronicleTimer);
+  chronicleTimer = null;
+  chronicleCursor = 0;
+  if (!resultScreenEl) return;
+  resultScreenEl.classList.remove("show");
+  resultScreenEl.hidden = true;
+  if (resultLogEl) resultLogEl.innerHTML = "";
 }
 
 function baseProduction(base) {
@@ -7992,6 +8107,7 @@ function collapseDeck(deck) {
   clearRouteFields();
   const name = bridgeKinds[deck.type].name;
   addLog(`(${deck.x},${deck.y}) ${name} 붕괴`);
+  addChronicle(`(${deck.x},${deck.y}) ${name} 붕괴 · 도하 차단`);
   // 다리 위에 서 있던 부대는 다리와 함께 물로 간다. 다리가 사라진 자리는 하천이고,
   // 하천에는 육상 부대가 설 수 없다 — 살려 두면 건널 수도 나올 수도 없는 유령이 된다.
   // 그래서 "다리 위에서 턴을 끝내지 마라"가 이 게임의 규칙이 된다.
@@ -8000,6 +8116,7 @@ function collapseDeck(deck) {
   window.setTimeout(() => playDestroySound(rider), 260);
   state.units = state.units.filter((unit) => unit.id !== rider.id);
   addLog(`${sideUnitLabel(rider)} 다리와 함께 수몰`);
+  addChronicle(`${sideUnitLabel(rider)} › 다리와 함께 수몰`, rider.owner === "enemy" ? "kill" : "loss");
 }
 
 function getTerrainKey(x, y) {
@@ -8182,6 +8299,31 @@ function issueOrders() {
 function addLog(message, kind = "") {
   state.log.unshift({ text: message, kind });
   state.log = state.log.slice(0, 14);
+}
+
+// 작전 이력. 무전 기록과 다른 물건이다 — 무전 기록은 "지금 무슨 일이 나고 있는가"라
+// 열넉 줄만 쥐고 계속 밀어내지만, 이력은 "이 작전에서 무슨 일이 있었는가"라 끝까지
+// 남는다. 그래서 여기 들어오는 줄은 피해량 같은 경과가 아니라 되돌릴 수 없게 된
+// 일들뿐이다 — 부대가 없어졌다, 거점의 주인이 바뀌었다, 다리가 끊겼다.
+// 매 줄에 날짜를 박는 이유는 끝나고 몰아서 읽기 때문이다. 그때는 "몇 턴째"가 아니라
+// "며칠에"로 읽힌다.
+function addChronicle(text, kind = "") {
+  if (!state?.chronicle) return;
+  const { year, month, day } = missionDate(state.turn);
+  state.chronicle.push({ date: `${year}.${month}.${day}`, text, kind });
+  // 아주 긴 판에서도 종이 한 장 분량을 넘지 않게 한다. 넘치면 오래된 것부터
+  // 버린다 — 결과 화면에서 눈이 머무는 곳은 마지막 며칠이다.
+  if (state.chronicle.length > 240) state.chronicle.shift();
+}
+
+// 격파는 누가 누구를 없앴는지가 전부다. 자리를 같이 적는 이유는 그것이 이 게임의
+// 사건이 일어나는 유일한 단위이기 때문이다 — (9,13)이 어디인지는 판을 본 사람만 안다.
+function chronicleKill(attacker, victim, options = {}) {
+  const where = `(${victim.x},${victim.y})`;
+  const head = options.counter
+    ? `${sideUnitLabel(attacker)} › 반격`
+    : `${sideUnitLabel(attacker)} › ${where} 진격`;
+  addChronicle(`${head} · ${sideUnitLabel(victim)} 격파`, victim.owner === "enemy" ? "kill" : "loss");
 }
 
 // 범례는 넓고 높은 화면에서만 펴 둔다. 좁거나 낮은 화면에서는 접힌 채로 두어

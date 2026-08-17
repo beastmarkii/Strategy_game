@@ -278,6 +278,25 @@
       </div>
     </div>
 
+    <!-- 작전 종료 보고. 예전에는 화면 위쪽에 한 줄짜리 띠만 떴다 — 30턴을 싸운
+         끝이 한 줄이면, 이긴 사람은 무엇을 해서 이겼는지 모르고 진 사람은 어디서
+         틀렸는지 모른다. 그래서 결과를 화면 한가운데 크게 찍고, 그 아래로 이번
+         작전에 실제로 있었던 일을 날짜와 함께 한 줄씩 흘려 보낸다.
+         「완료」는 처음부터 눌린다 — 이력은 보고 싶은 사람이 보는 것이지,
+         새 작전으로 가려면 끝까지 앉아 있어야 하는 관문이 아니다. -->
+    <div id="resultScreen" class="result-screen" hidden>
+      <div class="result-sheet" role="dialog" aria-modal="true" aria-labelledby="resultVerdict">
+        <p class="result-eyebrow">AFTER ACTION REPORT · 1944</p>
+        <p class="result-verdict" id="resultVerdict">승 리</p>
+        <p class="result-reason" id="resultReason"></p>
+        <p class="result-tally" id="resultTally"></p>
+        <div class="result-log" id="resultLog" aria-label="작전 이력"></div>
+        <div class="result-actions">
+          <button id="resultDone" type="button" class="primary">완료</button>
+        </div>
+      </div>
+    </div>
+
     <script src="scenarios.js"></script>
     <script src="game.js"></script>
   </body>
