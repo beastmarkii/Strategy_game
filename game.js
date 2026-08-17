@@ -40,12 +40,13 @@ let objectiveHoldTurns = 2;
 // 목표는 고정값이 아니라 하한이다 — 실제 목표는 플레이어가 지은 만큼 따라 올라간다.
 let enemyDepotGoal = 2;
 let enemyEngineerLimit = 3;
-// 전투 정원은 이제 땅에서 나온다. 거점 하나가 몇 개 부대를 먹여 살리는가.
-// 예전 정원은 "적 여섯 기, 플레이어 무제한"이었고, 그래서 적은 일곱 턴이면 정원을
-// 채운 뒤 보급품을 쌓아만 뒀다 — 14턴 실측에서 34를 깔고 앉아 아무것도 사지 않았다.
-// 정원을 지도에 묶으면 그 저축이 사라진다. 거점을 더 먹은 쪽이 더 큰 군을 굴리고,
+// 적의 전투 정원은 땅에서 나온다. 거점 하나가 몇 개 부대를 먹여 살리는가.
+// 예전 적 정원은 그냥 여섯 기 고정이었고, 그래서 적은 일곱 턴이면 정원을 채운 뒤
+// 보급품을 쌓아만 뒀다 — 14턴 실측에서 34를 깔고 앉아 아무것도 사지 않았다.
+// 정원을 지도에 묶으면 그 저축이 사라진다. 거점을 더 먹으면 더 큰 군을 굴리고,
 // 거점을 잃으면 군이 줄어든다. 보급 거점을 다투는 이유가 생산 숫자 하나에서
-// "몇 개 부대를 세울 수 있는가"로 바뀐다. 양 진영에 똑같이 적용된다.
+// "몇 개 부대를 세울 수 있는가"로 바뀐다.
+// 아군에게는 이 정원이 걸리지 않는다. 아군을 막는 것은 보급품뿐이다(forceLimitFor).
 let forcePerBase = 6;
 // 공병대가 세운 보급창고 몫. 원래 거점보다 작다 — 창고는 전선을 늘리는 물건이지
 // 사단을 통째로 앉히는 자리가 아니다.
@@ -3076,13 +3077,12 @@ function updatePanel() {
   syncRecruitButtonCosts();
   syncConstructionButtonCosts();
   updateActionPanel();
-  // 전투 정원이 찼으면 전투 병종 버튼은 잠근다. 공병대는 정원 밖이라 계속 열려
-  // 있어야 한다 — 정원을 늘리는 유일한 수단이 창고 건설이기 때문이다.
-  const forceFull = forceIsFull("player");
-  document.querySelector("#recruitInfantry").disabled = !selectedBattalionHQ() || state.resources < unitTypes.infantry.cost || state.gameOver || forceFull;
-  document.querySelector("#recruitArmor").disabled = !selectedBattalionHQ() || state.resources < unitTypes.armor.cost || state.gameOver || forceFull;
-  document.querySelector("#recruitArtillery").disabled = !selectedBattalionHQ() || state.resources < unitTypes.artillery.cost || state.gameOver || forceFull;
-  document.querySelector("#recruitSpArtillery").disabled = !selectedBattalionHQ() || state.resources < unitTypes.spArtillery.cost || state.gameOver || forceFull;
+  // 편성 버튼을 잠그는 것은 이제 보급품과 사령부 선택 여부뿐이다. 예전에는
+  // 전투 정원이 찼다는 이유로도 잠갔는데, 아군에게는 그 정원이 없어졌다.
+  document.querySelector("#recruitInfantry").disabled = !selectedBattalionHQ() || state.resources < unitTypes.infantry.cost || state.gameOver;
+  document.querySelector("#recruitArmor").disabled = !selectedBattalionHQ() || state.resources < unitTypes.armor.cost || state.gameOver;
+  document.querySelector("#recruitArtillery").disabled = !selectedBattalionHQ() || state.resources < unitTypes.artillery.cost || state.gameOver;
+  document.querySelector("#recruitSpArtillery").disabled = !selectedBattalionHQ() || state.resources < unitTypes.spArtillery.cost || state.gameOver;
   document.querySelector("#recruitEngineer").disabled = !selectedBattalionHQ() || state.resources < unitTypes.engineer.cost || state.gameOver;
   const hqButton = document.querySelector("#recruitBattalionHQ");
   if (hqButton) {
@@ -3735,18 +3735,10 @@ function recruit(type) {
     render();
     return;
   }
-  // 전투 정원은 적에게만 있던 제약이었다. 이제 양쪽 다 쥔 거점만큼만 세운다.
-  // 공병대와 대대사령부는 정원에서 빠진다 — 짓고 먹이는 부대까지 정원으로 세면
-  // 보급선을 늘리는 선택 자체가 벌점이 된다.
-  if (isCombatUnit({ type })) {
-    const limit = forceLimitFor("player");
-    if (combatCountFor("player") >= limit) {
-      addLog(`전투 정원 ${limit}개를 모두 채웠습니다. 거점을 더 확보하거나 공병대로 보급창고를 지어야 편제가 늘어납니다.`);
-      render();
-      return;
-    }
-  }
-
+  // 아군 편성을 막는 것은 이제 보급품 하나뿐이다(forceLimitFor 참고).
+  // 남는 문은 자리다 — 사령부가 부대를 낳을 수 있는 곳은 제 칸과 둘레 여덟 칸,
+  // 그마저 겹쳐 세울 수 있는 만큼까지다. 그래서 "보급품이 있는 만큼"이라 해도
+  // 한 턴에 한 사령부가 토해 낼 수 있는 양에는 여전히 끝이 있다.
   const spawn = findHQSpawn(hq, type);
   if (!spawn) {
     addLog("대대사령부 주변에 증원 가능한 칸이 없습니다.");
@@ -4024,17 +4016,26 @@ function isCombatUnit(unit) {
   return unit.type !== "engineer" && unit.type !== "battalionHQ";
 }
 
-// 전투 정원은 지도에서 나온다. 원래 있던 보급 기지가 기지당 forcePerBase,
-// 공병대가 세운 보급창고가 창고당 forcePerDepot. 양 진영에 똑같은 식이 돌아간다.
-// 이전에는 적만 상한이 있었고 플레이어는 무제한이었다. 그래서 한쪽은 여섯 기에
-// 묶여 보급품을 쌓아만 뒀고, 다른 쪽은 뽑을 수 있는 만큼 뽑았다. 이제 양쪽 다
-// "몇 개 거점을 쥐고 있느냐"가 세울 수 있는 부대 수를 정한다 — 거점 하나가
-// 생산 숫자 몇 점이 아니라 사단 하나만큼의 값어치가 된다.
-// 거점을 전부 잃은 쪽은 정원이 0이라 증원이 끊긴다. 이는 baseLossGraceTurns의
-// 붕괴 유예 창과 같은 방향이다 — 땅을 잃으면 군도 잃는다.
-// 난이도는 적 정원에만 곱한다. 정원은 화면(전투 정원 칸)에 그대로 뜨는 숫자라
-// 올림으로 맞춘다 — 「6 / 7.5」 같은 정원은 읽는 사람에게 아무 뜻이 없다.
+// 두 진영이 서로 다른 문으로 병력을 낸다.
+//
+// 아군을 막는 것은 보급품 하나뿐이다. 정원과 보급품, 두 개의 문이 나란히 서
+// 있으면 사람은 늘 먼저 닫히는 문만 본다. 보급품 137을 깔고 앉은 채 "정원
+// 6개를 채웠습니다"만 읽고 있으면, 보급이라는 이 게임의 본줄기가 화면에서
+// 사라진다. 뽑을 수 있는 만큼 뽑되 그 값을 보급품으로 치르게 하는 편이,
+// 편제표 한 줄로 막는 것보다 낫다. 무한정 쏟아지지는 않는다 — 사령부가 부대를
+// 낳을 수 있는 자리는 제 칸과 둘레 여덟 칸뿐이라, 한 턴에 나올 수 있는 양에는
+// 여전히 끝이 있다.
+//
+// 적을 막는 것은 정원이고, 그 정원은 지도에서 나온다. 원래 있던 보급 기지가
+// 기지당 forcePerBase, 공병대가 세운 보급창고가 창고당 forcePerDepot. 정원이
+// 없던 시절의 적은 여섯 기를 채운 뒤 보급품을 쌓아만 뒀다. 정원을 지도에 묶으면
+// 그 저축이 사라지고, 거점을 전부 잃은 쪽은 정원이 0이라 증원이 끊긴다 —
+// baseLossGraceTurns의 붕괴 유예와 같은 방향이다. 땅을 잃으면 군도 잃는다.
+//
+// 난이도가 곱해지는 곳이 바로 이 정원이다. 화면에 그대로 뜨는 숫자라 올림으로
+// 맞춘다 — 「6 / 7.5」 같은 정원은 읽는 사람에게 아무 뜻이 없다.
 function forceLimitFor(owner) {
+  if (owner === "player") return Infinity;
   const bases = state.bases.filter((base) => base.owner === owner);
   const depots = bases.filter((base) => base.builtByEngineer).length;
   const supplyBases = bases.length - depots;
@@ -4046,13 +4047,12 @@ function combatCountFor(owner) {
   return state.units.filter((unit) => unit.owner === owner && isCombatUnit(unit)).length;
 }
 
-function forceIsFull(owner) {
-  return combatCountFor(owner) >= forceLimitFor(owner);
-}
-
 // 정원은 화면에 있어야 규칙이다. 안 보이면 그냥 버튼이 안 눌리는 버그로 읽힌다.
+// 정원이 없는 쪽은 분모를 지운다. 「4 / Infinity」는 숫자가 아니라 사고다.
 function forceDisplay(owner) {
-  return `${combatCountFor(owner)} / ${forceLimitFor(owner)}`;
+  const limit = forceLimitFor(owner);
+  if (!Number.isFinite(limit)) return `${combatCountFor(owner)}`;
+  return `${combatCountFor(owner)} / ${limit}`;
 }
 
 // 지금 무엇이 모자란가. 편성비에서 가장 크게 벌어진 병종을 부른다.
