@@ -6695,3 +6695,162 @@ body {
     transform: none;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   첫 판 안내
+   ══════════════════════════════════════════════════════════════════
+
+   설명서 한 장을 먼저 읽히는 대신, 여섯 마디를 하나씩 짚어 준다.
+   짚는 자리는 테두리(.coach-spot)로 그리고, 할 말은 화면 아래 쪽지
+   (.coach)에 적는다. 쪽지를 짚는 곳 옆에 띄우지 않는 이유는 하나다 —
+   폰에서 그 쪽지가 곧 지도를 덮는다. 아래에 붙여 두면 어느 화면에서든
+   가리는 것은 지도의 맨 아랫줄 하나뿐이다.
+
+   층은 명령서(2000)보다 낮게 둔다. 명령서가 떠 있는 동안에는 안내가
+   숨겨지지만, 층까지 위로 올려 두면 언젠가 새로 얹는 창이 이 쪽지에
+   가려진다. */
+
+.coach-spot {
+  position: fixed;
+  z-index: 1500;
+  border: 2px solid rgb(240 194 74 / 92%);
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 3px rgb(240 194 74 / 18%),
+    0 0 18px rgb(240 194 74 / 35%);
+  pointer-events: none;
+  animation: coach-pulse 1.6s ease-in-out infinite;
+}
+
+.coach-spot[hidden] {
+  display: none;
+}
+
+@keyframes coach-pulse {
+  50% {
+    border-color: rgb(240 194 74 / 45%);
+    box-shadow:
+      0 0 0 6px rgb(240 194 74 / 8%),
+      0 0 10px rgb(240 194 74 / 18%);
+  }
+}
+
+/* 화면이 흔들리는 것을 싫다고 설정해 둔 사람에게는 테두리를 가만히 둔다.
+   짚어 주는 일은 깜빡임이 아니라 테두리가 하는 것이라 잃는 것이 없다. */
+@media (prefers-reduced-motion: reduce) {
+  .coach-spot {
+    animation: none;
+  }
+}
+
+.coach {
+  position: fixed;
+  z-index: 1500;
+  right: 16px;
+  bottom: 16px;
+  left: auto;
+  width: min(380px, calc(100vw - 32px));
+  padding: 12px 14px 12px 16px;
+  border: 1px solid rgb(0 0 0 / 72%);
+  border-left: 5px solid rgb(214 168 60 / 88%);
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 3%) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #3b402c, #23271a);
+  box-shadow:
+    inset 0 1px 0 rgb(226 232 214 / 12%),
+    0 10px 26px rgb(0 0 0 / 55%);
+}
+
+.coach[hidden] {
+  display: none;
+}
+
+.coach-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.coach-head strong {
+  color: #f0c24a;
+  font-size: 17px;
+  letter-spacing: 1.2px;
+}
+
+/* 몇 마디 남았는지가 보여야 사람이 끝을 가늠하고 앉아 있는다. */
+.coach-count {
+  flex: 0 0 auto;
+  color: #9aa88a;
+  font-family: var(--tech);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.coach p {
+  margin: 0;
+  color: #e2e8d6;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.coach-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.coach-actions button {
+  min-height: 38px;
+  padding-inline: 16px;
+  border-radius: 5px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 22%),
+    inset 0 -3px 0 rgb(0 0 0 / 45%),
+    0 3px 0 rgb(0 0 0 / 55%);
+}
+
+.coach-actions .primary {
+  border-color: rgb(8 10 6 / 76%);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 16%), transparent 44%),
+    linear-gradient(180deg, #3f7a4a, #24512f);
+  color: #f2f8ea;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 45%);
+}
+
+.coach-actions .primary[hidden] {
+  display: none;
+}
+
+.coach-actions button:active {
+  transform: translateY(3px);
+  box-shadow: inset 0 3px 7px rgb(0 0 0 / 65%);
+}
+
+/* 폰에서는 오른쪽 구석에 붙일 자리가 없다. 아래를 가로로 다 쓰되, 명령 안내줄
+   (#actionHint)이 화면 맨 밑에 있으므로 그보다 조금 위에 앉힌다. */
+@media (max-width: 720px) {
+  .coach {
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: auto;
+  }
+}
+
+/* 지휘 서랍이나 수치 편집 창이 올라와 있으면 화면은 이미 그 창의 것이다.
+   그 위에 안내 쪽지까지 떠 있으면 서랍의 아랫줄을 가린다. */
+@media (max-width: 720px) {
+  body:not(.command-collapsed) .coach,
+  body:not(.command-collapsed) .coach-spot,
+  body.editor-open .coach,
+  body.editor-open .coach-spot {
+    display: none;
+  }
+}

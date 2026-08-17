@@ -719,6 +719,39 @@ document.querySelector("#toggleCommandPanel")?.addEventListener("click", toggleC
 document.querySelector("#focusCommandPanel")?.addEventListener("click", openCommandPanel);
 document.querySelector("#panelScrim")?.addEventListener("click", closeCommandPanel);
 
+/* ── 수치 편집은 만드는 사람의 연장이다 ──────────────────────────────────────
+   이 게임의 모든 숫자를 그 자리에서 고칠 수 있는 창이 상황판 단추 하나 뒤에
+   붙어 있다. 균형을 잡는 동안에는 그게 있어야 하지만, 판을 사는 사람에게는
+   그 단추가 곧 "여기 눌러서 이기기"다. 한 번 눌러 본 사람에게 이 게임은
+   더 이상 겨루는 물건이 아니게 된다.
+
+   지우지는 않는다 — 지우면 균형을 잡을 방법이 없어진다. 주소 끝에 ?edit=1을
+   붙인 사람에게만 단추가 보이고, 그 사실은 이 기계에 적혀서 다음에 켤 때도
+   그대로 남는다. ?edit=0으로 다시 감춘다.
+
+   단추만 감추면 충분하다. 창 자체는 화면 밖에 서 있다가 body.editor-open이
+   붙을 때만 밀려 들어오는데, 그 반을 붙이는 것이 저 단추뿐이기 때문이다. */
+const EDIT_TOOLS_KEY = "ww2TacticalCommand.editTools";
+
+function syncEditTools() {
+  let on = false;
+  try {
+    const asked = new URLSearchParams(location.search).get("edit");
+    if (asked !== null) localStorage.setItem(EDIT_TOOLS_KEY, asked === "0" ? "0" : "1");
+    on = localStorage.getItem(EDIT_TOOLS_KEY) === "1";
+  } catch (error) {
+    on = false;
+  }
+  document.body.classList.toggle("edit-tools", on);
+  const button = document.querySelector("#toggleEditorPanel");
+  if (button) button.hidden = !on;
+  // 감추는 김에 열려 있던 창도 닫는다. ?edit=0으로 껐는데 창이 남아 있으면
+  // 그건 끈 것이 아니다.
+  if (!on) document.body.classList.remove("editor-open");
+}
+
+syncEditTools();
+
 // 부대 카드는 지도 위에 얹힌 쪽지라 늘 스물두 줄을 펴 두면 전장이 가려진다.
 // 접혀 있을 때는 핵심 여섯 줄만 띄우고, 누르면 나머지가 펴진다.
 // (넓은 화면에서는 카드 전체가 마우스를 통과시키고, '자세히' 글씨 한 줄만
@@ -1798,6 +1831,10 @@ function scenarioOutcomeLabel(scenario) {
 function closeNewOperationSetup() {
   if (operationModalEl) operationModalEl.hidden = true;
   briefingMusicStop();
+  // 판은 명령서가 닫히기 전에 이미 그려진다. 그때는 명령서가 아직 화면을 덮고
+  // 있어서 안내가 스스로 물러나 있고, 그 뒤로는 다시 그릴 일이 없다 — 즉 여기서
+  // 한 번 더 부르지 않으면 첫 마디는 플레이어가 무엇이든 누를 때까지 안 뜬다.
+  coachSync();
 }
 
 function selectedOperationSide() {
@@ -2138,6 +2175,176 @@ discardOperationEl?.addEventListener("click", () => {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") saveOperation();
 });
+
+/* ── 첫 판 안내 ──────────────────────────────────────────────────────────────
+   설명서를 먼저 읽히지 않는다. 여섯 마디를 하나씩 띄우고, 그 마디가 시키는 짓을
+   실제로 해내면 저절로 다음으로 넘어간다. 읽고 넘기는 안내는 읽지 않고 넘기지만,
+   해 보고 넘어가는 안내는 손이 기억한다.
+
+   짚어 주는 자리는 화면에 테두리로 그린다. 안내 쪽지는 늘 화면 아래에 붙는다 —
+   짚는 곳 옆에 붙이면 폰에서는 그 쪽지가 곧 지도를 덮는다. */
+
+const COACH_KEY = "ww2TacticalCommand.firstRunCoach";
+
+const coachSteps = [
+  {
+    id: "goal",
+    title: "이 판에서 이기는 법",
+    body: "지도 위 노란 줄이 이번 작전의 목표다. 몇 번 칸을 며칠 쥐고 있어야 하는지가 거기 적혀 있다.",
+    target: () => document.querySelector("#missionBar"),
+  },
+  {
+    id: "select",
+    title: "부대를 고른다",
+    body: "내 부대를 하나 누른다. 갈 수 있는 칸이 지도에 밝게 뜬다.",
+    target: () => document.querySelector("#mapStage"),
+    // 눌렀는지는 눌렀는지로 안다. 「다음」을 눌러 넘기는 길은 두지 않는다.
+    done: () => Boolean(selectedUnit()?.owner === "player"),
+  },
+  {
+    id: "move",
+    title: "고른 부대를 옮긴다",
+    body: "밝은 칸 하나를 누르면 그리로 간다. 한 부대는 하루에 한 번만 움직인다.",
+    target: () => document.querySelector("#mapStage"),
+    done: () => state?.units?.some((unit) => unit.owner === "player" && unit.moved),
+  },
+  {
+    id: "attack",
+    title: "적을 친다",
+    body: "붉은 부대가 사거리 안에 들어오면, 그 부대를 누르는 것이 곧 공격이다. 안 되면 왜 안 되는지 지도 밑에 뜬다.",
+    target: () => document.querySelector("#mapStage"),
+  },
+  {
+    id: "endTurn",
+    title: "하루를 끝낸다",
+    body: "「턴 종료」를 누르면 적이 움직이고 다음 날 아침이 온다. 판은 그때마다 저절로 저장된다.",
+    target: () => document.querySelector("#endTurn"),
+    done: () => (state?.turn ?? 1) > 1,
+  },
+  {
+    id: "supply",
+    title: "보급품으로 늘린다",
+    body: "위쪽 「보급품」이 매일 들어온다. 「지휘」를 눌러 증원하거나 다리·창고를 짓는 데 쓴다.",
+    target: () => document.querySelector(".operation-hud"),
+  },
+];
+
+let coachIndex = -1;
+const coachEl = document.querySelector("#coach");
+const coachTitleEl = document.querySelector("#coachTitle");
+const coachBodyEl = document.querySelector("#coachBody");
+const coachCountEl = document.querySelector("#coachCount");
+const coachNextEl = document.querySelector("#coachNext");
+const coachSkipEl = document.querySelector("#coachSkip");
+const coachSpotEl = document.querySelector("#coachSpot");
+const showCoachEl = document.querySelector("#showCoach");
+
+function coachRead() {
+  try {
+    return localStorage.getItem(COACH_KEY);
+  } catch (error) {
+    return "done"; // 저장을 못 읽는 브라우저라면 안내를 매번 다시 띄우느니 안 띄운다.
+  }
+}
+
+let coachWritten = null;
+
+function coachWrite(value) {
+  // 화면을 다시 그릴 때마다, 손가락으로 지도를 밀 때마다 coachSync가 돈다.
+  // 같은 값을 그때마다 다시 적으면 밀 때마다 저장을 두드리게 된다.
+  if (value === coachWritten) return;
+  coachWritten = value;
+  try {
+    localStorage.setItem(COACH_KEY, value);
+  } catch (error) {
+    /* 저장이 막혀 있어도 이번 판 안내는 그대로 굴러간다. */
+  }
+}
+
+function coachFinish() {
+  coachIndex = -1;
+  coachWrite("done");
+  if (coachEl) coachEl.hidden = true;
+  if (coachSpotEl) coachSpotEl.hidden = true;
+}
+
+function coachStart(fromScratch = false) {
+  if (fromScratch) coachWrite("0");
+  coachIndex = fromScratch ? 0 : Number(coachRead() ?? 0) || 0;
+  if (coachIndex >= coachSteps.length) coachIndex = 0;
+  coachSync();
+}
+
+// 안내가 나올 수 있는 화면인가. 명령서·결과 화면이 떠 있거나 배치 중일 때는
+// 지금 해야 할 일이 따로 있으므로 끼어들지 않는다.
+function coachAllowed() {
+  if (coachIndex < 0 || coachIndex >= coachSteps.length) return false;
+  if (!state || state.gameOver) return false;
+  if (state.phase !== "player") return false;
+  if (operationModalEl && !operationModalEl.hidden) return false;
+  if (resultScreenEl && !resultScreenEl.hidden) return false;
+  return true;
+}
+
+function coachSync() {
+  if (!coachEl) return;
+  if (!coachAllowed()) {
+    coachEl.hidden = true;
+    if (coachSpotEl) coachSpotEl.hidden = true;
+    return;
+  }
+  // 시킨 것을 이미 해 버린 마디는 건너뛴다. 「부대를 고른다」를 읽기도 전에
+  // 부대를 골라 버린 사람에게 그걸 또 시키면 안내가 아니라 방해다.
+  while (coachIndex < coachSteps.length && coachSteps[coachIndex].done?.()) coachIndex += 1;
+  if (coachIndex >= coachSteps.length) {
+    coachFinish();
+    return;
+  }
+  const step = coachSteps[coachIndex];
+  coachWrite(String(coachIndex));
+  coachEl.hidden = false;
+  coachEl.dataset.step = step.id;
+  if (coachTitleEl) coachTitleEl.textContent = step.title;
+  if (coachBodyEl) coachBodyEl.textContent = step.body;
+  if (coachCountEl) coachCountEl.textContent = `${coachIndex + 1} / ${coachSteps.length}`;
+  // 해내야 넘어가는 마디에는 「다음」이 없다. 버튼이 있으면 그걸 누르지, 시킨 것을
+  // 하지 않는다.
+  if (coachNextEl) coachNextEl.hidden = Boolean(step.done);
+  coachPlaceSpot(step.target?.());
+}
+
+function coachPlaceSpot(target) {
+  if (!coachSpotEl) return;
+  const rect = target?.getBoundingClientRect?.();
+  if (!rect || !rect.width || !rect.height) {
+    coachSpotEl.hidden = true;
+    return;
+  }
+  const pad = 6;
+  coachSpotEl.hidden = false;
+  coachSpotEl.style.left = `${rect.left - pad}px`;
+  coachSpotEl.style.top = `${rect.top - pad}px`;
+  coachSpotEl.style.width = `${rect.width + pad * 2}px`;
+  coachSpotEl.style.height = `${rect.height + pad * 2}px`;
+}
+
+coachNextEl?.addEventListener("click", () => {
+  coachIndex += 1;
+  if (coachIndex >= coachSteps.length) coachFinish();
+  else coachSync();
+});
+
+coachSkipEl?.addEventListener("click", coachFinish);
+
+showCoachEl?.addEventListener("click", () => {
+  closeCommandPanel?.();
+  coachStart(true);
+});
+
+// 테두리는 화면에 그린 것이라, 화면이 움직이면 같이 따라가야 한다. 안 따라가면
+// 엉뚱한 곳을 짚은 채로 남는다.
+window.addEventListener("resize", () => coachSync());
+window.addEventListener("scroll", () => coachSync(), true);
 
 function startGame(config = {}) {
   applyLocale();
@@ -2994,6 +3201,10 @@ function render() {
   // 음악은 화면을 다시 그릴 때마다 제 자리를 확인한다. 부대가 한 칸 움직여
   // 시야가 열리는 그 순간이 곧 화면을 다시 그리는 순간이기 때문이다.
   musicUpdate();
+  // 첫 판 안내는 화면이 바뀔 때마다 "이제 다음 걸 배울 차례인가"를 스스로 본다.
+  // 클릭 자리마다 안내를 부르지 않는 이유는, 그러면 조작 하나를 새로 만들 때마다
+  // 안내를 부르는 줄도 같이 넣어야 하고 언젠가 빼먹기 때문이다.
+  coachSync();
 }
 
 function renderMapUnderlay() {
@@ -8722,3 +8933,7 @@ loadSavedDefaultBalance();
 if (restoreSavedOperation()) operationCommenced = true;
 else startGame();
 openNewOperationSetup();
+
+// 이 기계에서 한 번도 안 해 본 사람에게만 안내가 붙는다. 「그만 보기」를 누르거나
+// 여섯 마디를 다 넘기면 다시는 안 뜬다 — 다시 보고 싶으면 지휘 서랍의 「조작 안내」.
+if (coachRead() !== "done") coachStart();

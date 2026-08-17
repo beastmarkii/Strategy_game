@@ -67,6 +67,7 @@
           <!-- 턴 종료·배치 완료는 지도 위 상황판으로 옮겼다(아래 .hud-actions).
                매 턴 누르는 단 하나의 버튼이 긴 명령 목록 맨 아래에 있어서, 부대를
                고를 때마다 목록이 길어지면 화면 밖으로 밀려났기 때문이다. -->
+          <button id="showCoach" type="button">조작 안내</button>
           <button id="restart" type="button">새 작전</button>
         </div>
 
@@ -106,7 +107,10 @@
           <div class="hud-alerts" id="hudAlertLabel">전장 이상 없음</div>
           <div class="hud-actions">
             <button id="focusCommandPanel" type="button">지휘</button>
-            <button id="toggleEditorPanel" type="button" aria-controls="editorPanel" aria-expanded="false">수치 편집</button>
+            <!-- 균형을 잡는 사람의 연장이다. 기본은 감춤 — 주소 끝에 ?edit=1을 붙인
+                 사람에게만 game.js가 이 단추를 꺼내 준다. 여기서 미리 감춰 두는 이유는,
+                 안 그러면 게임이 켜지는 첫 순간에 이 단추가 한 번 번쩍하기 때문이다. -->
+            <button id="toggleEditorPanel" type="button" aria-controls="editorPanel" aria-expanded="false" hidden>수치 편집</button>
             <button id="endDeploy" type="button" class="primary" hidden>배치 완료</button>
             <button id="endTurn" type="button" class="primary">턴 종료</button>
           </div>
@@ -153,6 +157,24 @@
 
     <!-- 좁은 화면에서 지휘 서랍이 올라올 때 뒤를 덮는 막. 아무 데나 눌러도 닫힌다. -->
     <div id="panelScrim" class="panel-scrim" hidden></div>
+
+    <!-- 첫 판 안내. 짚어 주는 자리에 테두리를 그리고(#coachSpot), 할 말은 화면 아래
+         쪽지에 적는다(#coach). 쪽지를 짚는 곳 옆에 붙이지 않는 이유는 폰에서 그
+         쪽지가 곧 지도를 덮기 때문이다. 둘 다 화면에 떠 있는 것이라 지도 안이 아니라
+         본문 맨 끝에 둔다 — 지도는 밀리고 확대되는 판이고, 안내는 그와 무관하게
+         화면의 같은 자리에 있어야 한다. -->
+    <div id="coachSpot" class="coach-spot" aria-hidden="true" hidden></div>
+    <div id="coach" class="coach" role="status" hidden>
+      <div class="coach-head">
+        <strong id="coachTitle"></strong>
+        <span id="coachCount" class="coach-count"></span>
+      </div>
+      <p id="coachBody"></p>
+      <div class="coach-actions">
+        <button id="coachSkip" type="button">그만 보기</button>
+        <button id="coachNext" type="button" class="primary">다음</button>
+      </div>
+    </div>
 
     <div id="newOperationModal" class="operation-modal" hidden>
       <!-- 이 창은 설문지가 아니라 작전 명령서다. 그래서 제목줄에 문서 번호와 기밀
