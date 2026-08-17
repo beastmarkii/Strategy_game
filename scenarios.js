@@ -44,6 +44,9 @@
 const scenarios = [
   {
     id: "totalWar",
+    // 접어 둔 작전. 지도와 배치는 그대로 남겨 둔다 — 나중에 다시 쓸 판이다.
+    // 이 한 줄만 지우면 명령서 목록에 그대로 돌아온다.
+    retired: true,
     name: "총력전",
     summary: "노르망디 내륙. 양측 모두 상대 후방의 간선 출구를 노린다.",
     objectiveBrief: "상대 후방 간선 출구를 점령해 유지하라.",
@@ -58,6 +61,11 @@ const scenarios = [
     // 알랑송·에쿠브 숲 일대 — 바다 0칸이고 숲과 구릉이 많아 아래 지형 배치와도 맞는다.
     // 지형·목표·시작 위치는 하나도 건드리지 않았다.
     map: { enabled: true, centerLat: 48.6, centerLon: -0.3, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "LA MANCHE", west: "COTENTIN", east: "PAYS D'AUGE", region: "NORMANDIE", city: "CAEN",
+      towns: ["Saint-Lô", "Bayeux", "Lisieux", "Falaise", "Argentan", "Alençon"],
+    },
     terrain: [
       "PPPPPPPPPPPPPPPPPPPP",
       "PPPPPPPPPPPPPPPPPPPP",
@@ -128,6 +136,9 @@ const scenarios = [
 
   {
     id: "riverBreak",
+    // 접어 둔 작전. 지도와 배치는 그대로 남겨 둔다 — 나중에 다시 쓸 판이다.
+    // 이 한 줄만 지우면 명령서 목록에 그대로 돌아온다.
+    retired: true,
     name: "도하 돌파",
     summary: "강 하나가 전선을 갈랐다. 도하 지점은 북·중·남 셋뿐이고, 시간은 공격 측 편이 아니다.",
     objectiveBrief: "기한 안에 강을 건너 동쪽 출구를 확보하라. 못 하면 공격 실패다.",
@@ -142,6 +153,11 @@ const scenarios = [
     // 마옌 강이 판 한가운데를 세로로 흐르는 라발 일대로 옮긴다. 바다 0칸이고,
     // 지도에 보이는 강줄기와 규칙상의 강이 같은 방향으로 흐른다.
     map: { enabled: true, centerLat: 48.3, centerLon: -0.7, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "LA MANCHE", west: "COTENTIN", east: "PAYS D'AUGE", region: "NORMANDIE", city: "CAEN",
+      towns: ["Saint-Lô", "Bayeux", "Lisieux", "Falaise", "Argentan", "Alençon"],
+    },
     // 강줄기가 9열에 자로 잰 듯 곧게 서 있었다. 규칙으로는 멀쩡하지만 지도로는
     // 강이 아니라 판을 반으로 자른 금이었다. 열을 8~10 사이로 비껴 흐르게 바꾼다.
     // 한 칸씩 어긋나도 이동은 상하좌우뿐이라 막는 힘은 그대로다 — 비껴 있는
@@ -231,6 +247,9 @@ const scenarios = [
 
   {
     id: "crossroadsHold",
+    // 접어 둔 작전. 지도와 배치는 그대로 남겨 둔다 — 나중에 다시 쓸 판이다.
+    // 이 한 줄만 지우면 명령서 목록에 그대로 돌아온다.
+    retired: true,
     name: "교차로 사수",
     summary: "산울타리 지대의 두 교차로. 동군이 밀고 들어오고, 서군은 증원이 올 때까지 버텨야 한다.",
     objectiveBrief: "기한이 끝날 때까지 두 교차로를 내주지 마라.",
@@ -243,6 +262,11 @@ const scenarios = [
     // 간선도로가 실제로 여러 갈래로 갈리는 내륙(마메르·라페르테베르나르 일대)으로 옮긴다.
     // 바다 0칸이고 숲이 가장 많은 자리라, 교차로를 지키는 그림과도 맞는다.
     map: { enabled: true, centerLat: 48.35, centerLon: 0.2, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "LA MANCHE", west: "COTENTIN", east: "PAYS D'AUGE", region: "NORMANDIE", city: "CAEN",
+      towns: ["Saint-Lô", "Bayeux", "Lisieux", "Falaise", "Argentan", "Alençon"],
+    },
     terrain: [
       "PPPPPPFFPPPPFFPPPPPP",
       "PPBPPPFFPPPPFFPPPPPP",
@@ -319,6 +343,9 @@ const scenarios = [
 
   {
     id: "hqHunt",
+    // 접어 둔 작전. 지도와 배치는 그대로 남겨 둔다 — 나중에 다시 쓸 판이다.
+    // 이 한 줄만 지우면 명령서 목록에 그대로 돌아온다.
+    retired: true,
     name: "사령부 사냥",
     summary: "양측 모두 대대 사령부를 하나씩만 데리고 나왔다. 사령부가 죽으면 증원도 보급도 끝이다.",
     objectiveBrief: "적 대대 사령부를 격파하라. 내 사령부를 잃으면 그것으로 끝이다.",
@@ -327,6 +354,11 @@ const scenarios = [
     startDate: [1944, 8, 16],
     timeoutWinner: null,
     map: { enabled: true, centerLat: 48.86, centerLon: -0.62, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "LA MANCHE", west: "COTENTIN", east: "PAYS D'AUGE", region: "NORMANDIE", city: "CAEN",
+      towns: ["Saint-Lô", "Bayeux", "Lisieux", "Falaise", "Argentan", "Alençon"],
+    },
     terrain: [
       "PPPPPPPPPPPPPPFFPPBP",
       "PPPPPPPPPPPPPPFFPPPP",
@@ -394,6 +426,9 @@ const scenarios = [
 
   {
     id: "pocketRescue",
+    // 접어 둔 작전. 지도와 배치는 그대로 남겨 둔다 — 나중에 다시 쓸 판이다.
+    // 이 한 줄만 지우면 명령서 목록에 그대로 돌아온다.
+    retired: true,
     name: "고립 사령부 구조",
     summary: "포위망 한가운데 사령부 하나가 남았다. 사령부는 추격자보다 느리다 — 호위를 붙여 걸어서 빼낸다.",
     objectiveBrief: "고립된 사령부를 탈출 지점까지 데려가라. 잃으면 즉시 패배다. 사령부는 인접 아군이 있는 동안만 직접 피격을 면한다 — 엄호를 끊기지 마라.",
@@ -405,6 +440,11 @@ const scenarios = [
     // 시간이 끝나면 포위한 쪽(동군)이 포켓을 짓뭉갠 것으로 본다.
     timeoutWinner: "east",
     map: { enabled: true, centerLat: 48.76, centerLon: 0.11, zoom: 11, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "LA MANCHE", west: "COTENTIN", east: "PAYS D'AUGE", region: "NORMANDIE", city: "CAEN",
+      towns: ["Saint-Lô", "Bayeux", "Lisieux", "Falaise", "Argentan", "Alençon"],
+    },
     // 이 작전만 지도가 16x12다. 판 크기는 terrain 배열이 정한다.
     terrain: [
       "PPPPFFPPPPPPFFPP",
@@ -494,6 +534,9 @@ const scenarios = [
   },
   {
     id: "supplyBridge",
+    // 접어 둔 작전. 지도와 배치는 그대로 남겨 둔다 — 나중에 다시 쓸 판이다.
+    // 이 한 줄만 지우면 명령서 목록에 그대로 돌아온다.
+    retired: true,
     name: "보급선 개통",
     summary: "강이 전선을 둘로 갈랐다. 성한 다리는 북·중·남 셋뿐이고, 강폭이 두 칸이라 새로 놓으려면 공병대가 두 칸을 이어 붙여야 한다.",
     objectiveBrief: "동안의 화물역까지 보급선을 개통하고 유지하라. 부대를 세우는 것으로는 끝나지 않는다.",
@@ -505,6 +548,11 @@ const scenarios = [
     timeoutWinner: "east",
     // 1944년 9월, 발 강. 다리 하나에 작전 전체가 걸렸던 그 회랑.
     map: { enabled: true, centerLat: 51.85, centerLon: 5.87, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "NOORDZEE", west: "BRABANT", east: "DE PEEL", region: "NEDERLAND", city: "NIJMEGEN",
+      towns: ["Eindhoven", "Son", "Veghel", "Grave", "Elst", "Arnhem"],
+    },
     // 9·10열이 강이다. 강폭은 위에서 아래까지 고르게 두 칸이다 — 예전에는 2·8·13행에서만
     // 10열을 뭍으로 바꿔 "한 칸으로 좁아지는 나루"를 만들었는데, 그러면 강 한복판에
     // 흙 한 칸이 떠 있는 그림이 된다. 물길은 그대로 두고, 그 세 자리에 원래 있던
@@ -597,9 +645,1118 @@ const scenarios = [
       objectives: [],
     },
   },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  실제 전투 열둘 (docs/작전-원본-12전투.md)
+  //
+  //  네 가지 원칙으로 옮겼다.
+  //   1) 양쪽 다 이길 길이 있다. 한쪽만 목표를 가지면 다른 쪽은 관객이 된다.
+  //   2) 기한은 계획이 아니라 판결이다 — 기한이 끝나면 누가 이기는지가 곧 그 전투의
+  //      역사적 성격이다(엘 알라메인에서 시간은 롬멜의 적이 아니라 편이었다).
+  //   3) 좌표가 곧 지형이다. 사막은 뚫려 있고, 보카주는 막혀 있고, 해협은 못 건넌다.
+  //   4) 숫자는 맨 나중이다. 여기 적힌 배치는 판을 만들고, 세기는 에디터가 정한다.
+  //
+  //  lead는 그 전투에서 먼저 민 쪽이다. 목록 정렬과 카드 딱지에만 쓰인다 —
+  //  규칙에는 아무 영향이 없다. 열두 작전 다 양쪽으로 할 수 있다.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  {
+    id: "elAlamein",
+    name: "엘 알라메인",
+    lead: "allies",
+    summary: "북은 바다, 남은 소금 늪. 옆으로 돌 길이 없어 정면으로만 뚫는 회랑이다.",
+    objectiveBrief: "연합군은 동쪽 능선을 점령하라. 추축군은 통로를 여는 공병대를 없애라.",
+    turnLimit: 12,
+    startDate: [1942, 10, 23],
+    // 시간은 수비 측 편이다. 못 뚫으면 전선은 그대로 굳는다.
+    timeoutWinner: "east",
+    map: { enabled: true, centerLat: 30.75, centerLon: 28.95, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "MEDITERRANEAN", west: "QATTARA", east: "RUWEISAT", region: "EGYPT", city: "EL ALAMEIN",
+      towns: ["Tell el Eisa", "Miteiriya", "Deir el Shein", "Alam Halfa", "Naqb Abu Dweis", "El Taqa"],
+    },
+    // 위 두 줄은 지중해, 아래 세 줄은 카타라 저지대. 둘 다 통과 불가라 판이 옆으로
+    // 새지 않는다 — 이 전투를 이 전투로 만드는 것은 바로 그 "돌 수 없음"이다.
+    terrain: [
+      "WWWWWWWWWWWWWWWWWWWW",
+      "WWWWWWWWWWWWWWWWWWWW",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PBPPPPPPPPPPPPPPHHPP",
+      "PPPPPPPPHHPPPPPPHHBP",
+      "PPPPPPPPHHPPPPPPPPPP",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPPPPPPPHHPPPPPPHHPP",
+      "PPBPPPPPHHPPPPPPHHPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPBPP",
+      "WWWWWWWWWWWWWWWWWWWW",
+      "WWWWWWWWWWWWWWWWWWWW",
+      "WWWWWWWWWWWWWWWWWWWW",
+    ],
+    // 능선은 전부 서쪽에서 오는 공격을 막는다. 미는 쪽이 서군이기 때문이다.
+    hillDefense: [
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "................WW..",
+      "........WW......WW..",
+      "........WW..........",
+      "....................",
+      "....................",
+      "........WW......WW..",
+      "........WW......WW..",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+    ],
+    west: {
+      bases: [
+        { x: 1, y: 4, production: 6 },
+        { x: 2, y: 10, production: 5, neutral: true },
+      ],
+      // 공병이 둘이다. 추축군의 목표가 "공병 격멸"이라 하나뿐이면 첫 포격 한 방에
+      // 판이 끝난다. 둘이면 잃어도 작전은 이어지고, 잃은 무게는 그대로 남는다.
+      units: [
+        ["infantry", 2, 3],
+        ["infantry", 2, 5],
+        ["infantry", 3, 10],
+        ["armor", 3, 4],
+        ["artillery", 1, 3],
+        ["engineer", 2, 4],
+        ["engineer", 3, 5],
+        ["battalionHQ", 1, 5],
+      ],
+      objectives: [{ kind: "seize", x: 17, y: 9, label: "동쪽 능선" }],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 5, production: 6 },
+        { x: 17, y: 12, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 16, 6],
+        ["infantry", 17, 6],
+        ["infantry", 16, 11],
+        ["armor", 16, 8],
+        ["artillery", 18, 6],
+        ["battalionHQ", 18, 4],
+        ["battalionHQ", 17, 11],
+      ],
+      // 지뢰밭을 걷어내는 손을 없애면 기갑은 한 발도 못 나간다.
+      objectives: [{ kind: "destroy", targetType: "engineer", label: "공병대" }],
+    },
+  },
+
+  {
+    id: "uranus",
+    name: "천왕성",
+    lead: "allies",
+    summary: "돈 강이 판을 세로로 가른다. 건널 곳은 칼라치 다리 하나뿐이다.",
+    objectiveBrief: "연합군은 칼라치 다리를 사흘 잡아라. 추축군은 서쪽 탈출로를 열어라.",
+    turnLimit: 10,
+    startDate: [1942, 11, 19],
+    // 자루가 반쯤 닫힌 채 끝나면 어느 쪽도 이기지 못한 것이다.
+    timeoutWinner: null,
+    map: { enabled: true, centerLat: 48.7, centerLon: 43.53, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "VOLGA", west: "DON BEND", east: "STEPPE", region: "STALINGRAD", city: "KALACH",
+      towns: ["Kletskaya", "Serafimovich", "Raspopinskaya", "Sovetsky", "Marinovka", "Abganerovo"],
+    },
+    terrain: [
+      "PPPPPPPPPWPPPPPPPPPP",
+      "PBPPPPPPPWPPPPPPPPPP",
+      "PPPPPPPPPWPPPPPPPPBP",
+      "PPPPPPPPPWPPPPPPPPPP",
+      "CCCCCCCCCWCCCCCCCCCC",
+      "PPPPPPPPPWPPPPPPPPPP",
+      "PPPPHHPPPWPPPPHHPPPP",
+      "PPPPHHPPPWPPPPHHPPPP",
+      "CCCCCCCCCWCCCCCCCCCC",
+      "PPPPPPPPPWPPPPPPPPPP",
+      "PPPPPPPPPWPPPPPPPPPP",
+      "PPBPPPPPPWPPPPPPPPPP",
+      "PPPPPPPPPWPPPPPPPPPP",
+      "CCCCCCCCCWCCCCCCCCCC",
+      "PPPPPPPPPWPPPPPPPBPP",
+      "PPPPPPPPPWPPPPPPPPPP",
+    ],
+    hillDefense: [
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....EE........WW....",
+      "....EE........WW....",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+    ],
+    // 다리 하나. 양쪽 다 여기를 지나야 하므로 이 한 칸이 전투 전체다.
+    // 공병이 더 놓을 수는 있지만 두 개가 최대라 강은 여전히 목을 조른다.
+    bridges: [[9, 8]],
+    west: {
+      bases: [
+        { x: 1, y: 1, production: 6 },
+        { x: 2, y: 11, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 2, 1],
+        ["infantry", 3, 11],
+        ["armor", 3, 2],
+        ["armor", 3, 10],
+        ["artillery", 1, 2],
+        ["engineer", 2, 2],
+        ["battalionHQ", 1, 0],
+      ],
+      objectives: [{ kind: "seize", x: 9, y: 8, label: "칼라치 다리", holdTurns: 3 }],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 2, production: 6 },
+        { x: 17, y: 14, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 17, 2],
+        ["infantry", 17, 13],
+        ["armor", 16, 3],
+        ["armor", 16, 13],
+        ["artillery", 18, 3],
+        ["engineer", 18, 13],
+        ["battalionHQ", 18, 1],
+        ["battalionHQ", 16, 14],
+      ],
+      // 갇히기 전에 서쪽 끝으로 빠져나가면 포위는 실패다.
+      objectives: [{ kind: "seize", x: 0, y: 8, label: "서쪽 탈출로" }],
+    },
+  },
+
+  {
+    id: "bagration",
+    name: "바그라티온",
+    lead: "allies",
+    summary: "늪과 숲 사이로 난 간선 셋. 남북에서 동시에 집게를 닫아야 자루가 된다.",
+    objectiveBrief: "연합군은 동쪽 거점 둘을 모두 점령하라. 추축군은 서군 사령부를 격멸하라.",
+    turnLimit: 14,
+    startDate: [1944, 6, 22],
+    timeoutWinner: "east",
+    map: { enabled: true, centerLat: 53.15, centerLon: 29.23, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "BEREZINA", west: "PRIPYAT", east: "DNEPR", region: "BELORUSSIA", city: "BOBRUISK",
+      towns: ["Vitebsk", "Orsha", "Mogilev", "Slutsk", "Osipovichi", "Minsk"],
+    },
+    terrain: [
+      "PPFFPPPPPPWPPFFPPPPP",
+      "PBFFPPPPPPWPPFFPPPBP",
+      "PPPPPPPPPPWPPPPPPPPP",
+      "CCCCCCCCCCWCCCCCCCCC",
+      "PPPPFFPPPPWPPPPPPPPP",
+      "PPPPFFPPPPWPPPPPPPPP",
+      "PPPPPPPPPPWPPPPPPPPP",
+      "PPPHHPPPPPWPPPPPPPPP",
+      "CCCCCCCCCCWCCCCCCCCC",
+      "PPPHHPPPPPWPPPPPPPPP",
+      "PPPPPPPPPPWPPPPPPPPP",
+      "PPFFPPPPPPWPPHHPPPPP",
+      "PPFFPPPPPPWPPHHPPPPP",
+      "CCCCCCCCCCWCCCCCCCCC",
+      "PPBPPPPPPPWPPPPPPPBP",
+      "PPPPPPPPPPWPPPPPPPPP",
+    ],
+    hillDefense: [
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "...EE...............",
+      "....................",
+      "...EE...............",
+      "....................",
+      ".............WW.....",
+      ".............WW.....",
+      "....................",
+      "....................",
+      "....................",
+    ],
+    bridges: [
+      [10, 3],
+      [10, 8],
+      [10, 13],
+    ],
+    west: {
+      bases: [
+        { x: 1, y: 1, production: 6 },
+        { x: 2, y: 14, production: 5, neutral: true },
+      ],
+      // 사령부가 둘이다. 추축군의 목표가 사령부 격멸이므로 하나로는 판이 너무 짧다.
+      units: [
+        ["infantry", 2, 2],
+        ["infantry", 3, 14],
+        ["armor", 4, 1],
+        ["armor", 4, 13],
+        ["artillery", 1, 2],
+        ["engineer", 2, 13],
+        ["battalionHQ", 1, 0],
+        ["battalionHQ", 3, 15],
+      ],
+      // 두 집게는 한 묶음이다. 하나만 닫으면 적은 그대로 빠져나간다.
+      objectives: [
+        { kind: "seize", x: 18, y: 1, label: "북쪽 집게", group: "pincer" },
+        { kind: "seize", x: 18, y: 14, label: "남쪽 집게", group: "pincer" },
+      ],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 1, production: 6 },
+        { x: 18, y: 14, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 17, 2],
+        ["infantry", 17, 13],
+        ["armor", 16, 1],
+        ["armor", 16, 13],
+        ["artillery", 18, 3],
+        ["battalionHQ", 18, 2],
+        ["battalionHQ", 17, 15],
+      ],
+      objectives: [{ kind: "destroy", targetType: "battalionHQ", label: "대대 사령부" }],
+    },
+  },
+
+  {
+    id: "cobra",
+    name: "코브라",
+    lead: "allies",
+    summary: "보카주 울타리가 사방을 막는다. 남으로 뚫린 길은 가운데 회랑 하나뿐이다.",
+    objectiveBrief: "연합군은 남쪽 출구까지 내려가라. 추축군은 회랑을 이틀 끊어라.",
+    turnLimit: 10,
+    startDate: [1944, 7, 25],
+    timeoutWinner: "east",
+    map: { enabled: true, centerLat: 48.8, centerLon: -1.05, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "LA MANCHE", west: "COTENTIN", east: "BOCAGE", region: "NORMANDIE", city: "SAINT-LO",
+      towns: ["Marigny", "Coutances", "Périers", "Villedieu", "Vire", "Avranches"],
+    },
+    // 세로 간선 하나(10열)가 판을 위에서 아래로 관통한다. 숲이 그 옆을 다 막고 있어
+    // 기갑은 회랑을 벗어나는 순간 느려진다 — 보카주가 하는 일이 바로 그것이다.
+    terrain: [
+      "PPPPPPPPPPCPPPPPPPPP",
+      "PBPPFFPPPPCPPFFPPPBP",
+      "PPPFFFPPPPCPPFFFPPPP",
+      "PPPFFFPPPPCPPPFFPPPP",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPFFFPPPPPCPPPFFFPPP",
+      "PPFFFPPHHPCPHHPFFPPP",
+      "PPPPPPPHHPCPHHPPPPPP",
+      "PPFFPPPPPPCPPPPFFPPP",
+      "PPFFFPPPPPCPPPPFFPPP",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPPFFPPPPPCPPPFFFPPP",
+      "PPFFFPPPPPCPPPFFPPPP",
+      "PPFFPPPPPPCPPPPFPPPP",
+      "PPPPPPPPPPCPPPPPPPBP",
+      "PPBPPPPPPPCPPPPPPPPP",
+    ],
+    hillDefense: [
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      ".......EE...WW......",
+      ".......EE...WW......",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+    ],
+    west: {
+      bases: [
+        { x: 1, y: 1, production: 6 },
+        { x: 2, y: 15, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 2, 1],
+        ["infantry", 3, 15],
+        ["armor", 1, 2],
+        ["artillery", 1, 0],
+        ["engineer", 2, 2],
+        ["battalionHQ", 1, 3],
+        ["battalionHQ", 2, 14],
+      ],
+      objectives: [{ kind: "seize", x: 10, y: 15, label: "남쪽 출구" }],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 1, production: 6 },
+        { x: 18, y: 14, production: 5, neutral: true },
+      ],
+      // 회랑 양옆 고지에 미리 앉혀 둔다. 목표가 그 아래 한 칸이라 첫날부터 압박이 된다.
+      units: [
+        ["infantry", 17, 1],
+        ["infantry", 12, 6],
+        ["armor", 16, 2],
+        ["armor", 13, 7],
+        ["artillery", 18, 2],
+        ["battalionHQ", 18, 0],
+        ["battalionHQ", 17, 14],
+      ],
+      objectives: [{ kind: "seize", x: 10, y: 7, label: "회랑 절단점", holdTurns: 2 }],
+    },
+  },
+
+  {
+    id: "marketGarden",
+    name: "마켓가든",
+    lead: "allies",
+    summary: "물길 셋을 가로지르는 외길. 다리 셋이 다 서 있어야 북쪽 교두보가 산다.",
+    objectiveBrief: "연합군은 아른헴 교두보까지 보급선을 사흘 이어라. 추축군은 회랑을 끊어라.",
+    turnLimit: 12,
+    startDate: [1944, 9, 17],
+    timeoutWinner: "east",
+    map: { enabled: true, centerLat: 51.9, centerLon: 5.87, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "NOORDZEE", west: "BRABANT", east: "DE PEEL", region: "NEDERLAND", city: "NIJMEGEN",
+      towns: ["Eindhoven", "Son", "Veghel", "Grave", "Elst", "Arnhem"],
+    },
+    // 9열이 「지옥의 고속도로」다. 물길 세 줄을 건너는 자리에만 다리가 있어
+    // 판 전체에서 남북으로 이동할 수 있는 경로는 이 한 줄뿐이다.
+    terrain: [
+      "PPPPPPPPPCPPPPPPPPPP",
+      "PPFFPPPPPCPPPPFFPPBP",
+      "PPFFPPPPPCPPPPFFPPPP",
+      "WWWWWWWWWWWWWWWWWWWW",
+      "PPPPPPPPPCPPPPPPPPPP",
+      "PPPPPHHPPCPPHHPPPPPP",
+      "PPPPPHHPPCPPHHPPPPPP",
+      "WWWWWWWWWWWWWWWWWWWW",
+      "PPPPBPPPPCPPPPPPPPPP",
+      "PPFFPPPPPCPPPPFFPPPP",
+      "PPFFPPPPPCPPPPFFPPPP",
+      "WWWWWWWWWWWWWWWWWWWW",
+      "PPPPPPPPPCPPPPPBPPPP",
+      "PPPPPPPPPCPPPPPPPPPP",
+      "PBPPPPPPPCPPPPPPPPPP",
+      "PPPPPPPPPCPPPPPPPPPP",
+    ],
+    hillDefense: [
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      ".....EE.....WW......",
+      ".....EE.....WW......",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+    ],
+    bridges: [
+      [9, 3],
+      [9, 7],
+      [9, 11],
+    ],
+    west: {
+      bases: [
+        { x: 1, y: 14, production: 6 },
+        { x: 4, y: 8, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 2, 14],
+        ["infantry", 2, 13],
+        ["armor", 1, 13],
+        ["artillery", 1, 15],
+        ["engineer", 2, 15],
+        ["engineer", 3, 14],
+        ["battalionHQ", 1, 12],
+      ],
+      // 밟는 것이 아니라 잇는 것이다. 회랑 위에 적이 한 부대라도 서 있으면 선이 끊긴다.
+      objectives: [{ kind: "supply", x: 9, y: 2, label: "아른헴 교두보", holdTurns: 3 }],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 1, production: 6 },
+        { x: 15, y: 12, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 12, 2],
+        ["infantry", 9, 8],
+        ["infantry", 9, 4],
+        ["armor", 14, 4],
+        ["artillery", 17, 2],
+        ["engineer", 17, 1],
+        ["battalionHQ", 18, 2],
+        ["battalionHQ", 14, 12],
+      ],
+      // 가운데 다리에 앉으면 그것만으로 북쪽 보급선이 끊긴다. 목표 하나가 두 몫을 한다.
+      objectives: [{ kind: "seize", x: 9, y: 7, label: "회랑 절단점", holdTurns: 2 }],
+    },
+  },
+
+  {
+    id: "imphal",
+    name: "임팔·코히마",
+    lead: "allies",
+    summary: "산에 둘러싸인 진지 하나. 포위된 쪽이 남쪽 길을 다시 열어야 산다.",
+    objectiveBrief: "연합군은 남쪽 도로까지 보급선을 사흘 이어라. 추축군은 임팔 진지를 점령하라.",
+    turnLimit: 16,
+    startDate: [1944, 3, 8],
+    // 버티면 이긴다. 굶는 쪽은 포위한 쪽이었다.
+    timeoutWinner: "west",
+    map: { enabled: true, centerLat: 24.82, centerLon: 93.94, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "CHINDWIN", west: "MANIPUR", east: "CHIN HILLS", region: "BURMA", city: "IMPHAL",
+      towns: ["Kohima", "Sangshak", "Bishenpur", "Tamu", "Palel", "Tiddim"],
+    },
+    // 가운데 진지(8,6)를 고지가 빙 두르고 있다. 지키기는 쉽고 나가기는 어렵다 —
+    // 그런데 이 판은 나가야 이긴다.
+    terrain: [
+      "PPHHPPPPHHPPPPHHPPPP",
+      "PPHHPPPPHHPPPPHHPPBP",
+      "PPPPPPPPHHPPPPHHPPPP",
+      "PPFFPPPPPPPPPPPPPPPP",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPFFPPPHHHPPPPFFPPPP",
+      "PPPPPPPHBHPPPPFFPPPP",
+      "PPPPPPPHHHPPPPPPPPPP",
+      "PPHHPPPPPPPPPPHHPPPP",
+      "PPHHPPPPPPPPPPHHPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPFFPPPPPPPPFFPPPPPP",
+      "PPFFPPPPPPPPFFPPPPPP",
+      "CCCCCCCCBCCCCCCCCBCC",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPPPPPPPPPHHPPPPPPPP",
+    ],
+    hillDefense: [
+      "..NN....NN....NN....",
+      "..NN....NN....NN....",
+      "........NN....NN....",
+      "....................",
+      "....................",
+      ".......NNN..........",
+      ".......W.E..........",
+      ".......SSS..........",
+      "..EE..........WW....",
+      "..EE..........WW....",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "..........NN........",
+    ],
+    west: {
+      bases: [
+        { x: 8, y: 6, production: 6 },
+        { x: 8, y: 13, production: 5, neutral: true },
+      ],
+      // 진지 둘레에 그대로 앉아 있다. 여기서 이기려면 이 고리를 스스로 풀고 내려가야 한다.
+      units: [
+        ["infantry", 7, 5],
+        ["infantry", 9, 5],
+        ["infantry", 8, 7],
+        ["armor", 8, 5],
+        ["artillery", 7, 6],
+        ["engineer", 9, 6],
+        ["engineer", 7, 7],
+        ["battalionHQ", 9, 7],
+      ],
+      objectives: [{ kind: "supply", x: 12, y: 13, label: "남쪽 도로", holdTurns: 3 }],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 1, production: 6 },
+        { x: 17, y: 13, production: 5, neutral: true },
+      ],
+      // 사방에서 조인다. 거점에서 멀리 나와 있어 시간이 갈수록 저쪽이 먼저 굶는다.
+      units: [
+        ["infantry", 5, 4],
+        ["infantry", 11, 4],
+        ["infantry", 6, 9],
+        ["infantry", 11, 9],
+        ["armor", 12, 6],
+        ["artillery", 4, 6],
+        ["battalionHQ", 16, 2],
+        ["battalionHQ", 16, 13],
+      ],
+      objectives: [{ kind: "seize", x: 8, y: 6, label: "임팔 진지" }],
+    },
+  },
+
+  {
+    id: "sichelschnitt",
+    name: "낫질",
+    lead: "axis",
+    summary: "아무도 기갑이 못 지난다고 한 숲 뒤에서 나온다. 강 하나만 건너면 해안까지 뚫린다.",
+    objectiveBrief: "추축군은 서쪽 해안까지 내달려라. 연합군은 그 기갑을 모두 격파하라.",
+    turnLimit: 12,
+    startDate: [1940, 5, 13],
+    // 낫이 닿기 전에 시간이 다 가면 전선은 다시 굳는다.
+    timeoutWinner: "west",
+    map: { enabled: true, centerLat: 49.7, centerLon: 4.94, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "LA MANCHE", west: "PICARDIE", east: "ARDENNES", region: "FRANCE", city: "SEDAN",
+      towns: ["Dinant", "Monthermé", "Bouillon", "Stonne", "Montcornet", "Abbeville"],
+    },
+    // 판이 가로로 길다. 이 전투는 "얼마나 멀리, 얼마나 빨리"의 이야기라
+    // 세로로 넓은 판에서는 그 뜻이 나오지 않는다.
+    terrain: [
+      "PPFFFFPPPPWPPFFFFPPP",
+      "PBFFFFPPPPWPPFFFFPPP",
+      "PPFFFPPPPPWPPFFFFFPP",
+      "CCCCCCCCCCWCCCCCCCCC",
+      "PPPPPPPPPPWPPPFFFPPP",
+      "PPPHHPPPPPWPPPPPPPBP",
+      "PPPHHPPPPPWPPPPPPPPP",
+      "CCCCCCCCCCWCCCCCCCCC",
+      "PPPPPPPPPPWPPFFFFPPP",
+      "PPBPPPPPPPWPPFFFFPPP",
+      "PPPPPPPPPPWPPPPPPPPP",
+      "PPPPPPPPPPWPPPPPPPBP",
+    ],
+    hillDefense: [
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "...EE...............",
+      "...EE...............",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+    ],
+    bridges: [
+      [10, 3],
+      [10, 7],
+    ],
+    west: {
+      bases: [
+        { x: 1, y: 1, production: 6 },
+        { x: 2, y: 9, production: 5, neutral: true },
+      ],
+      // 다리 둘에 초병을 하나씩 세워 둔다. 여기서 하루를 벌면 뒤가 정리된다.
+      units: [
+        ["infantry", 2, 1],
+        ["infantry", 3, 9],
+        ["infantry", 9, 3],
+        ["infantry", 9, 7],
+        ["armor", 2, 2],
+        ["artillery", 1, 2],
+        ["engineer", 2, 8],
+        ["battalionHQ", 1, 0],
+        ["battalionHQ", 2, 10],
+      ],
+      // 기갑 셋을 다 잡아야 낫이 멈춘다.
+      objectives: [{ kind: "destroy", targetType: "armor", label: "기갑부대" }],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 5, production: 6 },
+        { x: 18, y: 11, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 17, 5],
+        ["infantry", 17, 11],
+        ["armor", 16, 4],
+        ["armor", 16, 6],
+        ["armor", 15, 8],
+        ["artillery", 18, 6],
+        ["engineer", 18, 4],
+        ["battalionHQ", 18, 7],
+        ["battalionHQ", 17, 10],
+      ],
+      objectives: [{ kind: "seize", x: 0, y: 7, label: "서쪽 해안" }],
+    },
+  },
+
+  {
+    id: "merkur",
+    name: "메르쿠어",
+    lead: "axis",
+    summary: "하늘에서 내려앉은 부대가 거점 없이 흩어져 있다. 비행장을 잡기 전에 굶는다.",
+    objectiveBrief: "추축군은 말레메 비행장을 이틀 잡아라. 연합군은 강하부대를 모두 쓸어라.",
+    turnLimit: 8,
+    startDate: [1941, 5, 20],
+    // 여드레를 버티면 하늘에서 온 쪽이 먼저 말라 죽는다.
+    timeoutWinner: "west",
+    map: { enabled: true, centerLat: 35.5, centerLon: 23.85, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "KRITIKO PELAGOS", west: "CHANIA", east: "RETHYMNO", region: "KRITI", city: "MALEME",
+      towns: ["Galatas", "Platanias", "Souda", "Kastelli", "Georgioupoli", "Sfakia"],
+    },
+    terrain: [
+      "WWWWWWWWWWWWWWWWWWWW",
+      "WWWWWWWWWWWWWWWWWWWW",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPPPPPBPPPPPPPPPPPPP",
+      "PPPHHPPPHHPPPHHPPPBP",
+      "PPPHHPPPHHPPPHHPPPPP",
+      "PBPPPPPPPPPPPPPPPPPP",
+      "PPPHHPPPPPPPPHHPPPPP",
+      "PPPHHPPPPPPPPHHPPBPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "WWWWWWWWWWWWWWWWWWWW",
+    ],
+    hillDefense: [
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "...EE...NN...WW.....",
+      "...EE...NN...WW.....",
+      "....................",
+      "...EE........WW.....",
+      "...EE........WW.....",
+      "....................",
+      "....................",
+      "....................",
+    ],
+    west: {
+      bases: [
+        { x: 6, y: 3, production: 6 },
+        { x: 1, y: 6, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 5, 3],
+        ["infantry", 7, 3],
+        ["infantry", 2, 7],
+        ["armor", 5, 4],
+        ["artillery", 6, 2],
+        ["engineer", 2, 6],
+        ["battalionHQ", 6, 4],
+      ],
+      objectives: [{ kind: "destroy", targetType: "infantry", label: "강하부대" }],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 4, production: 6 },
+        { x: 17, y: 8, production: 5, neutral: true },
+      ],
+      // 기갑이 없다. 하늘로 온 부대는 전차를 데려오지 못한다 — 그것이 이 판의 전부다.
+      // 앞의 넷은 거점에서 멀리 떨어진 채 시작해 첫날부터 보급이 흔들린다.
+      units: [
+        ["infantry", 8, 4],
+        ["infantry", 9, 6],
+        ["infantry", 11, 3],
+        ["infantry", 10, 8],
+        ["artillery", 16, 4],
+        ["engineer", 17, 5],
+        ["battalionHQ", 17, 4],
+        ["battalionHQ", 16, 8],
+      ],
+      objectives: [{ kind: "seize", x: 6, y: 3, label: "말레메 비행장", holdTurns: 2 }],
+    },
+  },
+
+  {
+    id: "singapore",
+    name: "싱가포르",
+    lead: "axis",
+    summary: "해협에 다리가 하나도 없다. 건너려면 공병이 놓아야 하고, 그 공병이 표적이다.",
+    objectiveBrief: "추축군은 저수지를 사흘 잡아라. 연합군은 공병대를 모두 격파하라.",
+    turnLimit: 10,
+    startDate: [1942, 2, 8],
+    // 물을 못 건너고 기한이 끝나면 요새는 그대로 남는다.
+    timeoutWinner: "west",
+    map: { enabled: true, centerLat: 1.4, centerLon: 103.76, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "SELAT JOHOR", west: "KRANJI", east: "SERANGOON", region: "SINGAPURA", city: "BUKIT TIMAH",
+      towns: ["Sarimbun", "Choa Chu Kang", "Jurong", "Pasir Panjang", "Nee Soon", "Changi"],
+    },
+    // bridges가 없다. 놓여 있는 다리가 한 칸도 없는 유일한 판이다.
+    terrain: [
+      "PPPPPPPPPPWPPPPPPPPP",
+      "PPFFPPPPPPWPPFFPPPBP",
+      "PPFFPPPPPPWPPFFPPPPP",
+      "PPPPPPPPPPWPPPPPPPPP",
+      "CCCCCCCCCCWCCCCCCCCC",
+      "PPPPHHPPPPWPPPPPPPPP",
+      "PPBPHHPPPPWPPPPPPPPP",
+      "PPPPPPPPPPWPPPFFPPPP",
+      "PPPPPPPPPPWPPPFFPPPP",
+      "CCCCCCCCCCWCCCCCCCCC",
+      "PPPPPPPPPPWPPPPPPPPP",
+      "PPFFPPPPPPWPPPPPPPPP",
+      "PPFFPPPPPPWPPPHHPPPP",
+      "PBPPPPPPPPWPPPHHPPPP",
+      "PPPPPPPPPPWPPPPPPPBP",
+      "PPPPPPPPPPWPPPPPPPPP",
+    ],
+    hillDefense: [
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....EE..............",
+      "....EE..............",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "..............WW....",
+      "..............WW....",
+      "....................",
+      "....................",
+    ],
+    west: {
+      bases: [
+        { x: 2, y: 6, production: 6 },
+        { x: 1, y: 13, production: 5, neutral: true },
+      ],
+      // 수가 많지만 넓게 흩어져 있다. 요새의 병력은 늘 지도 위에서만 많았다.
+      units: [
+        ["infantry", 3, 5],
+        ["infantry", 3, 7],
+        ["infantry", 6, 2],
+        ["infantry", 6, 11],
+        ["armor", 4, 9],
+        ["artillery", 1, 5],
+        ["artillery", 2, 12],
+        ["engineer", 1, 6],
+        ["battalionHQ", 3, 6],
+        ["battalionHQ", 2, 13],
+      ],
+      objectives: [{ kind: "destroy", targetType: "engineer", label: "공병대" }],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 1, production: 6 },
+        { x: 18, y: 14, production: 5, neutral: true },
+      ],
+      // 수는 적다. 대신 공병이 둘이라 해협을 두 곳에서 걸 수 있다.
+      units: [
+        ["infantry", 12, 4],
+        ["infantry", 12, 9],
+        ["armor", 14, 4],
+        ["engineer", 11, 4],
+        ["engineer", 11, 9],
+        ["battalionHQ", 13, 4],
+      ],
+      objectives: [{ kind: "seize", x: 2, y: 6, label: "저수지", holdTurns: 3 }],
+    },
+  },
+
+  {
+    id: "gazala",
+    name: "가잘라",
+    lead: "axis",
+    summary: "사막에 그은 선의 남쪽 끝은 늘 열려 있다. 돌아 들어간 쪽이 먼저 보급을 잃는다.",
+    objectiveBrief: "연합군은 비르하케임을 닷새 잡고 적 사령부까지 격멸하라. 추축군은 토브룩을 점령하라.",
+    turnLimit: 20,
+    startDate: [1942, 5, 26],
+    // 길어지면 뚫는 쪽이 먼저 말라붙는다.
+    timeoutWinner: "west",
+    map: { enabled: true, centerLat: 31.95, centerLon: 23.9, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "MEDITERRANEAN", west: "GAZALA", east: "CYRENAICA", region: "LIBYA", city: "TOBRUK",
+      towns: ["Bir Hakeim", "Acroma", "El Adem", "Knightsbridge", "Sidi Muftah", "Bir el Gubi"],
+    },
+    terrain: [
+      "WWWWWWWWWWWWWWWWWWWW",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPPBPPPPPPPPPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPPPHHPPPPPPPPPPPPBP",
+      "PPPPHHPPPPPPHHPPPPPP",
+      "PPPPPPPPPPPPHHPPPPPP",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPPPPPHHPPPPPPPPPPPP",
+      "PPPPPPHHPPPPPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPBPPPPPPPPPPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPPBP",
+    ],
+    hillDefense: [
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....EE..............",
+      "....EE......WW......",
+      "............WW......",
+      "....................",
+      "....................",
+      "......EE............",
+      "......EE............",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+    ],
+    west: {
+      bases: [
+        { x: 3, y: 2, production: 6 },
+        { x: 2, y: 13, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 4, 2],
+        ["infantry", 4, 3],
+        ["infantry", 3, 12],
+        ["armor", 5, 3],
+        ["armor", 4, 12],
+        ["artillery", 2, 2],
+        ["engineer", 3, 3],
+        ["battalionHQ", 3, 1],
+      ],
+      // 남쪽 끝의 비르하케임은 아직 아무 것도 아니다 — 먼저 가서 잡고, 닷새를 버티고,
+      // 그 사이 돌아 들어온 적 사령부까지 잡아야 한 묶음이 닫힌다.
+      objectives: [
+        { kind: "seize", x: 2, y: 13, label: "비르하케임", holdTurns: 5, group: "counter" },
+        { kind: "destroy", targetType: "battalionHQ", label: "대대 사령부", group: "counter" },
+      ],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 4, production: 6 },
+        { x: 18, y: 15, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 17, 4],
+        ["infantry", 16, 5],
+        ["armor", 16, 3],
+        ["armor", 15, 8],
+        ["artillery", 18, 5],
+        ["engineer", 18, 3],
+        ["battalionHQ", 18, 6],
+        ["battalionHQ", 17, 15],
+      ],
+      objectives: [{ kind: "seize", x: 3, y: 2, label: "토브룩 요새" }],
+    },
+  },
+
+  {
+    id: "kharkov",
+    name: "하르코프",
+    lead: "axis",
+    summary: "너무 멀리 나온 쪽이 도시 안에 앉아 있고, 예비대는 아직 손도 대지 않았다.",
+    objectiveBrief: "추축군은 하르코프를 되찾아라. 연합군은 동쪽 진출선까지 더 나아가라.",
+    turnLimit: 14,
+    startDate: [1943, 2, 19],
+    // 반격이 늦으면 전선은 그 자리에서 굳는다.
+    timeoutWinner: "east",
+    map: { enabled: true, centerLat: 49.99, centerLon: 36.23, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "SEVERSKY DONETS", west: "DNEPR", east: "OSKOL", region: "UKRAINE", city: "KHARKOV",
+      towns: ["Krasnograd", "Pavlograd", "Losovaya", "Merefa", "Taranovka", "Chuguyev"],
+    },
+    // 서군의 거점이 판 한가운데(11,6)에 있다. 이미 밀고 들어와 있다는 뜻이고,
+    // 그래서 뒤가 비어 있다 — 이 판의 위험은 전부 등 뒤에서 온다.
+    terrain: [
+      "PPFFPPPPPPPPPPFFPPPP",
+      "PPFFPPPPPPPPPPFFPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPPPPPHHPPPPPPPPPPPP",
+      "PPPPPPHHPPPBPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPPBP",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPFFPPPPPPPPPPPPPPPP",
+      "PPFFPPPPPPPPHHPPPPPP",
+      "PPPPPPPPPPPPHHPPPPPP",
+      "PPPPBPPPPPPPPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPPBP",
+    ],
+    hillDefense: [
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "......EE............",
+      "......EE............",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "............WW......",
+      "............WW......",
+      "....................",
+      "....................",
+      "....................",
+    ],
+    west: {
+      bases: [
+        { x: 11, y: 6, production: 6 },
+        { x: 4, y: 13, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 10, 5],
+        ["infantry", 12, 7],
+        ["infantry", 13, 9],
+        ["armor", 12, 5],
+        ["armor", 11, 8],
+        ["artillery", 10, 6],
+        ["engineer", 10, 7],
+        ["battalionHQ", 11, 7],
+        ["battalionHQ", 5, 13],
+      ],
+      objectives: [{ kind: "seize", x: 19, y: 9, label: "동쪽 진출선" }],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 8, production: 6 },
+        { x: 18, y: 15, production: 5, neutral: true },
+      ],
+      // 예비 기갑 셋이 뒤에 모여 있다. 손대지 않은 주먹이 반격의 전부다.
+      units: [
+        ["infantry", 17, 8],
+        ["infantry", 17, 10],
+        ["armor", 16, 7],
+        ["armor", 16, 9],
+        ["armor", 17, 12],
+        ["artillery", 18, 7],
+        ["engineer", 18, 9],
+        ["battalionHQ", 18, 6],
+        ["battalionHQ", 17, 15],
+      ],
+      objectives: [{ kind: "seize", x: 11, y: 6, label: "하르코프" }],
+    },
+  },
+
+  {
+    id: "zitadelle",
+    name: "성채",
+    lead: "axis",
+    summary: "능선 하나를 두고 정면으로 민다. 미는 쪽이 지치는 날, 다른 쪽 명령이 열린다.",
+    objectiveBrief: "추축군은 올호바트카 능선을 점령하라. 연합군은 여드레를 버틴 뒤 동군 후방 거점을 잡아라.",
+    turnLimit: 12,
+    startDate: [1943, 7, 5],
+    timeoutWinner: "west",
+    map: { enabled: true, centerLat: 52.3, centerLon: 36.3, zoom: 10, radius: 2 },
+    // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    mapLabels: {
+      sea: "OKA", west: "KURSK", east: "STEPPE FRONT", region: "ORYOL", city: "PONYRI",
+      towns: ["Olkhovatka", "Maloarkhangelsk", "Teploye", "Soborovka", "Samodurovka", "Fatezh"],
+    },
+    terrain: [
+      "PPPPPPPPHHHPPPPPPPPP",
+      "PPPPPPPPHHHPPPPPPPPP",
+      "PPFFPPPPPPPPPPPPPPPP",
+      "PBPPPPPPPPPPPPPPPPBP",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPPPPHHPPPPPPPHHPPPP",
+      "PPPPPHHPPPPPPPHHPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "CCCCCCCCCCCCCCCCCCCC",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPFFPPPPPPPPFFPPPPPP",
+      "PPFFPPPPPPPPFFPPPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPBPPPPPPPPPPPPPPPBP",
+      "PPPPPPPPPPPPPPPPPPPP",
+      "PPPPPPPPPPPPPPPPPPPP",
+    ],
+    // 능선은 남쪽에서 오는 공격을 막는다. 미는 쪽이 남에서 북으로 올라오기 때문이다.
+    hillDefense: [
+      "........SSS.........",
+      "........SSS.........",
+      "....................",
+      "....................",
+      "....................",
+      ".....EE.......WW....",
+      ".....EE.......WW....",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+    ],
+    west: {
+      bases: [
+        { x: 1, y: 3, production: 6 },
+        { x: 2, y: 13, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 2, 2],
+        ["infantry", 3, 3],
+        ["infantry", 8, 2],
+        ["infantry", 10, 2],
+        ["armor", 2, 4],
+        ["artillery", 1, 2],
+        ["engineer", 2, 3],
+        ["battalionHQ", 1, 4],
+        ["battalionHQ", 3, 13],
+      ],
+      // 아흐레째가 되기 전에는 없는 명령이다. 그때까지는 능선을 내주지 않는 것만이 할 일이다.
+      objectives: [{ kind: "seize", x: 18, y: 13, label: "동군 후방 거점", fromTurn: 9 }],
+    },
+    east: {
+      bases: [
+        { x: 18, y: 3, production: 6 },
+        { x: 18, y: 13, production: 5, neutral: true },
+      ],
+      units: [
+        ["infantry", 17, 3],
+        ["infantry", 16, 2],
+        ["armor", 16, 4],
+        ["armor", 15, 3],
+        ["artillery", 18, 4],
+        ["engineer", 18, 2],
+        ["battalionHQ", 18, 5],
+        ["battalionHQ", 17, 13],
+      ],
+      objectives: [{ kind: "seize", x: 9, y: 0, label: "올호바트카 능선" }],
+    },
+  },
 ];
 
-const defaultScenarioId = "totalWar";
+// 기본 작전. 아무 것도 고르기 전에 배경으로 깔리는 판이고, 저장된 작전을 못 찾을 때
+// 돌아오는 자리다. 접어 둔 작전을 여기 두면 목록에 없는 판이 배경에 깔린다.
+const defaultScenarioId = "cobra";
 
 function findScenario(id) {
   return scenarios.find((scenario) => scenario.id === id) ?? scenarios.find((scenario) => scenario.id === defaultScenarioId) ?? scenarios[0];

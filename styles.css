@@ -834,6 +834,20 @@ h1 {
   opacity: 0;
 }
 
+/* 판 위의 지명. 그림(operation-map.svg)에서 빼내어 작전마다 갈아 끼우는 층이다.
+   칸(z-index 2)보다 아래라 부대와 이동 표시가 늘 글자 위에 온다. */
+.map-labels {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  fill: #1e2a32;
+  font-family: Arial, Helvetica, sans-serif;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
 .map-underlay img {
   position: absolute;
   display: block;
@@ -5874,6 +5888,41 @@ body {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.4px;
+}
+
+/* 작전 이름 옆의 「누가 미는 판인가」 딱지. 열두 장이 이름만으로는 다 비슷해
+   보이는데, 미는 쪽이 곧 그 판의 성격이다 — 밀러 가는 판인지 막는 판인지를
+   고르기 전에 알아야 한다. 우리 군이 민 작전은 목록 위쪽에 모여 있다. */
+/* 날짜·크기·기한 같은 토막은 제 안에서 갈라지지 않는다. 줄은 가운뎃점에서만 넘어간다. */
+.scenario-choice-meta .meta-part {
+  display: inline;
+  white-space: nowrap;
+}
+
+.scenario-choice-body .scenario-choice-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.scenario-choice-body .scenario-choice-lead {
+  display: inline-block;
+  border: 1px solid currentcolor;
+  border-radius: 2px;
+  padding: 1px 6px 2px;
+  font-family: var(--tech);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+
+.scenario-choice-body .scenario-choice-lead[data-lead="allies"] {
+  color: #8ec98f;
+}
+
+.scenario-choice-body .scenario-choice-lead[data-lead="axis"] {
+  color: #d9a06a;
 }
 
 /* ── 상대 참모부(난이도) ─────────────────────────────────────────

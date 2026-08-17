@@ -1673,12 +1673,26 @@ function selectedOperationScenarioId() {
   return operationModalEl?.querySelector('input[name="operationScenario"]:checked')?.value ?? state?.scenarioId ?? defaultScenarioId;
 }
 
-// 이 작전은 어느 군의 작전인가. 작전에 side가 적혀 있으면 그 군의 명령서에만
-// 걸리고, 아직 안 적힌 작전은 양쪽 다에 걸어 둔다 — 열두 작전으로 갈아 끼우는
-// 동안 옛 작전이 목록에서 통째로 사라지지 않게 하는 다리다.
+// 명령서에 걸리는 작전 목록.
+//
+// retired가 붙은 작전은 목록에서 빠진다. 파일에서 지우는 것이 아니라 접어 두는 것이라,
+// 나중에 그 지도를 다시 쓰고 싶으면 그 한 줄만 지우면 그대로 돌아온다.
+//
+// 진영으로 감추지는 않는다. 열두 작전 모두 양쪽에 할 일이 따로 있으므로 어느 쪽을
+// 잡아도 한 판이 되고, 감추면 열두 판이 여섯 판으로 줄어든다. 대신 내 군이 주도한
+// 작전을 위로 올려 둔다.
 function scenariosForSide(side) {
-  const picked = scenarios.filter((scenario) => !scenario.side || scenario.side === side);
-  return picked.length ? picked : scenarios;
+  const live = scenarios.filter((scenario) => !scenario.retired);
+  const pool = live.length ? live : scenarios;
+  return pool.slice().sort((a, b) => (a.lead === side ? 0 : 1) - (b.lead === side ? 0 : 1));
+}
+
+// 이 작전에서 먼저 움직인 쪽. 카드에 붙여 두면 "내가 미는 판인지 막는 판인지"를
+// 고르기 전에 안다.
+function scenarioLeadLabel(scenario) {
+  if (scenario.lead === "allies") return "연합군 공세";
+  if (scenario.lead === "axis") return "추축군 공세";
+  return "";
 }
 
 function renderOperationScenarioChoices(side) {
@@ -1686,13 +1700,23 @@ function renderOperationScenarioChoices(side) {
   operationScenarioChoicesEl.innerHTML = scenariosForSide(side)
     .map((scenario) => {
       const size = `${scenario.terrain[0].length}×${scenario.terrain.length}`;
-      const deadline = scenario.turnLimit ? `${scenario.turnLimit}턴` : "기한 없음";
+      const deadline = scenario.turnLimit ? `${scenario.turnLimit}일` : "기한 없음";
+      const opened = scenario.startDate ? `${scenario.startDate[0]}.${scenario.startDate[1]}.${scenario.startDate[2]}` : "";
+      const lead = scenarioLeadLabel(scenario);
+      const badge = lead ? `<span class="scenario-choice-lead" data-lead="${scenario.lead}">${lead}</span>` : "";
+      // 두 칸짜리 카드에서 이 줄은 자주 두 줄이 된다. 그건 괜찮은데, 「추축군」이
+      // 「추축 / 군」으로 갈라지는 건 안 된다. 토막마다 줄바꿈을 막아 두면
+      // 줄은 언제나 가운뎃점 자리에서만 넘어간다.
+      const meta = [opened, size, deadline, scenarioOutcomeLabel(scenario)]
+        .filter(Boolean)
+        .map((part) => `<span class="meta-part">${part}</span>`)
+        .join(" · ");
       return `
       <label class="scenario-choice">
         <input type="radio" name="operationScenario" value="${scenario.id}" />
         <span class="scenario-choice-body">
-          <strong>${scenario.name}</strong>
-          <span class="scenario-choice-meta">${size} · ${deadline} · ${scenarioOutcomeLabel(scenario)}</span>
+          <span class="scenario-choice-head"><strong>${scenario.name}</strong>${badge}</span>
+          <span class="scenario-choice-meta">${meta}</span>
           <span>${scenario.summary}</span>
           <span class="scenario-choice-goal">${scenario.objectiveBrief}</span>
         </span>
@@ -1703,9 +1727,11 @@ function renderOperationScenarioChoices(side) {
 }
 
 // 기한이 끝났을 때 누가 이기는지가 곧 미션의 성격이다. 고르기 전에 그걸 보여준다.
+// 두 칸짜리 카드에서 "기한 만료 시 추축군 승리"는 마지막 낱말이 잘려 내려간다.
+// 글자를 줄일 수는 없으니 말을 줄인다 — 뜻은 그대로다.
 function scenarioOutcomeLabel(scenario) {
-  if (!scenario.timeoutWinner) return "기한 만료 시 무승부";
-  return scenario.timeoutWinner === "west" ? "기한 만료 시 연합군 승리" : "기한 만료 시 추축군 승리";
+  if (!scenario.timeoutWinner) return "기한 넘기면 무승부";
+  return scenario.timeoutWinner === "west" ? "기한 넘기면 연합군" : "기한 넘기면 추축군";
 }
 
 function closeNewOperationSetup() {
@@ -2197,6 +2223,10 @@ function createObjective(owner, spec) {
     targetType: spec.targetType ?? null,
     held: 0,
     holdTurns: spec.holdTurns ?? null,
+    // 같은 이름을 단 목표끼리 한 묶음. 묶음은 전부 이루어져야 이긴다(포위·양면 작전).
+    group: spec.group ?? null,
+    // 이 턴이 되기 전에는 없는 목표로 친다(뒤늦게 열리는 반격 명령).
+    fromTurn: spec.fromTurn ?? null,
   };
 }
 
@@ -2584,6 +2614,7 @@ function render() {
   boardEl.innerHTML = "";
   boardEl.classList.toggle("map-enabled", mapConfig.enabled);
   if (mapConfig.enabled) renderMapUnderlay();
+  renderMapLabels();
   // 물줄기는 칸을 그리기 전에 깔아야 부대와 이동 표시가 그 위에 온다.
   {
     const river = new Array(width * height).fill(false);
@@ -2751,6 +2782,68 @@ function renderMapUnderlay() {
   }
 
   boardEl.appendChild(underlay);
+}
+
+// 판에 깔린 그림(operation-map.svg)은 어느 작전에서나 같은 한 장이다. 예전에는
+// 거기 노르망디 지명이 박혀 있어서, 엘 알라메인 사막에서도 「CAEN」이 보였다.
+// 이제 자리는 코드가 정하고 이름은 작전이 들고 온다. 자리는 그림 속 마을 점과
+// 물길에 맞춰 잡은 값이라 작전이 바뀌어도 그대로 두고 이름만 갈아 끼운다.
+const MAP_LABEL_SLOTS = {
+  // 위쪽 물줄기/바다 띠 — 큰 글자, 자간 넓게.
+  sea: { x: 700, y: 112, size: 44, weight: 700, track: 7 },
+  // 좌우 지방 이름.
+  west: { x: 200, y: 760, size: 36, weight: 700, track: 3 },
+  east: { x: 1240, y: 660, size: 36, weight: 700, track: 3 },
+  // 판 전체를 부르는 이름. 가장 큰 글자.
+  region: { x: 1005, y: 1395, size: 68, weight: 800, track: 4 },
+  // 중심 도시.
+  city: { x: 610, y: 1065, size: 38, weight: 700, track: 0 },
+};
+
+// 마을 이름이 앉는 자리. 그림의 점 일곱 개 중 여섯 개 옆이다.
+const MAP_TOWN_SLOTS = [
+  { x: 228, y: 1092 },
+  { x: 452, y: 944 },
+  { x: 1284, y: 880 },
+  { x: 1508, y: 1010 },
+  { x: 1648, y: 1180 },
+  { x: 1780, y: 1372 },
+];
+
+function renderMapLabels() {
+  const labels = activeScenario?.mapLabels;
+  if (!labels) return;
+
+  const NS = "http://www.w3.org/2000/svg";
+  const group = document.createElementNS(NS, "g");
+  const put = (slot, text, size) => {
+    if (!text) return;
+    const node = document.createElementNS(NS, "text");
+    node.setAttribute("x", String(slot.x));
+    node.setAttribute("y", String(slot.y));
+    node.setAttribute("font-size", String(size ?? slot.size));
+    node.setAttribute("font-weight", String(slot.weight ?? 400));
+    if (slot.track) node.setAttribute("letter-spacing", String(slot.track));
+    node.textContent = text;
+    group.appendChild(node);
+  };
+
+  Object.entries(MAP_LABEL_SLOTS).forEach(([key, slot]) => put(slot, labels[key]));
+  (labels.towns ?? []).forEach((town, index) => {
+    const slot = MAP_TOWN_SLOTS[index];
+    if (slot) put({ ...slot, weight: 400 }, town, 26);
+  });
+  if (!group.childNodes.length) return;
+
+  // 판 배경은 center/cover로 깔린다. 글자도 같은 방식으로 잘려야 지명이 그림 속
+  // 제자리에 앉는다 — SVG에서 cover에 해당하는 말이 slice다.
+  const layer = document.createElementNS(NS, "svg");
+  layer.setAttribute("class", "map-labels");
+  layer.setAttribute("viewBox", "0 0 2000 1600");
+  layer.setAttribute("preserveAspectRatio", "xMidYMid slice");
+  layer.setAttribute("aria-hidden", "true");
+  layer.appendChild(group);
+  boardEl.appendChild(layer);
 }
 
 function lonLatToTile(lon, lat, zoom) {
@@ -5414,11 +5507,20 @@ function objectiveAt(x, y) {
   return missionObjectives().find((objective) => objective.x === x && objective.y === y);
 }
 
+// 아직 열리지 않은 목표가 있다. "여드레를 버틴 뒤에야 반격에 나선다" 같은 작전은
+// 그날이 오기 전까지 목표가 없는 것과 같아야 한다 — 미리 가서 앉아 있어도 유지 턴이
+// 쌓이면 안 되고, 달성 판정에도 걸리면 안 된다.
+function objectiveOpen(objective) {
+  return !objective.fromTurn || state.turn >= objective.fromTurn;
+}
+
 // 좌표가 있는 목표 전부. AI가 "어디로 가야 하는가"를 물을 때 보는 목록이고,
 // 유지 턴이 도는 목표이기도 하다. 점령이든 개통이든 지도 위의 한 점을 두고
 // 다투는 것은 같으므로, 자세·축선·초소는 이 목록 하나만 보면 된다.
 function objectiveTiles(owner) {
-  return objectivesFor(owner).filter((objective) => objective.kind === "seize" || objective.kind === "supply");
+  return objectivesFor(owner)
+    .filter(objectiveOpen)
+    .filter((objective) => objective.kind === "seize" || objective.kind === "supply");
 }
 
 // 이 칸이 그 진영의 거점 보급망에 "정상" 등급으로 이어져 있는가.
@@ -5498,16 +5600,38 @@ function advanceObjectiveHold(owner) {
   });
 }
 
+// 목표 하나가 이루어졌는가. 아래 두 함수가 같이 쓴다.
+function objectiveMet(objective) {
+  if (!objectiveOpen(objective)) return false;
+  if (objective.kind === "seize" || objective.kind === "supply") return objective.held >= objectiveHoldRequirement(objective);
+  if (objective.kind === "destroy") {
+    const prey = objective.owner === "player" ? "enemy" : "player";
+    return !state.units.some((unit) => unit.owner === prey && unit.type === objective.targetType);
+  }
+  return false;
+}
+
 // 달성된 "승리 목표". protect는 승리 목표가 아니라 실패 조건이라 여기서 빠진다.
+//
+// 같은 group 이름을 단 목표는 한 묶음이다 — 남북 두 집게가 다 닫혀야 포위이고,
+// 하나만 성공하면 적은 그대로 빠져나간다. 그래서 묶음은 전부 이루어져야 이긴다.
+// group이 없는 목표는 예전처럼 저 혼자로 이긴다.
 function completedObjective() {
-  return missionObjectives().find((objective) => {
-    if (objective.kind === "seize" || objective.kind === "supply") return objective.held >= objectiveHoldRequirement(objective);
-    if (objective.kind === "destroy") {
-      const prey = objective.owner === "player" ? "enemy" : "player";
-      return !state.units.some((unit) => unit.owner === prey && unit.type === objective.targetType);
+  const groups = new Map();
+  const solo = [];
+  missionObjectives().forEach((objective) => {
+    if (!objective.group) {
+      solo.push(objective);
+      return;
     }
-    return false;
+    const key = `${objective.owner}:${objective.group}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(objective);
   });
+  for (const members of groups.values()) {
+    if (members.every(objectiveMet)) return members[members.length - 1];
+  }
+  return solo.find(objectiveMet);
 }
 
 // 지켜야 할 대상이 사라졌으면 그 진영이 진다. 승리 목표보다 먼저 본다 —
@@ -5518,19 +5642,29 @@ function failedObjective() {
   );
 }
 
+// 목표 줄 뒤에 붙는 단서. 둘 다 "이 목표 하나만 봐서는 알 수 없는 것"이라
+// 명령서에 반드시 적혀야 한다 — 언제부터 유효한지, 혼자로 되는지.
+function objectiveNoteText(objective) {
+  const notes = [];
+  if (objective.fromTurn) notes.push(`${objective.fromTurn}일차부터`);
+  if (objective.group) notes.push("둘 다 달성");
+  return notes.length ? ` · ${notes.join(" · ")}` : "";
+}
+
 function objectiveGoalText(objective) {
+  const note = objectiveNoteText(objective);
   if (objective.kind === "seize") {
     const need = objectiveHoldRequirement(objective);
     const who = objective.byTag ? "지정 부대가 " : "";
-    return `${objective.label} (${objective.x}, ${objective.y}) ${who}${need}턴 유지`;
+    return `${objective.label} (${objective.x}, ${objective.y}) ${who}${need}턴 유지${note}`;
   }
   // 개통 목표는 "가라"가 아니라 "이어라"다. 무엇을 해야 하는지가 이름에 드러나야
   // 플레이어가 부대 대신 공병대를 먼저 움직인다.
   if (objective.kind === "supply") {
-    return `${objective.label} (${objective.x}, ${objective.y}) 보급선 개통 ${objectiveHoldRequirement(objective)}턴 유지`;
+    return `${objective.label} (${objective.x}, ${objective.y}) 보급선 개통 ${objectiveHoldRequirement(objective)}턴 유지${note}`;
   }
   // 격파 목표의 이름은 "무엇을"만 적는다. "누구 것을"은 목표 주인이 정하므로 여기서 붙인다.
-  if (objective.kind === "destroy") return `${objective.owner === "player" ? "적" : "아군"} ${objective.label} 격파`;
+  if (objective.kind === "destroy") return `${objective.owner === "player" ? "적" : "아군"} ${objective.label} 격파${note}`;
   if (objective.kind === "protect") return `${objective.label} 사수`;
   return objective.label;
 }
@@ -6725,7 +6859,9 @@ function tryEnemyCapture(unit) {
 //   defend : 내 목표는 없고 시계가 내 편이다. 플레이어의 목표를 막는다.
 // 예전 AI는 자세가 없어서 어느 미션에서든 "가장 가까운 거점 습격"만 했다.
 function enemyPosture() {
-  const mine = objectivesFor("enemy");
+  // 아직 열리지 않은 목표(나중에 떨어지는 반격 명령)는 없는 것으로 친다.
+  // 그것까지 세면 첫날부터 후방 거점으로 달려가는 우스운 적이 된다.
+  const mine = objectivesFor("enemy").filter(objectiveOpen);
   if (mine.some((objective) => objective.kind === "destroy")) return "hunt";
   // 플레이어가 지켜야 하는 부대는 곧 적이 노려야 할 사냥감이다.
   if (objectivesFor("player").some((objective) => objective.kind === "protect")) return "hunt";

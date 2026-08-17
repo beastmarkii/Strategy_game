@@ -65,19 +65,10 @@
     <path d="M774 300 C910 414 1042 480 1196 505 C1370 532 1538 520 1710 548"/>
   </g>
 
-  <g font-family="Arial, Helvetica, sans-serif" fill="#1e2a32" opacity="0.72">
-    <text x="700" y="112" font-size="44" font-weight="700" letter-spacing="7">LA MANCHE</text>
-    <text x="200" y="760" font-size="36" font-weight="700" letter-spacing="3">COTENTIN</text>
-    <text x="1240" y="660" font-size="36" font-weight="700" letter-spacing="3">PAYS D'AUGE</text>
-    <text x="1005" y="1395" font-size="68" font-weight="800" letter-spacing="4">NORMANDIE</text>
-    <text x="610" y="1065" font-size="38" font-weight="700">CAEN</text>
-    <text x="228" y="1092" font-size="26">Saint-Lô</text>
-    <text x="452" y="944" font-size="26">Bayeux</text>
-    <text x="1284" y="880" font-size="26">Lisieux</text>
-    <text x="1508" y="1010" font-size="26">Falaise</text>
-    <text x="1648" y="1180" font-size="26">Argentan</text>
-    <text x="1780" y="1372" font-size="26">Alençon</text>
-  </g>
+  <!-- 지명은 여기 박아 두지 않는다. 판이 노르망디 하나였을 때는 그래도 됐지만,
+       이제 이 그림은 사막에도 초원에도 깔린다. 이름은 작전이 들고 오고(scenarios.js)
+       화면을 그릴 때 이 위에 얹는다(game.js renderMapLabels). 아래 점들은 그 이름이
+       앉을 자리다 — 위치는 그대로 두고 부르는 이름만 바뀐다. -->
 
   <g fill="#21323b" opacity="0.78">
     <circle cx="620" cy="1032" r="8"/>
