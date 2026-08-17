@@ -17,6 +17,14 @@
 //   먼저 밟는 쪽이 가져간다 — 그래서 거점은 "받고 시작하는 것"이 아니라 "싸워서 여는 것"이다.
 //   진영 블록 안에 적혀 있어도 소유가 아니라 위치만 그쪽 몫이라는 뜻이다.
 //
+// 놓여 있는 다리(bridges)
+//   [[x, y], ...] — 작전이 시작될 때부터 그 자리에 서 있는 다리다. 전쟁 전부터
+//   있던 마을 다리라서 주인이 없고(owner: "neutral"), 양쪽 다 그냥 건넌다.
+//   이게 필요한 이유: 강 한가운데 뭍 한 칸을 박아 두면 지도에서는 강이 흙으로
+//   막힌 것처럼 보인다. 물길은 끊기지 않게 그대로 흘리고, 그 위에 다리를 얹는다.
+//   공병대가 새로 놓는 다리 두 개 제한과는 무관하다 — 이건 지을 것이 아니라
+//   이미 있는 것이다.
+//
 // 목표(objective) 종류
 //   seize    지정 칸을 점유하고 holdTurns 만큼 유지 → 즉시 승리
 //            byTag를 주면 그 태그가 붙은 유닛만 인정한다 (탈출 미션용)
@@ -133,24 +141,37 @@ const scenarios = [
     // 강이 아니라 판을 반으로 자른 금이었다. 열을 8~10 사이로 비껴 흐르게 바꾼다.
     // 한 칸씩 어긋나도 이동은 상하좌우뿐이라 막는 힘은 그대로다 — 비껴 있는
     // 두 칸 사이로 빠져나가려면 결국 강 칸을 밟아야 한다.
-    // 도하 지점은 예전 그대로 3·8·13행 셋이고, 그 행의 강 칸도 그 자리에 맞춰 옮겼다.
+    // 도하 지점은 예전 그대로 3·8·13행 셋이다. 다만 예전에는 그 세 줄에서 강 자체를
+    // 지워 뭍으로 막아 놓았다 — 그러면 강이 위에서 내려오다 흙에 막히고 아래에서 다시
+    // 시작하는, 세상에 없는 그림이 된다. 이제 물길은 끊지 않고 그대로 흘려보내고,
+    // 그 위에 원래 있던 마을 다리를 얹는다(bridges). 건너는 자리도 건너는 값도
+    // 예전과 똑같다 — 달라진 것은 그 자리가 흙더미가 아니라 다리로 보인다는 것뿐이다.
     terrain: [
       "PPFFPPPPPWPPHHPPPPPP",
       "PPFFPPPPPWPPHHPPPPBP",
       "PPPPPPPPPPWPPHPPPPPP",
-      "CCCCCCCCCCCCCCPPPPPP",
+      "CCCCCCCCCCWCCCPPPPPP",
       "PPPPPPPPPPWPPPFFPPPP",
       "PPPFFPPPPPWPPPFFPPPP",
       "PPPFFPPPPWPPPPPPPHHP",
       "PPPPPPPPPWPPPPPPPHHP",
-      "CCCCCCCCCCCCCPPPPPPP",
+      "CCCCCCCCWWCCCPPPPPPP",
       "PPPPPPPPWPPPPBPPPPPP",
       "PPPPHHPPWPPPPPPPPPPP",
       "PPPPHHPPPWPPFFPPPPPP",
       "PPPPPPPPPWPPFFPPPPPP",
-      "CCCCCCCCCCCCCCCPPPPP",
+      "CCCCCCCCCWWCCCCPPPPP",
       "PBPPPPPPPPWPPPPPPPPP",
       "PPPPPBPPPPWPPPPPPPPP",
+    ],
+    // 3·8·13행의 강 칸 위에 서 있는 마을 다리. 강줄기가 열을 비껴 흐르는 자리에서는
+    // 물이 두 칸을 지나므로 다리도 두 칸이다.
+    bridges: [
+      [10, 3],
+      [8, 8],
+      [9, 8],
+      [9, 13],
+      [10, 13],
     ],
     hillDefense: [
       "............WW......",
@@ -463,7 +484,7 @@ const scenarios = [
   {
     id: "supplyBridge",
     name: "보급선 개통",
-    summary: "강이 전선을 둘로 갈랐다. 강폭은 두 칸이라 다리를 놓을 수 없고, 한 칸으로 좁아지는 나루는 북·중·남 셋뿐이다.",
+    summary: "강이 전선을 둘로 갈랐다. 성한 다리는 북·중·남 셋뿐이고, 강폭이 두 칸이라 새로 놓으려면 공병대가 두 칸을 이어 붙여야 한다.",
     objectiveBrief: "동안의 화물역까지 보급선을 개통하고 유지하라. 부대를 세우는 것으로는 끝나지 않는다.",
     // 다리 하루, 창고 사흘, 철도 이틀. 짓는 시간까지 계산에 넣어야 하므로 기한이 길다.
     turnLimit: 24,
@@ -471,26 +492,37 @@ const scenarios = [
     timeoutWinner: "east",
     // 1944년 9월, 발 강. 다리 하나에 작전 전체가 걸렸던 그 회랑.
     map: { enabled: true, centerLat: 51.85, centerLon: 5.87, zoom: 10, radius: 2 },
-    // 9·10열이 강이다. 두 칸 폭은 어디에도 다리를 놓을 수 없다(양쪽 기슭이 모두 뭍이어야
-    // 교량이 선다). 2·8·13행에서만 10열이 뭍이 되어 강이 한 칸으로 좁아진다 —
-    // 지도가 스스로 "여기가 나루다"라고 말하고, 그 사실을 양쪽이 똑같이 본다.
+    // 9·10열이 강이다. 강폭은 위에서 아래까지 고르게 두 칸이다 — 예전에는 2·8·13행에서만
+    // 10열을 뭍으로 바꿔 "한 칸으로 좁아지는 나루"를 만들었는데, 그러면 강 한복판에
+    // 흙 한 칸이 떠 있는 그림이 된다. 물길은 그대로 두고, 그 세 자리에 원래 있던
+    // 다리를 두 칸씩 얹었다(bridges). 건널 수 있는 자리는 예전과 똑같이 셋이다.
+    // 새 다리를 놓으려면 공병대가 한 칸을 걸고, 그 위로 올라가 나머지 한 칸을 잇는다.
     terrain: [
       "PPPPPPPPPWWPPPPPPPPP",
       "PPFFPPPPPWWPPPPFFPPP",
-      "PPFFPPPPPWPPPPPFFPPP",
+      "PPFFPPPPPWWPPPPFFPPP",
       "CCCCCCCCCWWCCCCCCCCC",
       "PPPPPPPPPWWPPPPPHHBP",
       "PPPPHHPPPWWPPPPPHHPP",
       "PPPPHHPPPWWPPPPPPPPP",
       "PBPPPPPPPWWPPPPPPPPP",
-      "CCCCCCCCCWCCCCCCCCCC",
+      "CCCCCCCCCWWCCCCCCCCC",
       "PPPPPPPPPWWPPPPPPPPP",
       "PPPPPPPPPWWPPFFPPPPP",
       "PPPFFPPPPWWPPFFPPBPP",
       "PPPFFPPPPWWPPPPPPPPP",
-      "CCCCCCCCCWCCCCCCCCCC",
+      "CCCCCCCCCWWCCCCCCCCC",
       "PPBPPPPPPWWPPPPPPPPP",
       "PPPPPPPPPWWPPPPPPPPP",
+    ],
+    // 북·중·남 세 곳의 다리. 강폭이 두 칸이라 다리도 두 칸씩이다.
+    bridges: [
+      [9, 2],
+      [10, 2],
+      [9, 8],
+      [10, 8],
+      [9, 13],
+      [10, 13],
     ],
     hillDefense: [
       "....................",

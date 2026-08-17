@@ -243,6 +243,9 @@ function applyScenario(scenario) {
   activeScenario = scenario;
   terrainMap = scenario.terrain;
   hillDefenseMap = scenario.hillDefense;
+  // 다리를 걸 수 있는 자리는 지형에서 나온다. 지형이 바뀌었으니 지난 판에서 재 둔
+  // 값은 이제 남의 지도 이야기다(bridgeAxisAt).
+  bridgeAxisCache.clear();
   width = scenario.terrain[0].length;
   height = scenario.terrain.length;
   mapConfig = { ...mapConfig, ...(scenario.map ?? {}) };
@@ -638,10 +641,11 @@ document.querySelector("#toggleCommandPanel")?.addEventListener("click", toggleC
 document.querySelector("#focusCommandPanel")?.addEventListener("click", openCommandPanel);
 document.querySelector("#panelScrim")?.addEventListener("click", closeCommandPanel);
 
-// 좁은 화면에서 부대 카드를 누르면 나머지 항목까지 펴 본다. 카드가 지도 위에
-// 떠 있기 때문에, 늘 열아홉 줄을 펴 두면 전장 절반이 가려진다.
+// 부대 카드는 지도 위에 얹힌 쪽지라 늘 스물두 줄을 펴 두면 전장이 가려진다.
+// 접혀 있을 때는 핵심 여섯 줄만 띄우고, 누르면 나머지가 펴진다.
+// (넓은 화면에서는 카드 전체가 마우스를 통과시키고, '자세히' 글씨 한 줄만
+//  마우스를 받는다. 그래서 이 누름은 그 한 줄에서만 들어온다 — styles.css)
 selectedCardEl?.addEventListener("click", () => {
-  if (window.innerWidth > 860) return;
   if (!selectedCardEl.querySelector(".unit-stats")) return;
   selectedCardEl.classList.toggle("expanded");
 });
@@ -809,12 +813,24 @@ function fitBoardToScreen() {
   boardEl.style.marginTop = "0px";
   boardEl.style.marginBottom = "0px";
 
-  const { flat, tilted } = measureBoardBox();
-  // 판을 뺀 나머지(임무 띠·상황판·범례·안쪽 여백)가 이미 먹고 있는 높이
-  const chrome = battlefieldWrapEl.offsetHeight - flat.height;
+  const { tilted } = measureBoardBox();
+  // 판을 뺀 나머지(임무 띠·상황판·범례·안내줄·안쪽 여백)가 이미 먹고 있는 높이.
+  // 예전에는 이걸 "틀 전체 높이 - 판 높이"로 구했는데, 틀이 화면 높이만큼
+  // 늘어나면(아래 align-self: stretch) 그 뺄셈이 곧바로 틀린 값이 된다.
+  // 그래서 판 위쪽과 아래쪽을 따로 재서 더한다 — 틀이 얼마나 크든 같은 값이다.
+  const stageEl = document.querySelector("#mapStage");
+  const wrapStyle = window.getComputedStyle(battlefieldWrapEl);
+  const hintEl = document.getElementById("actionHint");
+  const rowGap = parseFloat(wrapStyle.rowGap) || 0;
+  const belowMap = hintEl ? hintEl.offsetHeight + rowGap : 0;
+  const chrome = (stageEl?.offsetTop ?? 0) + belowMap + (parseFloat(wrapStyle.paddingBottom) || 0);
   const room = window.innerHeight - battlefieldWrapEl.getBoundingClientRect().top - 16 - chrome;
+  // 남는 자리가 적다고 손을 놓으면 안 된다. 예전 문턱(120px)에서는 낮은 화면일수록
+  // 아예 줄이지 않았고, 그 결과 판이 제 크기로 남아 아래에 있던 부대 카드를 화면
+  // 밖으로 밀어냈다 — 줄여야 할 때 정확히 안 줄이고 있었다는 뜻이다. 판이 작아지는
+  // 것과 고른 부대가 안 보이는 것 중에는 전자가 낫다.
   let fit = 1;
-  if (room > 120 && tilted.height > room) fit = room / tilted.height;
+  if (room > 80 && tilted.height > room) fit = room / tilted.height;
   // 가로도 본다. 판을 눕히면 앞쪽(아래쪽) 변이 원근 때문에 뒤쪽보다 넓게 벌어져서,
   // 1440 폭 화면에서는 맨 아랫줄 양쪽 끝 한 칸씩이 화면 밖으로 잘려 나가고 있었다.
   // 판 전체의 네모 칸이 아니라 실제로 칸이 그려진 폭을 재야 필요한 만큼만 줄인다.
@@ -831,8 +847,26 @@ function fitBoardToScreen() {
     const widthRoom = battlefieldWrapEl.clientWidth - 8;
     if (widthRoom > 200 && span > widthRoom) fit = Math.min(fit, widthRoom / span);
   }
-  if (fit < 1) battlefieldWrapEl.style.setProperty("--map-fit-scale", clamp(fit, 0.55, 1).toFixed(3));
+  if (fit < 1) battlefieldWrapEl.style.setProperty("--map-fit-scale", clamp(fit, 0.42, 1).toFixed(3));
   trimBoardBox();
+  placeUnitCard();
+}
+
+// 부대 카드는 지도 오른쪽 위 모서리에 얹힌다. 그런데 지도가 시작하는 높이는
+// 고정이 아니다 — 범례를 접고 펴거나 임무 문구가 두 줄이 되면 지도가 오르내린다.
+// 그래서 지도판이 실제로 시작하는 자리를 재서 카드에게 알려 준다(styles.css).
+function placeUnitCard() {
+  const stage = document.querySelector("#mapStage");
+  if (!stage || !battlefieldWrapEl) return;
+  // 판이 무대 안에서 가운데에 놓이므로, 무대가 시작하는 자리가 아니라 판이
+  // 실제로 그려지기 시작하는 자리를 잡아야 카드가 지도 모서리에 붙는다.
+  let top = stage.offsetTop;
+  if (boardEl) {
+    const board = boardEl.getBoundingClientRect();
+    const wrap = battlefieldWrapEl.getBoundingClientRect();
+    if (board.height > 0) top = Math.max(top, board.top - wrap.top);
+  }
+  battlefieldWrapEl.style.setProperty("--card-top", `${Math.round(top)}px`);
 }
 
 let boardFitTimer = 0;
@@ -1336,7 +1370,9 @@ function startGame(config = {}) {
       enemy: aiCommander,
     },
     bases: deployment.bases,
-    improvements: [],
+    // 시나리오에 처음부터 서 있는 마을 다리. 전쟁 전부터 있던 것이라 주인이 없고,
+    // 양쪽 다 그냥 건넌다. 공병대의 다리 두 개 제한에도 안 들어간다(builtCrossingCount).
+    improvements: (scenario.bridges ?? []).map(([x, y]) => ({ type: "bridge", owner: "neutral", x, y })),
     constructions: [],
     units: deployment.units,
     // 마지막으로 목격한 적의 자리. 진영마다 따로 쥔다 — 이게 곧 "각자 아는 만큼만
@@ -3774,9 +3810,14 @@ function engineerBuild(type) {
   }
 
   if (type === "bridge") {
-    const water = neighbors(engineer.x, engineer.y).find((spot) => isBridgeableWater(spot.x, spot.y) && !hasImprovement(spot.x, spot.y, "bridge"));
+    // 발 닿는 곳의 아직 다리가 없는 물칸 전부. 그중 규칙을 통과하는 것을 고르고,
+    // 하나도 없으면 왜 안 되는지를 이 목록을 보고 말해 준다.
+    const spots = neighbors(engineer.x, engineer.y).filter(
+      (spot) => getTerrainKey(spot.x, spot.y) === "W" && !hasImprovement(spot.x, spot.y, "bridge"),
+    );
+    const water = spots.find((spot) => canPlaceBridge(engineer.owner, spot.x, spot.y));
     if (!water) {
-      addLog("공병대 주변에 다리를 놓을 하천이 없습니다.");
+      addLog(bridgeRefusalReason(engineer.owner, spots));
       render();
       return;
     }
@@ -3784,7 +3825,23 @@ function engineerBuild(type) {
     state.improvements.push({ type: "bridge", owner: engineer.owner, x: water.x, y: water.y });
     engineer.acted = true;
     state.selectedId = null;
-    addLog(`공병대가 (${water.x}, ${water.y}) 하천에 임시 교량을 완성했습니다.`);
+    // 강이 뚫렸으니 어제 그린 길은 이제 거짓말이다(적 공병대 쪽과 같은 처리).
+    clearRouteFields();
+    // 강폭이 남아 있으면 아직 건널 수 없다. 공병대가 다리 위로 올라서서 다음 칸을
+    // 이어야 한다 — 그 말을 안 해 주면 플레이어는 다리를 놓고도 왜 못 건너는지 모른다.
+    // 건너는 방향으로만 본다. 강을 따라 위아래에 있는 물은 이 다리가 이을 물이 아니다.
+    const ahead = bridgeAxisAt(water.x, water.y) === "h" ? [[1, 0], [-1, 0]] : [[0, 1], [0, -1]];
+    const gap = ahead.some(
+      ([dx, dy]) =>
+        inBounds(water.x + dx, water.y + dy) &&
+        getTerrainKey(water.x + dx, water.y + dy) === "W" &&
+        !hasImprovement(water.x + dx, water.y + dy, "bridge"),
+    );
+    addLog(
+      gap
+        ? `공병대가 (${water.x}, ${water.y})에 교량 한 칸을 걸었습니다. 강폭이 남았습니다 — 다리 위로 올라 다음 칸을 이으십시오.`
+        : `공병대가 (${water.x}, ${water.y}) 하천에 임시 교량을 완성했습니다.`,
+    );
     // 교량만 그 자리에서 끝난다. 나머지 공사는 completeConstruction에서 알린다.
     playNoticeSound("work_complete");
     render();
@@ -3812,7 +3869,7 @@ function engineerBuild(type) {
 function canBuildBridge(engineer) {
   if (state.phase !== "player" || state.gameOver || engineer.acted || engineer.type !== "engineer") return false;
   if (state.resources < constructionCosts.bridge) return false;
-  return neighbors(engineer.x, engineer.y).some((spot) => isBridgeableWater(spot.x, spot.y) && !hasImprovement(spot.x, spot.y, "bridge"));
+  return neighbors(engineer.x, engineer.y).some((spot) => canPlaceBridge(engineer.owner, spot.x, spot.y));
 }
 
 // "이 칸에 이걸 지을 수 있는가"는 진영과 무관한 규칙이다. 적 AI도 같은 자를 써야
@@ -5258,11 +5315,116 @@ function hasBridgeableCrossing(x, y) {
   return hasImprovement(x, y, "bridge") && isBridgeableWater(x, y);
 }
 
+// 다리 규칙은 여기 한 곳에서만 정한다. 플레이어의 공병대와 적의 공병대가 같은 자를
+// 써야, 내가 못 놓은 자리에 적이 놓는 일이 생기지 않는다.
+//
+// 한 다리가 이을 수 있는 물의 최대 칸 수. 강폭이 이보다 넓으면 기슭에 닿지 않는다.
+// 3으로 잡은 이유: 판에서 가장 넓은 강이 두 칸(보급선 개통)이라 두 칸은 반드시
+// 놓을 수 있어야 하고, 세 칸을 넘어가면 그건 강이 아니라 만이다.
+const bridgeSpanLimit = 3;
+// 한 진영이 새로 놓을 수 있는 다리(도하로)의 수. 붙어 있는 칸은 몇 칸이든 한 다리다.
+// 시나리오에 처음부터 서 있던 마을 다리(owner: "neutral")는 여기에 안 센다 —
+// 그건 지은 것이 아니라 원래 있던 것이다.
+const bridgeLimitPerSide = 2;
+
+// 이 칸의 물이 그 방향으로 몇 칸 이어지는가. 끝까지 갔는데 판 밖이면 기슭이 없다는
+// 뜻이라 Infinity — 바다로 나가는 물에는 다리를 걸 수 없다.
+function waterRunLength(x, y, axis) {
+  const stepX = axis === "h" ? 1 : 0;
+  const stepY = axis === "h" ? 0 : 1;
+  let length = 1;
+  for (const dir of [1, -1]) {
+    let cx = x + stepX * dir;
+    let cy = y + stepY * dir;
+    while (inBounds(cx, cy) && getTerrainKey(cx, cy) === "W") {
+      length += 1;
+      cx += stepX * dir;
+      cy += stepY * dir;
+    }
+    if (!inBounds(cx, cy)) return Infinity;
+  }
+  return length;
+}
+
+// 다리가 놓이는 방향. 물이 짧게 끝나는 쪽으로 건넌다 — 강줄기를 따라 길게 까는 것은
+// 다리가 아니라 둑이다. 지형은 작전 내내 바뀌지 않으므로 한 번 잰 값을 재사용한다
+// (이 함수는 길찾기가 칸마다 부르는 자리라 매번 강을 훑으면 판이 느려진다).
+const bridgeAxisCache = new Map();
+
+function bridgeAxisAt(x, y) {
+  if (getTerrainKey(x, y) !== "W") return null;
+  const key = posKey(x, y);
+  if (bridgeAxisCache.has(key)) return bridgeAxisCache.get(key);
+  const across = waterRunLength(x, y, "h");
+  const along = waterRunLength(x, y, "v");
+  const axis = Math.min(across, along) > bridgeSpanLimit ? null : across <= along ? "h" : "v";
+  bridgeAxisCache.set(key, axis);
+  return axis;
+}
+
 function isBridgeableWater(x, y) {
-  if (getTerrainKey(x, y) !== "W") return false;
-  const horizontalBanks = inBounds(x - 1, y) && inBounds(x + 1, y) && getTerrainKey(x - 1, y) !== "W" && getTerrainKey(x + 1, y) !== "W";
-  const verticalBanks = inBounds(x, y - 1) && inBounds(x, y + 1) && getTerrainKey(x, y - 1) !== "W" && getTerrainKey(x, y + 1) !== "W";
-  return horizontalBanks || verticalBanks;
+  return bridgeAxisAt(x, y) !== null;
+}
+
+// 다리는 나란히 두 줄로 놓을 수 없다. 건너는 방향이 가로면 강은 세로로 흐르므로,
+// 강을 따라 바로 위아래 칸에 다리가 있는지를 본다. 거기 이미 다리가 있다면 이건
+// 새 도하로가 아니라 기존 다리 옆에 똑같은 다리를 하나 더 까는 것이다.
+function isParallelToExistingBridge(x, y) {
+  const axis = bridgeAxisAt(x, y);
+  if (!axis) return false;
+  const alongRiver = axis === "h" ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]];
+  return alongRiver.some(([dx, dy]) => inBounds(x + dx, y + dy) && hasImprovement(x + dx, y + dy, "bridge"));
+}
+
+// 붙어 있는 다리 칸은 한 다리로 센다. 두 칸짜리 강에 두 칸을 걸어도 다리는 하나다.
+function builtCrossingCount(owner) {
+  const pending = new Set(
+    state.improvements.filter((item) => item.type === "bridge" && item.owner === owner).map((item) => posKey(item.x, item.y)),
+  );
+  let crossings = 0;
+  while (pending.size) {
+    const [seed] = pending;
+    pending.delete(seed);
+    const queue = [seed];
+    while (queue.length) {
+      const [cx, cy] = queue.pop().split(",").map(Number);
+      for (const spot of neighbors(cx, cy)) {
+        const key = posKey(spot.x, spot.y);
+        if (!pending.has(key)) continue;
+        pending.delete(key);
+        queue.push(key);
+      }
+    }
+    crossings += 1;
+  }
+  return crossings;
+}
+
+// 이미 서 있는 다리에 한 칸을 잇는 것인가(= 같은 도하로를 넓히는 것), 아니면
+// 새 도하로를 여는 것인가. 나란히 놓기는 위에서 이미 막았으므로, 여기 남는
+// 이웃은 건너는 방향으로 이어지는 칸뿐이다.
+function extendsExistingBridge(x, y) {
+  return neighbors(x, y).some((spot) => hasImprovement(spot.x, spot.y, "bridge"));
+}
+
+function canPlaceBridge(owner, x, y) {
+  if (!isBridgeableWater(x, y)) return false;
+  if (hasImprovement(x, y, "bridge")) return false;
+  if (isParallelToExistingBridge(x, y)) return false;
+  return extendsExistingBridge(x, y) || builtCrossingCount(owner) < bridgeLimitPerSide;
+}
+
+// 왜 못 놓는지는 규칙을 배우는 자리다. "자리가 없다" 한 마디로 뭉뚱그리면 플레이어는
+// 다리 규칙을 영영 모른 채 보급품만 들고 강가를 헤맨다.
+function bridgeRefusalReason(owner, spots) {
+  if (!spots.length) return "공병대 주변에 다리를 놓을 하천이 없습니다.";
+  if (spots.some((spot) => isParallelToExistingBridge(spot.x, spot.y))) {
+    return "이미 놓인 다리 바로 옆에 나란히 놓을 수는 없습니다. 한 도하로는 한 줄입니다.";
+  }
+  if (spots.some((spot) => !isBridgeableWater(spot.x, spot.y))) {
+    return `강폭이 ${bridgeSpanLimit}칸을 넘어 다리가 건너편 기슭에 닿지 않습니다.`;
+  }
+  return `다리는 진영당 ${bridgeLimitPerSide}개까지입니다. 새로 놓으려면 기존 다리 옆으로 이어 붙이십시오.`;
 }
 
 // 사령부 엄호 규칙은 걷어냈다. 옆에 호위가 붙어 있다고 해서 사거리 안에 든 사령부를
@@ -6322,7 +6484,7 @@ function enemyBridgeSite(engineer) {
   let best = null;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      if (!isBridgeableWater(x, y) || hasImprovement(x, y, "bridge")) continue;
+      if (!canPlaceBridge(engineer.owner, x, y)) continue;
       // 설 수 없는 물가는 나루가 아니다. 이미 아군이 올라선 칸을 목표로 잡으면
       // 공병대는 그 뒤에서 평생 기다린다 — 그러느니 다른 나루를 찾는 게 낫다.
       const stand = neighbors(x, y)
@@ -6347,6 +6509,9 @@ function enemyBridgeSite(engineer) {
 function tryStartEnemyBridge(engineer, site) {
   if (!site || engineer.acted) return false;
   if (!neighbors(engineer.x, engineer.y).some((spot) => spot.x === site.x && spot.y === site.y)) return false;
+  // 자리는 지난 판단에서 골랐다. 그 사이에 다른 공병대가 옆에 다리를 놓았을 수 있으니
+  // 놓기 직전에 규칙을 한 번 더 본다 — 플레이어가 못 하는 것을 적이 하면 안 된다.
+  if (!canPlaceBridge(engineer.owner, site.x, site.y)) return false;
   const cost = constructionCosts.bridge ?? 0;
   if (state.enemyResources < cost) return false;
 
@@ -7024,10 +7189,14 @@ function addLog(message) {
   state.log = state.log.slice(0, 12);
 }
 
-// 범례는 넓은 화면에서만 펴 둔다. 좁은 화면에서는 접힌 채로 두어 그 자리를 지도에 준다.
+// 범례는 넓고 높은 화면에서만 펴 둔다. 좁거나 낮은 화면에서는 접힌 채로 두어
+// 그 자리를 지도에 준다. 범례는 처음 한 번 보는 표지, 매 턴 보는 것이 아니다.
 const legendFold = document.getElementById("legendFold");
 const wideScreen = window.matchMedia("(min-width: 861px)").matches;
-if (legendFold) legendFold.open = wideScreen;
+if (legendFold) legendFold.open = wideScreen && window.innerHeight > 820;
+// 범례를 접고 펴면 지도가 위아래로 움직인다. 지도 모서리에 얹힌 부대 카드도
+// 같이 따라가야 모서리에 붙어 있는 것처럼 보인다.
+legendFold?.addEventListener("toggle", () => scheduleBoardFit());
 
 // 좁은 화면에서 지휘칸은 아래에서 올라오는 서랍이다. 처음에는 닫아 두고 전장을
 // 먼저 보여 준다 — 게임을 켜서 맨 처음 봐야 할 것은 증원 목록이 아니라 전선이다.

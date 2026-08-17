@@ -4532,6 +4532,150 @@ body {
   --map-lift: 0px;
 }
 
+/* 고른 부대 카드는 지도 오른쪽 위에 얹힌 반투명 쪽지다.
+
+   예전에는 지도 아래에 줄 세워 두었는데, 부대를 고르는 순간 카드가 118px에서
+   320px로 부풀어 그만큼 화면 밑으로 밀려 나가 잘렸다 — 낮은 화면에서는 통째로
+   안 보였고, 그것이 "선택 부대 정보가 사라졌다"의 정체였다. 자리를 미리 잡아
+   두는 방법도 써 봤지만, 그러면 그 자리만큼 지도가 영영 작아진다.
+
+   그래서 카드를 흐름에서 빼내 지도 위에 얹었다. 지도는 카드가 있든 없든 늘
+   같은 크기다. 대신 세 가지를 지킨다.
+     · 축약 — 싸울 때 실제로 보는 여섯 줄만 띄운다. 나머지는 눌러서 편다.
+     · 반투명 — 밑에 있는 부대와 지형이 비쳐 보인다.
+     · 통과 — 카드는 마우스를 받지 않는다. 카드에 겹친 부대도 그대로 눌러
+       고를 수 있다. 다만 '자세히' 글씨 한 줄만 마우스를 받는다.
+
+   선택자에 .battlefield-wrap 을 붙여 둔 이유: 아래 "야전 카드" 절에 같은
+   이름의 규칙이 더 뒤에 있어서, 그냥 .unit-card 로 쓰면 여기서 정한 반투명
+   배경이 그 규칙에 덮인다. */
+@media (min-width: 861px) {
+  /* 카드가 지도 아래에서 지도 위로 올라가면서 그 자리 250px이 통째로 비었다.
+     틀을 그대로 두면 콘솔이 화면 중간에서 뚝 끊기고 아래가 시커먼 빈 판이 된다.
+     틀을 화면 높이만큼 늘리고 지도를 그 안에서 가운데에 놓는다 — 지도 크기는
+     그대로고, 지도를 둘러싼 철판이 화면을 끝까지 덮는 것뿐이다. */
+  .battlefield-wrap {
+    align-self: stretch;
+  }
+
+  .map-stage {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .battlefield-wrap .unit-card {
+    /* --card-top 은 지도판이 시작하는 높이다(game.js가 재서 넣는다).
+       임무 띠·상황판·범례를 접고 펴면 지도가 오르내리므로 고정값을 쓸 수 없다. */
+    position: absolute;
+    top: calc(var(--card-top, 210px) + 10px);
+    right: 18px;
+    z-index: 24;
+    width: 216px;
+    min-height: 0;
+    max-height: calc(100vh - var(--card-top, 210px) - 60px);
+    padding: 9px 11px;
+    overflow: hidden;
+    pointer-events: none;
+    /* 반투명. 밑에 깔린 지도와 부대가 비쳐 보이되, 글자는 읽혀야 한다.
+       그래서 배경만 옅게 하고 글자색은 건드리지 않는다. */
+    background:
+      linear-gradient(196deg, rgb(226 232 214 / 5%) 0 30%, transparent 30%),
+      linear-gradient(180deg, rgb(25 29 19 / 58%), rgb(18 21 13 / 58%));
+    backdrop-filter: blur(1.2px);
+    box-shadow:
+      inset 0 1px 0 rgb(226 232 214 / 12%),
+      0 6px 18px rgb(0 0 0 / 45%);
+  }
+
+  /* 아무 부대도 안 골랐을 때는 "부대를 선택하세요" 한 줄만 남는다.
+     그 한 줄을 지도 위에 계속 띄워 둘 이유가 없다 — 통째로 감춘다. */
+  .battlefield-wrap .unit-card:not(:has(.unit-stats)) {
+    display: none;
+  }
+
+  .battlefield-wrap .unit-card h2 {
+    margin: 0 0 6px;
+    font-size: 15px;
+  }
+
+  /* 좁은 쪽지라 한 줄에 한 항목이다. 글자 크기는 그대로다. */
+  .battlefield-wrap .unit-stats {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  /* 축약. 접혀 있을 때는 핵심 여섯 줄만(전투력·기동력·사거리·사기·행동·보급). */
+  .battlefield-wrap .unit-card:not(.expanded) .unit-stats > span:not(.key) {
+    display: none;
+  }
+
+  /* 이 한 줄만 마우스를 받는다. 카드의 나머지는 눌러도 밑의 부대가 눌린다. */
+  .battlefield-wrap .unit-card:has(.unit-stats)::after {
+    display: block;
+    margin-top: 6px;
+    color: var(--engrave-dim);
+    font-size: 12px;
+    font-weight: 800;
+    text-align: right;
+    pointer-events: auto;
+    cursor: pointer;
+    content: "자세히 ▾";
+  }
+
+  /* 펼치면 스물두 줄이 된다. 한 줄로 세우면 지도를 세로로 갈라 놓으므로
+     두 칸으로 벌려 폭을 쓰고 높이를 줄인다. 펼친 동안에는 카드가 마우스를
+     받는다 — 안을 굴려 읽어야 하기 때문이다. 접으면 다시 통과한다. */
+  .battlefield-wrap .unit-card.expanded {
+    width: 420px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    pointer-events: auto;
+  }
+
+  .battlefield-wrap .unit-card.expanded .unit-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 10px;
+  }
+
+  .battlefield-wrap .unit-card.expanded::after {
+    content: "접기 ▴";
+  }
+}
+
+/* 낮은 화면(노트북 1366×768 같은 것)에서는 줄 세울 자리가 빠듯하다.
+   카드가 지도 위로 올라가면서 자리 다툼은 크게 줄었지만, 임무 띠·상황판·
+   안내줄은 여전히 제 몫을 먹는다. 카드가 아닌 것들에서 자리를 걷어내
+   그만큼 지도판에 준다. 글자 크기는 어디도 건드리지 않는다. */
+@media (min-width: 861px) and (max-height: 820px) {
+  .shell {
+    gap: 12px;
+    height: calc(100vh - 16px);
+    margin: 8px auto;
+  }
+
+  .command-panel {
+    max-height: calc(100vh - 16px);
+  }
+
+  .battlefield-wrap {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .mission-bar {
+    padding-block: 5px;
+  }
+
+  .action-hint {
+    min-height: 0;
+    padding: 4px 10px;
+  }
+
+  .battlefield-wrap .unit-card {
+    right: 10px;
+  }
+}
+
 .map-plane {
   perspective-origin: 50% calc(270px + var(--map-lift));
 }
