@@ -375,6 +375,32 @@ const constructionCosts = {
   rail: 1,
 };
 
+// 다리는 두 가지다. 이름이 같아서 하나로 취급했더니 서로의 규칙을 뒤집었다.
+//
+//   교량(roadBridge) — 시나리오에 처음부터 서 있는 마을 다리. 전쟁 전부터 있던
+//                      것이라 주인이 없고 양쪽 다 그냥 건넌다. 공병은 짓지도
+//                      고치지도 못한다. 한 번 무너지면 그 길목은 그 판 내내 막힌다.
+//   부교(bridge)     — 공병이 놓는 도하 장비. 3칸 이하 강폭에만, 병렬 금지,
+//                      진영당 2개. 놓고 부수고 다시 놓는 소모품이다.
+//
+// 둘 다 부술 수 있되 값이 정반대다.
+//
+//   교량 체력 20 · 방어 3 — 보병(공격 4)은 스무 번, 전차(6)는 일고여덟 번.
+//     지나가는 길에 덤으로 끊기지 않고, 작정하고 포를 돌려야 끊긴다.
+//   부교 체력 3 · 방어 -1 — 방어가 음수라 오히려 더 아프게 맞는다. 어떤 부대가
+//     쏘든 한 방이다. 나룻배를 엮어 놓은 것이니 그래야 맞다.
+//
+// 그래서 판마다 같은 질문이 한 번씩 나온다 — 저 다리를 끊을 것인가 건널 것인가.
+const bridgeKinds = {
+  roadBridge: { hp: 20, defense: 3, name: "교량" },
+  bridge: { hp: 3, defense: -1, name: "부교" },
+};
+
+// 다리 위는 난간뿐인 널판이다. 파고들 흙도 숨을 나무도 없이 물 위에 떠 있으므로
+// 개활지(엄폐 0)보다도 맞기 쉽다. coverAt에서 빼는 값이라 전투 계산·피해 예측·
+// AI의 자리 고르기가 전부 같은 숫자를 읽는다.
+const bridgeExposure = 2;
+
 const unitEditorFields = [
   ["hp", "체력", 1, 99, 1],
   ["move", "기동", 0, 12, 1],
@@ -1436,7 +1462,8 @@ function startGame(config = {}) {
     bases: deployment.bases,
     // 시나리오에 처음부터 서 있는 마을 다리. 전쟁 전부터 있던 것이라 주인이 없고,
     // 양쪽 다 그냥 건넌다. 공병대의 다리 두 개 제한에도 안 들어간다(builtCrossingCount).
-    improvements: (scenario.bridges ?? []).map(([x, y]) => ({ type: "bridge", owner: "neutral", x, y })),
+    // 부교와 달리 튼튼하고, 한 번 끊기면 공병도 다시 세우지 못한다.
+    improvements: (scenario.bridges ?? []).map(([x, y]) => newDeck("roadBridge", "neutral", x, y)),
     constructions: [],
     units: deployment.units,
     // 마지막으로 목격한 적의 자리. 진영마다 따로 쥔다 — 이게 곧 "각자 아는 만큼만
@@ -2117,7 +2144,11 @@ function render() {
         cell.classList.add("ridge-shield", `ridge-${hillDirection}`);
         cell.title += ` / 방어방향 ${ridgeDirectionLabel(hillDirection)}`;
       }
-      if (hasImprovement(x, y, "bridge")) cell.classList.add("bridge");
+      // 교량과 부교는 그림이 달라야 한다. 하나는 돌기둥에 얹힌 트러스 다리고
+      // 하나는 물에 띄운 널판이다 — 생김새가 같으면 어느 쪽이 한 방에 끊기는지
+      // 플레이어가 클릭해 보기 전에는 알 수 없다.
+      const deck = deckAt(x, y);
+      if (deck) cell.classList.add(deck.type, `deck-${deckOrientation(x, y)}`);
       if (hasImprovement(x, y, "rail")) cell.classList.add("rail");
       if (hasImprovement(x, y, "depot")) cell.classList.add("depot");
       // 대대 사령부의 주 역할은 보급이다. 그런데 그 범위가 지도에 안 보이면
@@ -2286,13 +2317,23 @@ function renderConstruction(cell, construction) {
 }
 
 function renderImprovements(cell, x, y) {
-  const improvements = ["bridge", "rail", "depot"].filter((type) => hasImprovement(x, y, type));
+  const improvements = ["roadBridge", "bridge", "rail", "depot"].filter((type) => hasImprovement(x, y, type));
   improvements.forEach((type) => {
     const mark = document.createElement("span");
     mark.className = `improvement ${type}`;
     mark.setAttribute("aria-hidden", "true");
     cell.appendChild(mark);
   });
+  // 다리도 맞으면 깎인다. 남은 체력이 안 보이면 "저 다리 한 번 더 때리면 끊기나"를
+  // 플레이어가 알 수 없고, 그러면 다리를 끊을지 건널지 고를 수가 없다.
+  const deck = deckAt(x, y);
+  if (deck && deck.hp < deck.maxHp) {
+    const bar = document.createElement("span");
+    bar.className = "deck-hp";
+    bar.style.setProperty("--deck-hp", `${Math.max(0, deck.hp / deck.maxHp) * 100}%`);
+    bar.setAttribute("aria-hidden", "true");
+    cell.appendChild(bar);
+  }
 }
 
 function renderUnitStack(cell, units) {
@@ -3474,8 +3515,9 @@ function renderTileCard(x, y) {
   const base = getBaseAt(x, y);
   const construction = getConstructionAt(x, y);
   const hillDirection = hillDefenseDirection(x, y);
+  const deck = deckAt(x, y);
   const improvements = [
-    hasImprovement(x, y, "bridge") ? "임시 교량" : null,
+    deck ? `${bridgeKinds[deck.type].name} ${deck.hp}/${deck.maxHp}` : null,
     hasImprovement(x, y, "rail") ? "철도" : null,
     hasImprovement(x, y, "depot") ? "보급창고" : null,
   ].filter(Boolean);
@@ -3486,7 +3528,8 @@ function renderTileCard(x, y) {
     <div class="unit-stats">
       <span>지형 <strong>${terrainDescription(tile)}</strong></span>
       <span>이동 비용 <strong>${Number.isFinite(moveCost) ? formatNumber(moveCost) : "통과 불가"}</strong></span>
-      <span>방어 보정 <strong>+${coverAt(x, y)}</strong></span>
+      <span>방어 보정 <strong>${coverAt(x, y) >= 0 ? "+" : ""}${coverAt(x, y)}</strong></span>
+      ${deck ? `<span>다리 위 노출 <strong>-${bridgeExposure}</strong></span>` : ""}
       ${base && baseDefenseBonus ? `<span>거점 엄폐 <strong>+${baseDefenseBonus}</strong></span>` : ""}
       <span>고도 <strong>${formatElevation(tile.elevation)}</strong></span>
       <span>포격 엄폐 <strong>${tile.artilleryCover ? `-${tile.artilleryCover}` : "없음"}</strong></span>
@@ -3525,7 +3568,8 @@ function formatElevation(elevation) {
 function terrainTraitText(x, y) {
   if (getTerrainKey(x, y) === "C") return "강변 또는 주요 접근로 / 이동 가능";
   if (getTerrainKey(x, y) === "H") return "원거리 포격 차단 / 전차, 자주포 진입 불가";
-  if (getTerrainKey(x, y) === "W" && !hasImprovement(x, y, "bridge")) return "하천: 교량 없이는 통과 불가";
+  if (getTerrainKey(x, y) === "W" && !deckAt(x, y)) return "하천: 교량 없이는 통과 불가";
+  if (deckAt(x, y)) return "다리 위: 엄폐가 없어 개활지보다 맞기 쉽고, 다리가 끊기면 함께 빠진다";
   if (getTerrainKey(x, y) === "F") return "방어 유리 / 포격 효과 감소";
   // 거점만 "일반"으로 나오면 지도에서 왜 이 칸을 다투는지가 카드에 한 줄도 안 적힌다.
   if (getTerrainKey(x, y) === "B") {
@@ -3703,6 +3747,21 @@ function handleTileClick(x, y) {
     return;
   }
 
+  // 다리 포격은 이동보다 뒤에 둔다. 걸어 올라갈 수 있는 다리를 눌렀을 때 부대가
+  // 건너지 않고 쏘아 버리면, 다리를 건너려던 클릭이 다리를 끊는 클릭이 된다.
+  // 그래서 실제로 쏘게 되는 것은 이번 턴에 닿지 못하는 다리 — 대개 강 건너편이다.
+  const clickedDeck = deckAt(x, y);
+  if (clickedDeck && !clickedEnemy && !canMoveTo(selected, x, y) && canBombardDeck(selected, clickedDeck)) {
+    bombardDeck(selected, clickedDeck);
+    selected.acted = true;
+    state.selectedId = null;
+    state.inspectedId = null;
+    state.inspectedTile = { x, y };
+    checkVictory();
+    render();
+    return;
+  }
+
   if (canMoveTo(selected, x, y)) {
     if (!confirmConstructionMove(selected)) return;
     // 가는 길에 적을 발견하면 거기서 멈춘다. 명령한 칸까지 그냥 밀어 넣으면
@@ -3815,6 +3874,12 @@ function getHighlights() {
       if (canStillMove && canMoveTo(unit, x, y)) moves.add(posKey(x, y));
       if (canStillAttack && target && canAttack(unit, target)) attacks.add(posKey(x, y));
       if (canStillAttack && !target && base?.owner !== unit.owner && canRaidBase(unit, base)) raids.add(posKey(x, y));
+      // 다리도 포격 표적으로 켠다. 단 이번 턴에 걸어 올라갈 수 있는 다리는 빼는데,
+      // 클릭 처리에서 이동이 이기기 때문이다 — 표시와 실제 동작이 달라지면 안 된다.
+      const deck = deckAt(x, y);
+      if (canStillAttack && !target && deck && !moves.has(posKey(x, y)) && canBombardDeck(unit, deck)) {
+        raids.add(posKey(x, y));
+      }
     }
   }
   return { moves, attacks, raids };
@@ -3877,7 +3942,7 @@ function engineerBuild(type) {
     // 발 닿는 곳의 아직 다리가 없는 물칸 전부. 그중 규칙을 통과하는 것을 고르고,
     // 하나도 없으면 왜 안 되는지를 이 목록을 보고 말해 준다.
     const spots = neighbors(engineer.x, engineer.y).filter(
-      (spot) => getTerrainKey(spot.x, spot.y) === "W" && !hasImprovement(spot.x, spot.y, "bridge"),
+      (spot) => getTerrainKey(spot.x, spot.y) === "W" && !deckAt(spot.x, spot.y),
     );
     const water = spots.find((spot) => canPlaceBridge(engineer.owner, spot.x, spot.y));
     if (!water) {
@@ -3886,7 +3951,7 @@ function engineerBuild(type) {
       return;
     }
     state.resources -= cost;
-    state.improvements.push({ type: "bridge", owner: engineer.owner, x: water.x, y: water.y });
+    state.improvements.push(newDeck("bridge", engineer.owner, water.x, water.y));
     engineer.acted = true;
     state.selectedId = null;
     // 강이 뚫렸으니 어제 그린 길은 이제 거짓말이다(적 공병대 쪽과 같은 처리).
@@ -3899,7 +3964,7 @@ function engineerBuild(type) {
       ([dx, dy]) =>
         inBounds(water.x + dx, water.y + dy) &&
         getTerrainKey(water.x + dx, water.y + dy) === "W" &&
-        !hasImprovement(water.x + dx, water.y + dy, "bridge"),
+        !deckAt(water.x + dx, water.y + dy),
     );
     addLog(
       gap
@@ -4313,11 +4378,25 @@ function attack(attacker, defender) {
   attacker.firedFrom = { x: attacker.x, y: attacker.y };
 
   const damage = combatDamage(attacker, defender);
+  // 다리 위의 부대를 쏘면 포탄은 다리에도 떨어진다. 절반은 널판이 받고 나머지가
+  // 부대에 간다 — 나누어 갖되 다리 몫에서 다리 방어도를 또 빼지는 않는다. 그건
+  // 다리를 직접 겨냥했을 때 쓰는 값이다.
+  //
+  // 그래서 "저 다리를 건너 오는 적을 쏘면 내가 나중에 쓸 다리가 상한다"는 문제가
+  // 매번 따라온다. 특히 부교(체력 3)는 위에 부대를 세워 둔 채로 한 번 맞으면
+  // 다리와 부대가 같이 간다.
+  const deck = deckAt(defender.x, defender.y);
+  const deckShare = deck ? Math.floor(damage / 2) : 0;
+  const unitShare = damage - deckShare;
   playUnitSound(attacker, "attack");
-  defender.hp -= damage;
+  defender.hp -= unitShare;
   defender.hitSinceRefit = true;
-  recordCombatEvent(attacker, defender, { damage, killed: defender.hp <= 0 });
-  addLog(`${sideUnitLabel(attacker)}가 ${sideUnitLabel(defender)}에 ${damage} 피해를 입혔습니다.`);
+  recordCombatEvent(attacker, defender, { damage: unitShare, killed: defender.hp <= 0 });
+  addLog(
+    deckShare
+      ? `${sideUnitLabel(attacker)}가 ${sideUnitLabel(defender)}에 ${unitShare} 피해를 입혔습니다. ${bridgeKinds[deck.type].name}도 ${deckShare} 상했습니다.`
+      : `${sideUnitLabel(attacker)}가 ${sideUnitLabel(defender)}에 ${damage} 피해를 입혔습니다.`,
+  );
 
   const baseUnderDefender = getBaseAt(defender.x, defender.y);
   if (baseUnderDefender?.owner === defender.owner) damageBaseProduction(baseUnderDefender, attacker, { collateral: true });
@@ -4328,8 +4407,13 @@ function attack(attacker, defender) {
     window.setTimeout(() => playDestroySound(defender), 260);
     state.units = state.units.filter((unit) => unit.id !== defender.id);
     addLog(`${sideUnitLabel(defender)}가 전투 불능이 되었습니다.`);
+    if (deckShare) damageDeck(deck, deckShare);
     return;
   }
+
+  // 다리를 먼저 처리한다. 다리가 끊기면 위의 부대는 물로 가므로, 죽은 부대가
+  // 반격하는 일이 없어야 한다.
+  if (deckShare && damageDeck(deck, deckShare)) return;
 
   resolveCounterattack(attacker, defender);
 }
@@ -4791,6 +4875,14 @@ function objectParticle(word) {
   const code = String(word).trimEnd().slice(-1).charCodeAt(0);
   if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return "을";
   return (code - 0xac00) % 28 === 0 ? "를" : "을";
+}
+
+// "이/가"도 마찬가지다. 다리가 두 종류(교량/부교)가 되면서 한쪽은 받침이 있고
+// 한쪽은 없어졌다 — 어느 쪽으로 못 박아도 절반은 "부교이 무너졌습니다"가 된다.
+function subjectParticle(word) {
+  const code = String(word).trimEnd().slice(-1).charCodeAt(0);
+  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return "이";
+  return (code - 0xac00) % 28 === 0 ? "가" : "이";
 }
 
 // 같은 이유로 "은/는"도 코드가 골라야 한다. 부대 이름은 편성마다 달라서
@@ -5376,7 +5468,12 @@ function traversalCostForUnit(unit, x, y) {
 }
 
 function hasBridgeableCrossing(x, y) {
-  return hasImprovement(x, y, "bridge") && isBridgeableWater(x, y);
+  const deck = deckAt(x, y);
+  if (!deck) return false;
+  // 마을 교량은 전쟁 전부터 완성되어 있던 다리다. 강폭 3칸 규칙은 공병이 지금
+  // 새로 놓는 부교에만 건다 — 이미 서 있는 다리에 "너무 길어서 못 건넌다"고
+  // 하는 것은 말이 안 된다.
+  return deck.type === "roadBridge" || isBridgeableWater(x, y);
 }
 
 // 다리 규칙은 여기 한 곳에서만 정한다. 플레이어의 공병대와 적의 공병대가 같은 자를
@@ -5436,8 +5533,10 @@ function isBridgeableWater(x, y) {
 function isParallelToExistingBridge(x, y) {
   const axis = bridgeAxisAt(x, y);
   if (!axis) return false;
+  // 마을 교량도 이미 서 있는 다리다. 그 바로 옆에 부교를 하나 더 까는 것을 허용하면
+  // "저 다리를 끊는다"가 의미를 잃는다 — 끊자마자 옆에 새로 놓으면 그만이기 때문이다.
   const alongRiver = axis === "h" ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]];
-  return alongRiver.some(([dx, dy]) => inBounds(x + dx, y + dy) && hasImprovement(x + dx, y + dy, "bridge"));
+  return alongRiver.some(([dx, dy]) => inBounds(x + dx, y + dy) && deckAt(x + dx, y + dy));
 }
 
 // 붙어 있는 다리 칸은 한 다리로 센다. 두 칸짜리 강에 두 칸을 걸어도 다리는 하나다.
@@ -5473,7 +5572,10 @@ function extendsExistingBridge(x, y) {
 
 function canPlaceBridge(owner, x, y) {
   if (!isBridgeableWater(x, y)) return false;
-  if (hasImprovement(x, y, "bridge")) return false;
+  // 이미 다리가 있는 자리에는 못 놓는다. 마을 교량이 무너져 내려앉은 자리라면
+  // 다시 물이므로 부교는 걸 수 있다 — 다만 그건 교량을 고친 것이 아니라
+  // 그 자리에 임시 도하로를 새로 연 것이고, 진영당 두 개 제한에 그대로 걸린다.
+  if (deckAt(x, y)) return false;
   if (isParallelToExistingBridge(x, y)) return false;
   return extendsExistingBridge(x, y) || builtCrossingCount(owner) < bridgeLimitPerSide;
 }
@@ -5543,6 +5645,28 @@ function canRaidBase(attacker, base) {
   if (isTowedArtillery(attacker)) return false;
   if (supplyStatus(attacker).level === "isolated") return false;
   return distance(attacker, base) <= unitTypes[attacker.type].range && !ridgeBlocksFire(attacker, base);
+}
+
+// 빈 다리를 겨냥한다. 위에 부대가 서 있으면 그 부대를 쳐야 하고(그때 다리는
+// 절반을 나눠 받는다), 걸어 올라갈 수 있는 다리라면 쏘기보다 건너는 쪽이 먼저다 —
+// 그 우선순위는 클릭 처리와 강조 표시에서 정한다.
+function canBombardDeck(attacker, deck) {
+  if (!attacker || !deck) return false;
+  if (attacker.type === "artillery" && attacker.moved) return false;
+  if (isTowedArtillery(attacker)) return false;
+  if (supplyStatus(attacker).level === "isolated") return false;
+  return distance(attacker, deck) <= unitTypes[attacker.type].range && !ridgeBlocksFire(attacker, deck);
+}
+
+function bombardDeck(attacker, deck) {
+  const kind = bridgeKinds[deck.type];
+  attacker.firedFrom = { x: attacker.x, y: attacker.y };
+  const damage = deckDamage(attacker, deck);
+  playUnitSound(attacker, "attack");
+  addLog(`${sideUnitLabel(attacker)}가 (${deck.x}, ${deck.y}) ${kind.name}${objectParticle(kind.name)} 포격해 ${damage} 피해를 입혔습니다.`);
+  if (!damageDeck(deck, damage)) {
+    addLog(`${kind.name}${subjectParticle(kind.name)} 아직 버티고 있습니다. 남은 내구 ${deck.hp}/${deck.maxHp}.`);
+  }
 }
 
 function ridgeBlocksFire(attacker, target) {
@@ -6407,7 +6531,26 @@ function tryEnemyStrike(unit) {
     raidBase(unit, raid);
     return true;
   }
+  const deck = bestDeckTarget(unit);
+  if (deck) {
+    bombardDeck(unit, deck);
+    return true;
+  }
   return false;
+}
+
+// 다리 끊기는 칠 것도 습격할 것도 없을 때만 한다 — 눈앞의 적을 두고 다리를
+// 때리는 것은 언제나 손해다. 그리고 적군이 노리는 것은 플레이어가 놓은 부교뿐이다.
+// 마을 교량은 적군도 건너야 하는 길이라, 자기가 쓸 다리를 끊게 두면 AI가 스스로
+// 진격로를 막고 판이 멈춰 선다.
+//
+// 이 규칙이 없으면 다리 끊기는 플레이어 전용 기술이 된다. 강 하나 사이에 두고
+// 다리를 끊어 버리면 적은 영영 건너오지 못하는데, 적은 내 부교를 못 건드린다.
+function bestDeckTarget(unit) {
+  if (unit.acted) return null;
+  return state.improvements.find(
+    (item) => item.type === "bridge" && item.owner === "player" && canBombardDeck(unit, item) && !getTargetUnitAt(item.x, item.y, "player"),
+  ) ?? null;
 }
 
 // 전투 부대의 한 턴. 어디로 갈지는 임무가, 어떻게 갈지는 병종이,
@@ -6580,7 +6723,7 @@ function tryStartEnemyBridge(engineer, site) {
   if (state.enemyResources < cost) return false;
 
   state.enemyResources -= cost;
-  state.improvements.push({ type: "bridge", owner: engineer.owner, x: site.x, y: site.y });
+  state.improvements.push(newDeck("bridge", engineer.owner, site.x, site.y));
   engineer.acted = true;
   // 지형이 바뀌었으니 어제 그린 길은 이제 거짓말이다.
   clearRouteFields();
@@ -7160,6 +7303,64 @@ function hasImprovement(x, y, type) {
   return state.improvements.some((improvement) => improvement.x === x && improvement.y === y && improvement.type === type);
 }
 
+// 교량이든 부교든 "건널 수 있는 널판"이라는 점에서는 하나다. 통행·표시·엄폐·피격은
+// 전부 이 함수만 보고, 건설 규칙(진영당 두 개)만 부교를 따로 센다. 다리를 두 종류로
+// 나눈 뒤 통행 판정이 한 군데라도 옛 이름을 보고 있으면, 마을 다리 위에서 부대가
+// 물에 빠진 것처럼 굳어 버린다.
+function deckAt(x, y) {
+  return state.improvements.find((item) => item.x === x && item.y === y && bridgeKinds[item.type]) ?? null;
+}
+
+// 다리가 놓인 방향. 건너는 쪽은 물이 짧게 이어지는 쪽이다 — 강폭보다 강줄기가
+// 늘 기니까. bridgeAxisAt과 달리 3칸 제한을 안 보는데, 그림은 강폭이 넓어도
+// 그려야 하기 때문이다(마을 교량).
+function deckOrientation(x, y) {
+  return waterRunLength(x, y, "h") <= waterRunLength(x, y, "v") ? "h" : "v";
+}
+
+function newDeck(type, owner, x, y) {
+  const kind = bridgeKinds[type];
+  return { type, owner, x, y, hp: kind.hp, maxHp: kind.hp };
+}
+
+// 다리를 직접 겨냥했을 때의 피해. 부대를 칠 때와 같은 값에서 다리의 방어도만 뺀다 —
+// 고도차도 사기도 다리에는 의미가 없다(다리는 도망가지도 겁먹지도 않는다).
+//
+//   교량(방어 3)  — 소총분대 4에 지휘관 1을 얹어도 한 번에 2. 체력 20이니 열 번이다.
+//                   야포(공격 8)라야 여섯 번에 끊는다. 작정하고 포를 돌려야 끊긴다.
+//   부교(방어 -1) — 방어가 음수라 오히려 더 아프게 맞는다. 체력 3이라 전투 부대는
+//                   무엇으로 쏘든 한 방이다.
+function deckDamage(attacker, deck) {
+  const bonus = isCombatUnit(attacker) ? commanderFor(attacker.owner).attack : 0;
+  return Math.max(1, unitTypes[attacker.type].attack + bonus - bridgeKinds[deck.type].defense);
+}
+
+// 다리에 피해를 먹이고, 끊겼으면 무너뜨린다. 부대를 때리다 딸려 들어오는 몫과
+// 작정하고 다리를 겨냥한 몫이 모두 이 문을 지난다 — 무너지는 처리가 두 군데
+// 있으면 한쪽에서만 부대가 물에 빠진다.
+function damageDeck(deck, amount) {
+  deck.hp -= amount;
+  if (deck.hp > 0) return false;
+  collapseDeck(deck);
+  return true;
+}
+
+function collapseDeck(deck) {
+  state.improvements = state.improvements.filter((item) => item !== deck);
+  // 강이 다시 막혔으니 어제 그린 길은 거짓말이다.
+  clearRouteFields();
+  const name = bridgeKinds[deck.type].name;
+  addLog(`(${deck.x}, ${deck.y}) ${name}${subjectParticle(name)} 무너졌습니다.`);
+  // 다리 위에 서 있던 부대는 다리와 함께 물로 간다. 다리가 사라진 자리는 하천이고,
+  // 하천에는 육상 부대가 설 수 없다 — 살려 두면 건널 수도 나올 수도 없는 유령이 된다.
+  // 그래서 "다리 위에서 턴을 끝내지 마라"가 이 게임의 규칙이 된다.
+  const rider = state.units.find((unit) => unit.x === deck.x && unit.y === deck.y);
+  if (!rider) return;
+  window.setTimeout(() => playDestroySound(rider), 260);
+  state.units = state.units.filter((unit) => unit.id !== rider.id);
+  addLog(`${sideUnitLabel(rider)}가 다리와 함께 강에 빠졌습니다.`);
+}
+
 function getTerrainKey(x, y) {
   return terrainMap[y][x];
 }
@@ -7171,12 +7372,16 @@ function tileAt(x, y) {
 // 그 칸에 서면 실제로 깎이는 피해량. 지형 엄폐 + 거점 버프다.
 // 전투 계산과 AI의 자리 고르기가 이 함수 하나만 보게 해야 한다 — 따로 세면
 // AI는 거점을 그냥 개활지로 읽고, 방어할 만한 자리를 지나쳐 들판에 선다.
+// 다리 위는 난간뿐인 널판이다. 파고들 흙도 숨을 나무도 없이 물 위에 떠 있으므로
+// 개활지(엄폐 0)보다도 맞기 쉽다. 여기서 빼기 때문에 전투 계산·피해 예측·AI의
+// 자리 고르기가 전부 같은 숫자를 읽는다.
 function coverAt(x, y) {
-  return tileAt(x, y).defense + (getBaseAt(x, y) ? baseDefenseBonus : 0);
+  return tileAt(x, y).defense + (getBaseAt(x, y) ? baseDefenseBonus : 0) - (deckAt(x, y) ? bridgeExposure : 0);
 }
 
 function displayTileName(x, y) {
-  if (getTerrainKey(x, y) === "W" && hasImprovement(x, y, "bridge")) return "임시 교량";
+  const deck = deckAt(x, y);
+  if (deck) return bridgeKinds[deck.type].name;
   if (hasImprovement(x, y, "rail")) return `${tileAt(x, y).name} / 철도`;
   return tileAt(x, y).name;
 }
@@ -7237,7 +7442,10 @@ function constructionName(type) {
   if (activePack && type === "depot") return activePack.buttons.depot;
   if (activePack && type === "bridge") return activePack.buttons.bridge;
   if (activePack) return activePack.buttons.rail;
-  return type === "depot" ? "보급창고" : "철도";
+  // 한국어에는 activePack이 없다. 여기서 bridge를 안 걸러 주면 부교 공사 거절
+  // 메시지가 "철도 공사에는 보급품 2가 필요합니다"로 나온다.
+  if (type === "depot") return "보급창고";
+  return type === "bridge" ? bridgeKinds.bridge.name : "철도";
 }
 
 function constructionLabel(type) {

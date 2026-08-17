@@ -1041,27 +1041,13 @@ h1 {
   pointer-events: none;
 }
 
+/* 다리 칸의 물은 물줄기 그림(.water-ribbon)이 이미 그려 놓았다. 예전에는 여기서
+   칸 배경에 널판 무늬를 한 겹 더 깔고, 그 위에 .improvement 널판을 또 얹었다 —
+   같은 널이 두 장 겹치고 그중 하나가 기울어져 있어서 다리가 아니라 땟목으로
+   보였다. 칸은 손잡이(cursor)만 남기고 그림은 .improvement 한 곳에서만 그린다. */
+.tile.roadBridge,
 .tile.bridge {
-  background:
-    linear-gradient(90deg, transparent 0 14%, #5b3d25 14% 25%, transparent 25% 75%, #5b3d25 75% 86%, transparent 86%),
-    repeating-linear-gradient(0deg, transparent 0 7px, rgb(85 56 32 / 72%) 7px 10px),
-    var(--tile-image),
-    var(--water);
   cursor: pointer;
-}
-
-/* 교량은 하천 칸 위에 놓인 시설이라, 그 칸의 물은 물줄기 그림(.water-ribbon)이
-   이미 그려 놓았다. 예전에는 여기서 var(--water)로 칸을 한 번 더 칠했다 —
-   물줄기 위에 물빛 네모가 한 장 덧대져서, 강 한복판에 하늘색 각목이 놓인 꼴이었다.
-   바닥은 비우고 상판(가로 널)과 난간(세로 두 줄)만 얹는다. 물 위에 놓인 것으로
-   보이도록 상판 아래로 그림자를 한 겹 깐다. */
-.battlefield.map-enabled .tile.bridge {
-  background:
-    linear-gradient(90deg, transparent 0 14%, #6b4a2c 14% 24%, transparent 24% 76%, #6b4a2c 76% 86%, transparent 86%),
-    repeating-linear-gradient(0deg, rgb(122 86 52 / 88%) 0 3px, rgb(78 52 30 / 88%) 3px 5px),
-    none;
-  box-shadow: inset 0 0 0 1px rgb(48 32 18 / 45%);
-  filter: drop-shadow(0 2px 2px rgb(20 32 44 / 55%));
 }
 
 .tile.rail::after {
@@ -1150,21 +1136,110 @@ h1 {
   pointer-events: none;
 }
 
+/* 다리 두 종류는 생김새로 갈라야 한다. 어느 쪽이 한 방에 끊기는지를 클릭해 보기
+   전에 알 수 있어야 "저 다리를 끊을 것인가 건널 것인가"가 판단이 되기 때문이다.
+
+     교량  — 돌기둥 위에 얹힌 트러스 다리. 위로 삼각 골조가 서고 아래로 교각이 내려선다.
+     부교  — 배를 엮어 널판을 얹은 것. 상판 밑에 부낭이 줄지어 떠 있고 골조가 없다.
+
+   예전에는 둘 다 같은 널판 사각형을 -8도 기울여 그렸다. 기울어진 널 한 장은
+   다리가 아니라 물에 떠내려가는 땟목이다 — 기울기를 빼고 구조물을 그려 넣는 것이
+   "다리로 보이게" 만드는 전부다. */
+.improvement.roadBridge,
 .improvement.bridge {
-  left: 14%;
-  right: 14%;
-  top: 42%;
-  height: 18%;
-  border: 2px solid rgb(255 246 214 / 82%);
-  border-left: 0;
-  border-right: 0;
+  left: 0;
+  right: 0;
+}
+
+/* 세로로 건너는 다리. 강이 가로로 흐르면 다리는 세워서 놓인다. */
+.tile.deck-v .improvement.roadBridge,
+.tile.deck-v .improvement.bridge {
+  transform: rotate(90deg);
+}
+
+.improvement.roadBridge {
+  top: 26%;
+  height: 48%;
+}
+
+/* 위쪽 트러스 골조와 아래쪽 교각. 상판은 ::after가 그 위에 덮는다. */
+.improvement.roadBridge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
   background:
-    repeating-linear-gradient(90deg, rgb(89 59 34 / 92%) 0 9px, rgb(141 102 62 / 92%) 9px 13px),
-    linear-gradient(180deg, rgb(255 255 255 / 20%), transparent);
-  box-shadow:
-    0 2px 5px rgb(0 0 0 / 38%),
-    0 0 0 1px rgb(52 36 24 / 44%);
-  transform: rotate(-8deg);
+    repeating-linear-gradient(56deg, transparent 0 4px, rgb(96 79 56 / 88%) 4px 6px, transparent 6px 11px),
+    repeating-linear-gradient(-56deg, transparent 0 4px, rgb(96 79 56 / 88%) 4px 6px, transparent 6px 11px),
+    linear-gradient(90deg, transparent 0 17%, #7c6a4e 17% 27%, transparent 27% 73%, #7c6a4e 73% 83%, transparent 83%);
+  background-repeat: no-repeat;
+  background-size: 100% 36%, 100% 36%, 100% 34%;
+  background-position: 0 0, 0 0, 0 100%;
+}
+
+/* 상판. 곧게 뻗은 포장면에 난간 두 줄. */
+.improvement.roadBridge::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 34%;
+  height: 32%;
+  border-top: 2px solid rgb(255 250 232 / 88%);
+  border-bottom: 2px solid rgb(58 42 26 / 72%);
+  background: linear-gradient(180deg, #c9b591 0 30%, #8e7b5d 30% 72%, #6d5c42 72%);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 42%);
+}
+
+.improvement.bridge {
+  top: 40%;
+  height: 24%;
+}
+
+/* 부낭. 상판 밑에 묶여 떠 있는 배들이라 밑동이 둥글다. */
+.improvement.bridge::before {
+  content: "";
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  top: 48%;
+  bottom: 0;
+  border-radius: 0 0 45% 45% / 0 0 100% 100%;
+  background: repeating-linear-gradient(90deg, rgb(63 49 35 / 90%) 0 6px, transparent 6px 11px);
+}
+
+/* 상판. 교량보다 얇고 낮고, 난간이 한 줄뿐이다. */
+.improvement.bridge::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 52%;
+  border-top: 2px solid rgb(255 246 214 / 80%);
+  background: repeating-linear-gradient(90deg, rgb(143 104 63 / 94%) 0 7px, rgb(94 66 39 / 94%) 7px 10px);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 45%);
+}
+
+/* 남은 내구. 성한 다리에는 안 그린다 — 멀쩡한 다리마다 막대가 붙으면 지도가 시끄럽다. */
+.deck-hp {
+  position: absolute;
+  z-index: 5;
+  right: 12%;
+  bottom: 8%;
+  left: 12%;
+  height: 3px;
+  border-radius: 2px;
+  background: rgb(38 28 18 / 65%);
+  pointer-events: none;
+}
+
+.deck-hp::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--deck-hp, 100%);
+  border-radius: 2px;
+  background: #d8a13f;
 }
 
 .improvement.rail {
