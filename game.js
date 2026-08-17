@@ -369,6 +369,13 @@ const builtInBalance = JSON.parse(JSON.stringify(defaultBalance));
 
 const DEFAULT_BALANCE_STORAGE_KEY = "ww2TacticalCommand.defaultBalance";
 
+// 하다 만 판을 적어 두는 자리. 칸은 하나뿐이다 — 여러 칸을 만들면 "몇 번 칸에
+// 저장할까"를 묻게 되고, 그건 이 게임이 사람에게 물을 일이 아니다.
+const SAVED_OPERATION_KEY = "ww2TacticalCommand.savedOperation";
+// 판의 생김새가 바뀌면 옛 저장본은 못 읽는다. 못 읽는 것을 억지로 읽으면 엉뚱한
+// 판이 뜨느니만 못하므로, 번호가 다르면 그냥 버린다.
+const SAVED_OPERATION_VERSION = 1;
+
 const constructionCosts = {
   depot: 1,
   bridge: 2,
@@ -679,6 +686,10 @@ const operationScenarioChoicesEl = document.querySelector("#operationScenarioCho
 const operationDifficultyChoicesEl = document.querySelector("#operationDifficultyChoices");
 const operationConfirmEl = document.querySelector("#confirmOperationSetup");
 const operationCancelEl = document.querySelector("#cancelOperationSetup");
+const resumeNoticeEl = document.querySelector("#resumeNotice");
+const resumeNoticeMetaEl = document.querySelector("#resumeNoticeMeta");
+const resumeOperationEl = document.querySelector("#resumeOperation");
+const discardOperationEl = document.querySelector("#discardOperation");
 const missionNameLabelEl = document.querySelector("#missionNameLabel");
 const missionBriefLabelEl = document.querySelector("#missionBriefLabel");
 const resultScreenEl = document.querySelector("#resultScreen");
@@ -1711,6 +1722,7 @@ let operationCommenced = false;
 function openNewOperationSetup() {
   resetOperationStages();
   renderOperationDifficultyChoices();
+  renderResumeNotice();
   if (operationCancelEl) operationCancelEl.hidden = !operationCommenced;
   if (operationModalEl) operationModalEl.hidden = false;
   briefingMusicPlay();
@@ -1951,8 +1963,181 @@ function confirmNewOperationSetup() {
     difficulty: selectedOperationDifficulty(),
   });
   operationCommenced = true;
+  // 개시하는 그 순간부터 적어 둔다. 첫날에 창을 닫아도 고른 것(작전·진영·장군·
+  // 배치·난이도)이 남아 있어야, 다시 켰을 때 그 다섯 개를 또 고르지 않는다.
+  saveOperation();
   closeNewOperationSetup();
 }
+
+// ── 중간 저장·이어하기 ────────────────────────────────────────────────
+//
+// 한 판은 열흘 안팎, 짧아도 수십 번의 결정이다. 폰으로 하다 전화가 오면 그 판이
+// 통째로 없어졌고, 그러면 사람은 다시 시작하지 않는다.
+// 그래서 하루가 넘어갈 때마다 판을 통째로 적어 둔다. 저장 단추는 없다 — 저장을
+// 사람이 챙겨야 하는 순간, 안 챙긴 사람은 반드시 한 번 잃는다.
+
+function saveOperation() {
+  // 아직 명령서에 서명하지 않은 판(게임을 켜면 뒤에 깔리는 배경)은 적지 않는다.
+  // 고른 적 없는 작전을 「중단된 작전」이라고 내미는 건 거짓말이다.
+  if (!operationCommenced || !state || state.gameOver) return;
+  try {
+    const { deployZones, commanders: leaders, ...rest } = state;
+    const { year, month, day } = missionDate(state.turn);
+    localStorage.setItem(
+      SAVED_OPERATION_KEY,
+      JSON.stringify({
+        version: SAVED_OPERATION_VERSION,
+        // 안내에 그대로 찍을 문구를 여기서 만들어 둔다. 저장본을 읽는 시점에는
+        // 그 판이 아직 깔려 있지 않아 날짜도 진영도 계산할 수가 없다.
+        label: {
+          operation: state.mission?.name ?? "",
+          date: `${year}.${month}.${day}`,
+          turn: state.turn,
+          side: state.playerSide === "axis" ? "추축군" : "연합군",
+          commander: leaders?.player?.name ?? "",
+        },
+        // 저장한 날의 규칙까지 같이 적는다. 이 숫자들은 에디터에서 언제든 바뀌므로,
+        // 규칙 없이 판만 되살리면 어제와 다른 규칙으로 이어 두게 된다.
+        balance: balanceSnapshot(),
+        state: {
+          ...rest,
+          // 배치 구역은 Set이다. 글로 옮기면 빈 껍데기가 되므로 칸 목록으로 눕힌다.
+          deployZones: {
+            player: [...(deployZones?.player ?? [])],
+            enemy: [...(deployZones?.enemy ?? [])],
+          },
+          // 장군은 명부에 있는 그 사람을 가리키던 것이다. 통째로 베껴 두면 되살릴 때
+          // 명부와 남남인 복제본이 서게 된다 — 이름표만 적고 명부에서 다시 찾는다.
+          commanderIds: { player: leaders?.player?.id ?? null, enemy: leaders?.enemy?.id ?? null },
+        },
+      }),
+    );
+  } catch (error) {
+    // 저장이 막힌 브라우저(사생활 보호 창 등)도 있다. 판은 그래도 굴러가야 한다.
+    console.warn("Failed to save operation", error);
+  }
+}
+
+function readSavedOperation() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SAVED_OPERATION_KEY));
+    if (!saved || saved.version !== SAVED_OPERATION_VERSION) return null;
+    if (!saved.state?.scenarioId || !Array.isArray(saved.state.units)) return null;
+    return saved;
+  } catch (error) {
+    return null;
+  }
+}
+
+function clearSavedOperation() {
+  try {
+    localStorage.removeItem(SAVED_OPERATION_KEY);
+  } catch (error) {
+    console.warn("Failed to clear saved operation", error);
+  }
+  renderResumeNotice();
+}
+
+// 저장한 날의 규칙으로 되돌린다. 저장본에 없는 값(저장한 뒤에 새로 생긴 규칙)은
+// 게임이 정한 제값으로 남는다 — mergeSaved* 가 하는 일이 그것이다.
+function applySavedBalance(balance) {
+  if (!balance?.units || !balance?.rules) return;
+  Object.entries(mergeSavedUnits(balance.units)).forEach(([type, stats]) => {
+    if (unitTypes[type]) Object.assign(unitTypes[type], stats);
+  });
+  Object.entries(mergeSavedRules(balance.rules)).forEach(([key, value]) => setRuleValue(key, value));
+}
+
+// 저장해 둔 판을 그대로 다시 깐다. 되살렸으면 true.
+//
+// 순서가 전부다. 지도(지형·크기·물길)는 판 바깥에 놓인 물건이라, 그 작전의 지도를
+// 먼저 깔아야 적어 둔 좌표가 제자리를 찾는다. 규칙을 그 다음에 얹고, 판은 맨 마지막에
+// 앉힌다 — 중간에 무엇이 잘못되면 판을 건드리기 전에 멈추기 위해서다.
+function restoreSavedOperation() {
+  const saved = readSavedOperation();
+  if (!saved) return false;
+  try {
+    const scenario = findScenario(saved.state.scenarioId);
+    if (!scenario) return false;
+    pendingUnitMoves = [];
+    pendingCombatEvents = [];
+    enemyPlan = new Map();
+    // 되살린 판은 언제나 평시 음악으로 시작한다. 저장하던 순간의 접전을 물려받으면
+    // 적이 안 보이는데 북이 울린다.
+    musicLastContactTurn = -99;
+    applyScenario(scenario);
+    applySavedBalance(saved.balance);
+    // 병종 이름은 규칙을 얹으면서 처음 박혀 있던 것으로 돌아온다. 말은 그 뒤에 입힌다.
+    applyLocale();
+    const { commanderIds, ...rest } = saved.state;
+    const playerSide = rest.playerSide === "axis" ? "axis" : "allies";
+    const aiSide = playerSide === "axis" ? "allies" : "axis";
+    const findCommander = (id, side) => commanders.find((commander) => commander.id === id) ?? defaultCommanderForSide(side);
+    state = {
+      ...rest,
+      deployZones: {
+        player: new Set(saved.state.deployZones?.player ?? []),
+        enemy: new Set(saved.state.deployZones?.enemy ?? []),
+      },
+      commanders: {
+        player: findCommander(commanderIds?.player, playerSide),
+        enemy: findCommander(commanderIds?.enemy, aiSide),
+      },
+    };
+    prefetchSounds(playerSide);
+    bannerEl.classList.remove("show");
+    bannerEl.textContent = "";
+    hideResultScreen();
+    renderBalanceEditor();
+    render();
+    return true;
+  } catch (error) {
+    // 되살리다 엎어졌으면 그 저장본은 못 쓰는 것이다. 남겨 두면 켤 때마다 같은 자리에서
+    // 엎어지므로 버린다 — 부른 쪽은 false를 받고 새 판을 깔면 된다.
+    console.warn("Failed to restore operation", error);
+    clearSavedOperation();
+    return false;
+  }
+}
+
+// 명령서 맨 위에 뜨는 「중단된 작전」 한 줄.
+function renderResumeNotice() {
+  if (!resumeNoticeEl) return;
+  const saved = readSavedOperation();
+  resumeNoticeEl.hidden = !saved;
+  if (!saved || !resumeNoticeMetaEl) return;
+  const label = saved.label ?? {};
+  resumeNoticeMetaEl.textContent = [
+    label.operation ? `「${label.operation}」` : "",
+    label.date ? `${label.date} · ${label.turn}일차` : "",
+    [label.side, label.commander].filter(Boolean).join(" "),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+resumeOperationEl?.addEventListener("click", () => {
+  // 게임을 켤 때 이미 그 판을 배경으로 깔아 두었지만, 그 사이에 다른 작전을 골라
+  // 봤을 수도 있다. 여기서 한 번 더 깔면 두 경우가 같아진다.
+  if (!restoreSavedOperation()) {
+    renderResumeNotice();
+    return;
+  }
+  operationCommenced = true;
+  addLog("중단된 작전 › 지휘 재개", "order");
+  render();
+  closeNewOperationSetup();
+});
+
+discardOperationEl?.addEventListener("click", () => {
+  clearSavedOperation();
+});
+
+// 폰에서는 전화 한 통, 알림 하나에 화면이 넘어간다. 그때가 곧 판을 잃는 순간이라,
+// 화면이 뒤로 물러나면 그 자리에서 적어 둔다.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") saveOperation();
+});
 
 function startGame(config = {}) {
   applyLocale();
@@ -4540,6 +4725,9 @@ function finishDeployment() {
   addLog("배치 완료 › 작전 개시");
   if (stranded.length) addLog(`경고 › ${stranded.length}개 부대가 보급 범위 밖에서 개시`);
   render();
+  // 손으로 짠 배치는 되돌릴 수 없는 일이다. 여기서 적어 두지 않으면 창을 닫는 순간
+  // 그 배치를 통째로 다시 짜야 한다.
+  saveOperation();
 }
 
 function inspectTile(x, y) {
@@ -4866,6 +5054,9 @@ function enemyTurn() {
   addLog(`보급 +${formatNumber(income)}`);
   render();
   showTurnCard();
+  // 하루가 넘어간 이 자리가 중간 저장 지점이다. 턴 한가운데서 적으면 반쯤 움직인
+  // 부대가 그대로 굳으므로, 언제나 "내 차례가 막 시작된 아침"으로 되살아난다.
+  saveOperation();
 }
 
 // ── 턴이 넘어간 표시 ─────────────────────────────────────────────────
@@ -5849,6 +6040,9 @@ function baseLossCollapsed(owner) {
 
 function finishGame(message) {
   state.gameOver = true;
+  // 끝난 작전은 이어할 것이 없다. 남겨 두면 다음에 켤 때 이미 승패가 난 판을
+  // 「중단된 작전」이라고 내밀게 된다.
+  clearSavedOperation();
   addLog(message);
   addChronicle(message, "end");
   showResultScreen(message);
@@ -8522,5 +8716,9 @@ loadSavedDefaultBalance();
 //
 // startGame()을 먼저 부르는 이유는 명령서 뒤에 깔릴 판이 있어야 하기 때문이다.
 // 그 판은 고른 것이 아니라 배경이고, 명령서에 서명하는 순간 고른 작전으로 다시 깔린다.
-startGame();
+//
+// 하다 만 판이 있으면 그것을 배경으로 깐다. 「이어하기」를 누르는 순간 명령서만
+// 닫히면 되도록 — 그때부터 판을 되살리기 시작하면 이어하는 느낌이 안 난다.
+if (restoreSavedOperation()) operationCommenced = true;
+else startGame();
 openNewOperationSetup();

@@ -165,6 +165,20 @@
           <span class="dialog-stamp">기밀</span>
         </div>
 
+        <!-- 하다 만 판이 있을 때만 뜬다. 다섯 칸을 고르기 전에 보여야 하므로 맨 위다 —
+             이어할 판이 있는 사람에게 제일 먼저 물을 것은 "새 작전을 짤 것인가"가
+             아니라 "그 판을 마저 할 것인가"다. -->
+        <div id="resumeNotice" class="resume-notice" hidden>
+          <div class="resume-notice-text">
+            <strong>중단된 작전</strong>
+            <span id="resumeNoticeMeta"></span>
+          </div>
+          <div class="resume-notice-actions">
+            <button id="resumeOperation" type="button" class="primary">이어하기</button>
+            <button id="discardOperation" type="button">지우기</button>
+          </div>
+        </div>
+
         <!-- 다섯 칸이 한꺼번에 펼쳐져 있으면 어디부터 정해야 하는지가 안 보인다.
              그래서 한 칸씩만 연다. 앞 칸을 정하기 전까지 뒤 칸은 강판 문 두 짝으로
              닫혀 있고, 정하는 순간 빗장이 풀리며 두 짝이 좌우로 갈라진다.

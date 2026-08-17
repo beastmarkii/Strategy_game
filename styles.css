@@ -5762,6 +5762,100 @@ body {
   transform: rotate(-6deg);
 }
 
+/* ── 중단된 작전 ───────────────────────────────────────────────
+   명령서 위에 겹쳐 붙인 쪽지다. 본문 안에 넣으면 여섯 번째 고를 항목처럼
+   보이는데, 이건 고르는 항목이 아니라 먼저 처리할 일이다. 그래서 표제줄
+   바로 아래, 굴러가지 않는 자리에 붙여 두고 왼쪽에 노란 띠를 세운다 —
+   이 게임에서 노란색은 내려온 지령을 뜻한다. */
+.resume-notice {
+  display: flex;
+  /* 창은 세로로 쌓인 세 칸(표제·본문·단추)이고 굴러가는 것은 본문뿐이다.
+     이 쪽지가 줄어들면 본문이 그만큼 늘어나므로 줄지 않게 못 박는다. */
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgb(0 0 0 / 70%);
+  border-left: 5px solid rgb(214 168 60 / 88%);
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 3%) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #3b402c, #24281a);
+  box-shadow: inset 0 1px 0 rgb(226 232 214 / 12%);
+}
+
+/* display를 정해 준 물건은 hidden만으로는 안 사라진다. 이어할 판이 없는
+   사람에게 빈 쪽지가 붙어 있으면 그게 곧 고장이다. */
+.resume-notice[hidden] {
+  display: none;
+}
+
+.resume-notice-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  min-width: 0;
+}
+
+.resume-notice strong {
+  color: #f0c24a;
+  font-size: 16px;
+  letter-spacing: 1.5px;
+}
+
+/* 어느 판을 이어하는지가 여기 한 줄에 다 있어야 한다 — 작전 이름, 며칠째,
+   어느 군의 누가 지휘하던 판인지. 이걸 못 읽으면 「이어하기」는 도박이 된다. */
+#resumeNoticeMeta {
+  color: #cfd6bd;
+  font-family: var(--tech);
+  font-size: 14px;
+}
+
+.resume-notice-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.resume-notice-actions button {
+  min-height: 40px;
+  padding-inline: 16px;
+  border-radius: 5px;
+  font-size: 15px;
+  letter-spacing: 1px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 22%),
+    inset 0 -3px 0 rgb(0 0 0 / 45%),
+    0 3px 0 rgb(0 0 0 / 55%);
+}
+
+.resume-notice-actions .primary {
+  border-color: rgb(8 10 6 / 76%);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 16%), transparent 44%),
+    linear-gradient(180deg, #3f7a4a, #24512f);
+  color: #f2f8ea;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 45%);
+}
+
+.resume-notice-actions button:active {
+  transform: translateY(3px);
+  box-shadow: inset 0 3px 7px rgb(0 0 0 / 65%);
+}
+
+/* 폰에서는 쪽지가 두 줄이 된다. 단추는 그 두 번째 줄을 반씩 나눠 쓴다. */
+@media (max-width: 560px) {
+  .resume-notice-actions {
+    flex: 1 1 100%;
+  }
+
+  .resume-notice-actions button {
+    flex: 1 1 0;
+  }
+}
+
 /* ── 본문: 여기만 구른다 ─────────────────────────────────────────
    예전에는 창 전체가 굴렀다. 그러면 굴리는 순간 표제와 개시 단추가 같이
    사라져서, 무엇을 고르는 창인지도 어디서 끝나는지도 알 수 없게 된다. */
