@@ -644,6 +644,7 @@ const operationCommanderChoicesEl = document.querySelector("#operationCommanderC
 const operationScenarioChoicesEl = document.querySelector("#operationScenarioChoices");
 const operationDifficultyChoicesEl = document.querySelector("#operationDifficultyChoices");
 const operationConfirmEl = document.querySelector("#confirmOperationSetup");
+const operationCancelEl = document.querySelector("#cancelOperationSetup");
 const missionNameLabelEl = document.querySelector("#missionNameLabel");
 const missionBriefLabelEl = document.querySelector("#missionBriefLabel");
 const resultScreenEl = document.querySelector("#resultScreen");
@@ -1668,9 +1669,15 @@ function playHatchSound() {
   playSample("hatch_open", { level: 0.7, channel: "hatch" });
 }
 
+// 아직 한 판도 시작하지 않았는가. 게임을 켜면 명령서가 먼저 뜨는데, 그때는
+// 「취소」를 눌러도 돌아갈 곳이 없다 — 뒤에 있는 판은 아무도 고르지 않은 판이다.
+// 그래서 첫 명령서에서는 취소를 감추고, 한 판이라도 개시한 뒤부터 보여 준다.
+let operationCommenced = false;
+
 function openNewOperationSetup() {
   resetOperationStages();
   renderOperationDifficultyChoices();
+  if (operationCancelEl) operationCancelEl.hidden = !operationCommenced;
   if (operationModalEl) operationModalEl.hidden = false;
   briefingMusicPlay();
   // 창이 뜨자마자 첫 칸이 열린다. 한 박자 늦게 여는 이유는 열리는 동작 자체가
@@ -1909,6 +1916,7 @@ function confirmNewOperationSetup() {
     deployMode: selectedOperationDeployMode(),
     difficulty: selectedOperationDifficulty(),
   });
+  operationCommenced = true;
   closeNewOperationSetup();
 }
 
@@ -8485,4 +8493,11 @@ if (!wideScreen) document.body.classList.add("command-collapsed");
 syncCommandPanelState();
 
 loadSavedDefaultBalance();
+// 게임을 켜면 판이 아니라 명령서가 먼저다. 여태는 아무도 고르지 않은 기본 작전이
+// 곧바로 시작돼서, 판을 한 번 보고 나서야 「새 작전」을 눌러 제 작전을 골랐다.
+// 순서가 거꾸로였다 — 군인이 전선에 서기 전에 명령서를 먼저 받는다.
+//
+// startGame()을 먼저 부르는 이유는 명령서 뒤에 깔릴 판이 있어야 하기 때문이다.
+// 그 판은 고른 것이 아니라 배경이고, 명령서에 서명하는 순간 고른 작전으로 다시 깔린다.
 startGame();
+openNewOperationSetup();
