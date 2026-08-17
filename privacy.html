@@ -27,9 +27,23 @@
       property="og:image"
       content="https://beastmarkii.github.io/Strategy_game/assets/cover.png"
     />
+    <!-- 트위터는 og:*를 대신 읽어 주기는 하지만, 제목·설명·그림을 제 이름으로
+         한 번 더 적어 두면 어느 쪽을 먼저 읽는 곳에서도 같은 것이 나온다.
+         게임 쪽(index.html)에는 이 넷이 다 있는데 여기만 없으면 두 장이
+         서로 다르게 보인다. -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="개인정보 처리방침 · 1944 전선 사령부" />
+    <meta
+      name="twitter:description"
+      content="모으는 것은 없다. 진행 중인 작전과 설정만 이 기계 안에 적어 둔다."
+    />
+    <meta
+      name="twitter:image"
+      content="https://beastmarkii.github.io/Strategy_game/assets/cover.png"
+    />
 
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <link rel="apple-touch-icon" href="assets/icon-180.png" />
     <meta name="theme-color" content="#202317" />
     <!-- 게임 화면(styles.css)을 끌어오지 않는다. 저 파일은 전투 화면 하나를 위해
@@ -152,8 +166,11 @@
 
          경계를 640px로 잡는다. 표는 최소 520px이고 본문 좌우 여백이 60px씩이라
          640px는 있어야 표가 통째로 들어간다. 예전에는 560px에서 갈랐는데, 그
-         사이(561~639px)에서는 표가 여전히 가로로 붙어 있으면서 맨 오른쪽
-         「언제 사라지나」 칸만 잘려 나갔다 — 가장 중요한 칸이 잘렸다. */
+         사이에서는 표가 여전히 가로로 붙어 있으면서 맨 오른쪽 「언제 사라지나」
+         칸만 잘려 나갔다 — 가장 중요한 칸이 잘렸다. 실제로 잰 잘림 구간은
+         561~631px이고(561px에서 64px, 630px에서 2px), 632px부터는 옛 설정에서도
+         안 잘렸다. 그래도 경계는 640으로 둔다 — 표가 통째로 들어가는 폭이
+         그쪽이라, 631에 맞춰 놓으면 여백이 한 픽셀도 없다. */
       @media (max-width: 639px) {
         .table-wrap {
           overflow-x: visible;
@@ -274,9 +291,16 @@
         올려 둔 다른 페이지가 있다면 그 페이지와는 저장 공간을 함께 씁니다. 지금
         거기 올라가 있는 것은 이 게임뿐입니다.
       </p>
-      <!-- tabindex를 준 이유: 화면이 좁아 표가 옆으로 밀리는 상태일 때, 마우스나
-           손가락이 없는 사람은 이 칸에 초점을 넣을 수 없으면 오른쪽 칸을 영영 못
-           본다. 초점이 들어오면 화살표 키로 밀 수 있다. -->
+      <!-- tabindex를 준 이유: 표가 옆으로 밀리는 상태가 되면, 마우스나 손가락이
+           없는 사람은 이 칸에 초점을 넣을 수 없으면 오른쪽 칸을 영영 못 본다.
+           초점이 들어오면 화살표 키로 밀 수 있다.
+
+           정직하게 적어 두자면, 글자 크기를 기본으로 두고 재면 320px부터
+           1180px까지 어느 폭에서도 표가 밀리지 않는다(639px 아래에서는 줄마다
+           펴지고, 640px 위에서는 통째로 들어간다). 그러니 지금은 이 초점 자리가
+           하는 일이 없다. 그래도 두는 것은, 브라우저에서 글자를 키운 사람에게는
+           표가 실제로 넘치기 때문이다 — 그리고 이 게임은 글자를 키우는 쪽은
+           막지 않는다. -->
       <div class="table-wrap" tabindex="0" role="group" aria-label="이 기계에 적어 두는 것">
         <table>
           <thead>

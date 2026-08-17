@@ -767,6 +767,27 @@ document.querySelector("#panelScrim")?.addEventListener("click", closeCommandPan
    같이 잠근다(inert) — 창의 생김새는 건드리지 않고 손잡이만 뗀다. */
 const EDIT_TOOLS_KEY = "ww2TacticalCommand.editTools";
 
+let editToolsOn = false;
+
+/* 수치 편집 창이 「지금 실제로 손 닿는 자리에 있는가」를 한 군데서만 정한다.
+
+   전에는 잠금(inert)은 「편집 연장을 켰는가」로, 없는 셈 치기(aria-hidden)는
+   「창을 펼쳤는가」로 각각 따로 정하고 있었다. 기준이 둘이니 서로 어긋났다.
+   ?edit=1로 켜기만 하고 창은 안 펼친 순간에는 창이 화면 밖에 접혀 있는데도
+   「여기 있다」고 적혀서, 눈으로 못 보는 사람에게는 닫힌 창 안의 입력칸
+   아흔여덟 개가 통째로 읽혔다. 반대로 켠 채 창을 접으면 「없다」고 적어 놓고는
+   잠그지는 않아서, Tab 키는 그 없다는 자리로 그대로 걸어 들어갔다.
+
+   창이 눈에 보이는 때는 편집 연장이 켜져 있고 또 펼쳐져 있을 때뿐이다.
+   그 하나를 두 표시에 똑같이 먹인다. 보이면 열고, 안 보이면 둘 다 닫는다. */
+function syncEditorPanelReach() {
+  const panel = document.querySelector("#editorPanel");
+  if (!panel) return;
+  const shown = editToolsOn && document.body.classList.contains("editor-open");
+  panel.inert = !shown;
+  panel.setAttribute("aria-hidden", shown ? "false" : "true");
+}
+
 function syncEditTools() {
   let on = false;
   try {
@@ -776,22 +797,13 @@ function syncEditTools() {
   } catch (error) {
     on = false;
   }
+  editToolsOn = on;
   const button = document.querySelector("#toggleEditorPanel");
   if (button) button.hidden = !on;
-  // 창을 통째로 잠근다. inert가 걸린 동안에는 Tab도, 클릭도, 화면 읽어 주는
-  // 프로그램도 그 안으로 들어가지 못한다. 창은 aria-hidden="true"인 채 서 있으므로
-  // 이걸 안 걸면 "없다고 말해 놓은 곳"에 손이 닿는 상태가 된다.
-  const panel = document.querySelector("#editorPanel");
-  if (panel) {
-    panel.inert = !on;
-    // 잠금을 풀 때 aria-hidden도 같이 푼다. 안 그러면 창은 열려서 눈에는
-    // 보이는데 화면을 읽어 주는 프로그램에는 "여기 아무것도 없다"고 적혀
-    // 있어서, 눈으로 못 보는 사람에게만 창이 통째로 사라진다.
-    panel.setAttribute("aria-hidden", on ? "false" : "true");
-  }
   // 감추는 김에 열려 있던 창도 닫는다. ?edit=0으로 껐는데 창이 남아 있으면
   // 그건 끈 것이 아니다.
   if (!on) document.body.classList.remove("editor-open");
+  syncEditorPanelReach();
 }
 
 syncEditTools();
@@ -2619,8 +2631,16 @@ clearStoredDataEl?.addEventListener("click", () => {
     clearArmedTimer = window.setTimeout(clearArmReset, 6000);
     return;
   }
-  // 아직 읽을 시간이 안 됐다. 못 본 척하고 그대로 세워 둔다.
-  if (Date.now() - clearArmedAt < CLEAR_MIN_GAP_MS) return;
+  // 아직 읽을 시간이 안 됐다. 지우지는 않되, 아무 일도 안 일어난 것처럼
+  // 보이게 두지는 않는다. 손가락이 빠른 사람에게 조용한 무시는 「단추가
+  // 고장 났다」로 읽힌다. 글자를 한 번 깜빡여서 "여기 있으니 한 번 더 읽어라"만
+  // 알린다 — 글자 자체는 「정말 지운다」 그대로 세워 둔다.
+  if (Date.now() - clearArmedAt < CLEAR_MIN_GAP_MS) {
+    clearStoredDataEl.classList.remove("clear-too-soon");
+    void clearStoredDataEl.offsetWidth; // 연달아 눌러도 깜빡임이 다시 시작되게
+    clearStoredDataEl.classList.add("clear-too-soon");
+    return;
+  }
   window.clearTimeout(clearArmedTimer);
   // 먼저 저장을 끈다. 아래에서 다시 켤 때 화면이 내려가는데, 그 내려가는 길에
   // 「하던 판을 적어 두는」 손이 한 번 더 돈다(visibilitychange). 그러면 방금
@@ -4676,9 +4696,9 @@ function closeCommandPanel() {
 function toggleEditorPanel() {
   const open = document.body.classList.toggle("editor-open");
   const button = document.querySelector("#toggleEditorPanel");
-  const panel = document.querySelector("#editorPanel");
   if (button) button.setAttribute("aria-expanded", String(open));
-  if (panel) panel.setAttribute("aria-hidden", String(!open));
+  // 잠금과 없는 셈 치기는 한 군데서만 정한다 — syncEditorPanelReach 위 설명 참고.
+  syncEditorPanelReach();
 }
 
 function syncRecruitButtonCosts() {

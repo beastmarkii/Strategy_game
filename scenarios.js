@@ -60,7 +60,7 @@ const scenarios = [
     // 이 작전의 설명이 "노르망디 내륙"이므로 지도만 남쪽 내륙으로 옮긴다.
     // 알랑송·에쿠브 숲 일대 — 바다 0칸이고 숲과 구릉이 많아 아래 지형 배치와도 맞는다.
     // 지형·목표·시작 위치는 하나도 건드리지 않았다.
-    map: { enabled: true, centerLat: 48.6, centerLon: -0.3, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "LA MANCHE", west: "COTENTIN", east: "PAYS D'AUGE", region: "NORMANDIE", city: "CAEN",
@@ -152,7 +152,7 @@ const scenarios = [
     // 위쪽 바다였다 — 규칙상의 강(세로 한 줄)과 눈에 보이는 물이 서로 딴 데 있었다.
     // 마옌 강이 판 한가운데를 세로로 흐르는 라발 일대로 옮긴다. 바다 0칸이고,
     // 지도에 보이는 강줄기와 규칙상의 강이 같은 방향으로 흐른다.
-    map: { enabled: true, centerLat: 48.3, centerLon: -0.7, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "LA MANCHE", west: "COTENTIN", east: "PAYS D'AUGE", region: "NORMANDIE", city: "CAEN",
@@ -261,7 +261,7 @@ const scenarios = [
     // 원래 자리(49.12, -0.79)는 판의 오른쪽 위 모서리가 바다에 잠겨 69칸이 물이었다.
     // 간선도로가 실제로 여러 갈래로 갈리는 내륙(마메르·라페르테베르나르 일대)으로 옮긴다.
     // 바다 0칸이고 숲이 가장 많은 자리라, 교차로를 지키는 그림과도 맞는다.
-    map: { enabled: true, centerLat: 48.35, centerLon: 0.2, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "LA MANCHE", west: "COTENTIN", east: "PAYS D'AUGE", region: "NORMANDIE", city: "CAEN",
@@ -353,7 +353,7 @@ const scenarios = [
     // 팔레즈 일대. 지휘 계통이 끊기는 것이 부대가 죽는 것보다 무서웠던 무렵.
     startDate: [1944, 8, 16],
     timeoutWinner: null,
-    map: { enabled: true, centerLat: 48.86, centerLon: -0.62, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "LA MANCHE", west: "COTENTIN", east: "PAYS D'AUGE", region: "NORMANDIE", city: "CAEN",
@@ -439,7 +439,7 @@ const scenarios = [
     startDate: [1944, 8, 19],
     // 시간이 끝나면 포위한 쪽(동군)이 포켓을 짓뭉갠 것으로 본다.
     timeoutWinner: "east",
-    map: { enabled: true, centerLat: 48.76, centerLon: 0.11, zoom: 11, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "LA MANCHE", west: "COTENTIN", east: "PAYS D'AUGE", region: "NORMANDIE", city: "CAEN",
@@ -547,7 +547,7 @@ const scenarios = [
     // 시간이 끝나면 방어 측(동군)이 이긴다. 개통은 공격 측의 숙제다.
     timeoutWinner: "east",
     // 1944년 9월, 발 강. 다리 하나에 작전 전체가 걸렸던 그 회랑.
-    map: { enabled: true, centerLat: 51.85, centerLon: 5.87, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "NOORDZEE", west: "BRABANT", east: "DE PEEL", region: "NEDERLAND", city: "NIJMEGEN",
@@ -670,7 +670,7 @@ const scenarios = [
     startDate: [1942, 10, 23],
     // 시간은 수비 측 편이다. 못 뚫으면 전선은 그대로 굳는다.
     timeoutWinner: "east",
-    map: { enabled: true, centerLat: 30.75, centerLon: 28.95, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "MEDITERRANEAN", west: "QATTARA", east: "RUWEISAT", region: "EGYPT", city: "EL ALAMEIN",
@@ -763,7 +763,7 @@ const scenarios = [
     startDate: [1942, 11, 19],
     // 자루가 반쯤 닫힌 채 끝나면 어느 쪽도 이기지 못한 것이다.
     timeoutWinner: null,
-    map: { enabled: true, centerLat: 48.7, centerLon: 43.53, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "VOLGA", west: "DON BEND", east: "STEPPE", region: "STALINGRAD", city: "KALACH",
@@ -853,7 +853,7 @@ const scenarios = [
     turnLimit: 14,
     startDate: [1944, 6, 22],
     timeoutWinner: "east",
-    map: { enabled: true, centerLat: 53.15, centerLon: 29.23, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "BEREZINA", west: "PRIPYAT", east: "DNEPR", region: "BELORUSSIA", city: "BOBRUISK",
@@ -949,7 +949,7 @@ const scenarios = [
     turnLimit: 10,
     startDate: [1944, 7, 25],
     timeoutWinner: "east",
-    map: { enabled: true, centerLat: 48.8, centerLon: -1.05, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "LA MANCHE", west: "COTENTIN", east: "BOCAGE", region: "NORMANDIE", city: "SAINT-LO",
@@ -1037,7 +1037,7 @@ const scenarios = [
     turnLimit: 12,
     startDate: [1944, 9, 17],
     timeoutWinner: "east",
-    map: { enabled: true, centerLat: 51.9, centerLon: 5.87, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "NOORDZEE", west: "BRABANT", east: "DE PEEL", region: "NEDERLAND", city: "NIJMEGEN",
@@ -1133,7 +1133,7 @@ const scenarios = [
     startDate: [1944, 3, 8],
     // 버티면 이긴다. 굶는 쪽은 포위한 쪽이었다.
     timeoutWinner: "west",
-    map: { enabled: true, centerLat: 24.82, centerLon: 93.94, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "CHINDWIN", west: "MANIPUR", east: "CHIN HILLS", region: "BURMA", city: "IMPHAL",
@@ -1225,7 +1225,7 @@ const scenarios = [
     startDate: [1940, 5, 13],
     // 낫이 닿기 전에 시간이 다 가면 전선은 다시 굳는다.
     timeoutWinner: "west",
-    map: { enabled: true, centerLat: 49.7, centerLon: 4.94, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "LA MANCHE", west: "PICARDIE", east: "ARDENNES", region: "FRANCE", city: "SEDAN",
@@ -1315,7 +1315,7 @@ const scenarios = [
     startDate: [1941, 5, 20],
     // 여드레를 버티면 하늘에서 온 쪽이 먼저 말라 죽는다.
     timeoutWinner: "west",
-    map: { enabled: true, centerLat: 35.5, centerLon: 23.85, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "KRITIKO PELAGOS", west: "CHANIA", east: "RETHYMNO", region: "KRITI", city: "MALEME",
@@ -1396,7 +1396,7 @@ const scenarios = [
     startDate: [1942, 2, 8],
     // 물을 못 건너고 기한이 끝나면 요새는 그대로 남는다.
     timeoutWinner: "west",
-    map: { enabled: true, centerLat: 1.4, centerLon: 103.76, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "SELAT JOHOR", west: "KRANJI", east: "SERANGOON", region: "SINGAPURA", city: "BUKIT TIMAH",
@@ -1487,7 +1487,7 @@ const scenarios = [
     startDate: [1942, 5, 26],
     // 길어지면 뚫는 쪽이 먼저 말라붙는다.
     timeoutWinner: "west",
-    map: { enabled: true, centerLat: 31.95, centerLon: 23.9, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "MEDITERRANEAN", west: "GAZALA", east: "CYRENAICA", region: "LIBYA", city: "TOBRUK",
@@ -1580,7 +1580,7 @@ const scenarios = [
     startDate: [1943, 2, 19],
     // 반격이 늦으면 전선은 그 자리에서 굳는다.
     timeoutWinner: "east",
-    map: { enabled: true, centerLat: 49.99, centerLon: 36.23, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "SEVERSKY DONETS", west: "DNEPR", east: "OSKOL", region: "UKRAINE", city: "KHARKOV",
@@ -1672,7 +1672,7 @@ const scenarios = [
     turnLimit: 12,
     startDate: [1943, 7, 5],
     timeoutWinner: "west",
-    map: { enabled: true, centerLat: 52.3, centerLon: 36.3, zoom: 10, radius: 2 },
+    map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
     mapLabels: {
       sea: "OKA", west: "KURSK", east: "STEPPE FRONT", region: "ORYOL", city: "PONYRI",

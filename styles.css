@@ -6979,3 +6979,27 @@ body {
   font-size: 13px;
   text-underline-offset: 3px;
 }
+
+/* 「정말 지운다」로 세워 둔 뒤 너무 빨리 다시 누른 경우. 지우지는 않지만
+   눌린 것은 눌린 것이라, 한 번 깜빡여서 아직 살아 있다고 알린다. */
+@keyframes clear-too-soon-blink {
+  0%,
+  100% {
+    background: transparent;
+  }
+  35% {
+    background: rgba(216, 164, 65, 0.32);
+  }
+}
+
+.privacy-row button.clear-too-soon {
+  animation: clear-too-soon-blink 420ms ease-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .privacy-row button.clear-too-soon {
+    animation: none;
+    outline: 2px solid rgba(216, 164, 65, 0.75);
+    outline-offset: 2px;
+  }
+}
