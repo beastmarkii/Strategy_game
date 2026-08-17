@@ -1857,7 +1857,9 @@ function startGame(config = {}) {
   addLog(`${sideName("player")} › 작전 개시 · 지휘 ${state.commanders.player.name}`);
   addLog(`작전 「${scenario.name}」 — ${scenario.summary}`);
   addLog(missionBriefText());
-  addLog(`${sideName("enemy")} 방어선 지휘 ${state.commanders.enemy.name}`);
+  // 맞은편 장군 이름은 여기서 안 알려 준다. 개전 전문에 이름을 박아 두면 사령부를
+  // 찾아낼 이유가 없어진다 — 적 대대사령부를 눌러야 누구인지 알게 해 두었다.
+  addLog(`${sideName("enemy")} 방어선 › 지휘관 미상 · 적 대대사령부 확인 요망`);
   addLog(`적 참모부 「${difficulty.name}」 · ${difficulty.brief}`);
   addLog("공병대 배치 · 다리 1일, 보급창고·철도 수일 소요");
   addLog("공병대 › 보병보다 빠르고 튼튼 · 전투력은 소총분대의 80%");
@@ -3871,6 +3873,32 @@ function renderUnitCardVisual(unit, spec) {
   `;
 }
 
+// 맞은편 장군은 여기서 처음 만난다. 적 대대사령부를 찾아 눌렀을 때만 나온다 —
+// 사령부를 찾아내는 일 자체가 정보이기 때문이다. 다른 적 부대를 눌러서는 알 수 없다.
+// 얼굴과 함께 능력치도 다 편다. 알아냈으면 다 알아낸 것이지, 반만 알려 주는 정찰은 없다.
+function renderEnemyCommanderStrip(unit) {
+  if (unit.owner !== "enemy" || unit.type !== "battalionHQ") return "";
+  const commander = state.commanders.enemy;
+  if (!commander) return "";
+  return `
+    <div class="unit-card-commander">
+      <img
+        class="commander-photo"
+        src="${commanderPhoto(commander)}"
+        alt="${commander.name} portrait"
+        loading="lazy"
+        onerror="replaceCommanderPhoto(this, '${commanderInitials(commander)}', '${commander.side}')"
+      />
+      <span class="unit-card-commander-body">
+        <span class="commander-tag">적군 지휘</span>
+        <strong>${commander.name}</strong>
+        <span>${commander.nation} ${commander.rank} · ${commander.trait}</span>
+        <span>${commanderStatSummary(commander)}</span>
+      </span>
+    </div>
+  `;
+}
+
 function renderSelectedCard() {
   // 좁은 화면에서 부대 카드는 지도 위에 떠 있고, 처음에는 핵심 몇 줄만 보인다.
   // 새 부대를 고를 때마다 다시 접어 둔다 — 안 그러면 앞 부대에서 펴 둔 상태가
@@ -3892,6 +3920,7 @@ function renderSelectedCard() {
   const supply = supplyStatus(unit);
   selectedCardEl.innerHTML = `
     ${renderUnitCardVisual(unit, spec)}
+    ${renderEnemyCommanderStrip(unit)}
     <div class="unit-stats">
       <span>위치 <strong>${displayTileName(unit.x, unit.y)}</strong></span>
       <span>지형 <strong>${terrainDescription(tile)}</strong></span>
@@ -3904,9 +3933,9 @@ function renderSelectedCard() {
       ${spec.defense ? `<span>부대 방어 <strong>+${spec.defense}</strong></span>` : ""}
       <span class="key">사기 <strong>${effectiveMorale(unit)}%</strong></span>
       <span>중첩 <strong>${stack.length}/${maxStackSize}</strong></span>
-      <span>지휘관 <strong>${commanderFor(unit.owner).name.split(" ").at(-1)}</strong></span>
-      ${commanderFor(unit.owner).move ? `<span>장군 이동 <strong>${signedStat(commanderFor(unit.owner).move)}</strong></span>` : ""}
-      ${commanderFor(unit.owner).supply ? `<span>장군 보급 <strong>${signedStat(commanderFor(unit.owner).supply)}</strong></span>` : ""}
+      ${unit.owner === "player" ? `<span>지휘관 <strong>${commanderFor(unit.owner).name.split(" ").at(-1)}</strong></span>` : ""}
+      ${unit.owner === "player" && commanderFor(unit.owner).move ? `<span>장군 이동 <strong>${signedStat(commanderFor(unit.owner).move)}</strong></span>` : ""}
+      ${unit.owner === "player" && commanderFor(unit.owner).supply ? `<span>장군 보급 <strong>${signedStat(commanderFor(unit.owner).supply)}</strong></span>` : ""}
       ${unit.type === "artillery" ? `<span>상태 <strong>${unit.towed ? "견인" : "전개"}</strong></span>` : ""}
       <span class="key">행동 <strong>${unit.justArrived ? "편성 중 / 내일부터" : unit.acted ? "완료" : unit.moved ? "이동 완료 / 공격 가능" : "가능"}</strong></span>
       <span class="key">보급 <strong>${supply.label}</strong></span>
@@ -3992,34 +4021,35 @@ function terrainTraitText(x, y) {
 }
 
 // 명부는 얼굴을 보는 자리다. 능력치는 장군을 고를 때 이미 다 읽었으므로 여기서
-// 또 늘어놓을 이유가 없다 — 판이 도는 동안 알아야 할 것은 "누가 맞은편에 있는가"
-// 하나뿐이고, 그건 숫자가 아니라 얼굴로 기억된다. 사진을 키우고 이름과 한 줄만 남긴다.
+// 또 늘어놓을 이유가 없다 — 사진을 키우고 이름과 한 줄만 남긴다.
+//
+// 여기 서는 것은 내 장군 하나뿐이다. 예전에는 맞은편 장군을 나란히 걸어 두었는데,
+// 그러면 판이 시작되자마자 상대가 누구이고 무엇을 잘하는지 알게 된다 — 정찰
+// 한 번 없이 얻는 정보다. 맞은편 장군은 적 대대사령부를 찾아서 눌러야 알게
+// 했다(renderEnemyCommanderStrip). 사령부를 찾아내는 일 자체가 정보다.
+//
+// 둘이 하나가 되면서 사진을 위아래로 세울 이유도 없어졌다. 사진은 왼쪽, 글은
+// 오른쪽에 눕힌다 — 사진 크기는 그대로인데 명부 높이는 절반이 되고, 그래서
+// 이 칸에 있던 스크롤이 없어진다. 초상화를 굴려서 보는 것은 명부가 아니다.
 function renderCommanderList() {
-  const active = [
-    { commander: state.commanders.player, tag: "아군" },
-    { commander: state.commanders.enemy, tag: "적군" },
-  ];
+  const commander = state.commanders.player;
   commanderListEl.innerHTML = `
     <h2>지휘관 명부</h2>
     <div class="commander-grid">
-      ${active
-        .map(
-          ({ commander, tag }) => `
-            <article class="commander-entry">
-              <img
-                class="commander-photo"
-                src="${commanderPhoto(commander)}"
-                alt="${commander.name} portrait"
-                loading="lazy"
-                onerror="replaceCommanderPhoto(this, '${commanderInitials(commander)}', '${commander.side}')"
-              />
-              <span class="commander-tag">${tag}</span>
-              <strong>${commander.name}</strong>
-              <span>${commander.nation} ${commander.rank} · ${commander.trait}</span>
-            </article>
-          `,
-        )
-        .join("")}
+      <article class="commander-entry">
+        <img
+          class="commander-photo"
+          src="${commanderPhoto(commander)}"
+          alt="${commander.name} portrait"
+          loading="lazy"
+          onerror="replaceCommanderPhoto(this, '${commanderInitials(commander)}', '${commander.side}')"
+        />
+        <span class="commander-entry-body">
+          <span class="commander-tag">아군 지휘</span>
+          <strong>${commander.name}</strong>
+          <span>${commander.nation} ${commander.rank} · ${commander.trait}</span>
+        </span>
+      </article>
     </div>
   `;
 }

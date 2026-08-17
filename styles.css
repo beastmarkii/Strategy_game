@@ -504,28 +504,38 @@ h1 {
   line-height: 1.35;
 }
 
-/* 둘뿐이므로 나란히 세운다. 위아래로 쌓으면 사진을 키운 만큼 명부가 길어져서
-   그 아래 무전 기록을 밀어낸다 — 나란히 두면 사진은 두 배가 되고 높이는 그대로다.
-   맞은편에 누가 있는지를 한눈에 견주어 보는 자리이기도 하다. */
+/* 이제 내 장군 하나뿐이다(맞은편 장군은 적 사령부를 눌러야 나온다). 그래서 사진을
+   위에 놓고 글을 아래로 쌓을 이유가 없어졌다 — 그렇게 하면 사진 크기만큼 명부가
+   길어져서, 좁은 화면에서 이 칸에 스크롤이 생긴다. 초상화를 굴려서 보는 것은
+   신분증이 아니다.
+
+   사진은 왼쪽, 글은 오른쪽. 사진 크기는 예전 그대로인데 칸 높이는 절반이 된다. */
 .commander-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
 .commander-entry {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  gap: 12px;
+  align-items: center;
   margin: 0;
 }
 
-/* 사진은 칸을 꽉 채운다. 얼굴은 위쪽에 있으므로 세로가 조금 긴 편이 낫다. */
+/* 얼굴은 위쪽에 있으므로 세로가 조금 긴 편이 낫다. 폭은 고정이다 — 명부 폭이
+   화면마다 달라져도 얼굴 크기는 안 달라져야 한다. */
 .commander-entry .commander-photo {
-  width: 100%;
+  flex: none;
+  width: 118px;
   height: auto;
-  margin-bottom: 5px;
   aspect-ratio: 4 / 5;
+}
+
+.commander-entry-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 /* 어느 쪽이 내 장군인지. 사진만 둘 놓으면 그것부터 헷갈린다. */
@@ -2307,6 +2317,36 @@ h1 {
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+/* 적 대대사령부를 눌렀을 때만 나오는 칸. 맞은편 장군의 얼굴과 특기다.
+   명부에서 뺀 것을 여기로 옮겼다 — 상대가 누구인지는 거저 주는 정보가 아니라
+   사령부를 찾아내서 얻는 정보여야 한다.
+
+   위아래 줄을 그어 부대 정보와 갈라 둔다. 이 칸만 "이 부대"가 아니라
+   "이 부대를 부리는 사람" 이야기이기 때문이다. */
+.unit-card-commander {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  margin-bottom: 12px;
+  border-top: 1px solid rgb(0 0 0 / 22%);
+  border-bottom: 1px solid rgb(0 0 0 / 22%);
+  padding: 9px 0;
+}
+
+.unit-card-commander .commander-photo {
+  flex: none;
+  width: 62px;
+  height: auto;
+  aspect-ratio: 4 / 5;
+}
+
+.unit-card-commander-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .unit-card-image {
@@ -4161,6 +4201,12 @@ h1 {
     padding-bottom: 3px;
   }
 
+  /* 접힌 상태에서는 맞은편 장군 칸도 접는다. 접힌 카드는 100px 안에 들어가야
+     하는 띠인데, 여기에 초상화를 하나 더 얹으면 그 약속이 깨진다. 눌러서 펴면 나온다. */
+  .unit-card:not(.expanded) .unit-card-commander {
+    display: none;
+  }
+
   /* 표를 눕힌다. 세로줄 여섯 개가 가로줄 두 개가 된다. */
   .unit-card:not(.expanded) .unit-stats {
     display: flex;
@@ -4892,11 +4938,11 @@ body {
   flex: 0 0 auto;
 }
 
-/* 지휘관 명단이 길어지면 여기서만 조금 구른다. */
+/* 명부는 한 명뿐이라 더는 구르지 않는다. 눌려서 사진이 잘리지도 않게 제 높이를
+   지킨다 — 남는 자리를 내주는 것은 아래 전황 기록의 몫이다. */
 .commander-list {
-  flex: 0 1 auto;
-  min-height: 0;
-  overflow-y: auto;
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 /* 남는 자리는 전부 전황 기록이 가져간다. 화면이 크면 더 많이 보이고,
