@@ -1193,6 +1193,136 @@ function playNoticeSound(name) {
   playSample(`${prefix}${name}`, { level: soundLevels.notice, channel: "voice" });
 }
 
+// ── 배경음악 ────────────────────────────────────────────────────────────
+//
+// 효과음과는 다른 길로 간다. 총소리는 한 발이 1초라 통째로 받아 메모리에 풀어
+// 두지만, 음악은 한 곡이 100초다. 같은 식으로 풀면 한 곡에 35MB, 넉 장이면
+// 140MB — 휴대폰에서 그 짐을 지면 게임이 죽는다. 음악은 <audio>로 흘려 듣는다.
+//
+// 다만 <audio>의 제 볼륨 손잡이는 아이폰이 아예 듣지 않는다(사파리가 무시한다).
+// 그래서 소리를 GainNode에 물려 그쪽으로 크기를 다룬다 — 이 길은 막히지 않는다.
+// 페이드가 되는 것도 이 덕분이다.
+const musicMoods = ["calm", "alert"];
+const musicTracks = new Map(); // mood -> { el, gain }
+let musicSide = null;
+let musicMood = null;
+let musicStarted = false;
+let musicLastContactTurn = -99;
+// 굽는 단계에서 이미 효과음보다 7dB 낮게 잡아 두었다(-24 LUFS). 여기서는 그 위에
+// 한 번 더 낮춘다 — 음악은 들리는 것이 아니라 꺼 보고서야 허전한 것이어야 한다.
+const musicLevel = 0.75;
+// 3초. 한 박에 바뀌면 놀라고, 십 초면 이미 총을 맞은 뒤에 북이 들어온다.
+const musicFadeSeconds = 3;
+// 적을 놓친 그 턴에 바로 평시로 돌아가면, 적이 언덕 뒤로 한 칸 물러설 때마다
+// 음악이 오르내린다. 한 턴은 참는다.
+const musicCalmDelayTurns = 1;
+
+function musicTeardown() {
+  musicTracks.forEach(({ el }) => {
+    try {
+      el.pause();
+    } catch (error) {
+      // 아직 틀지도 않은 것을 멈추려 한 것뿐이다.
+    }
+  });
+  musicTracks.clear();
+  musicSide = null;
+  musicMood = null;
+  musicStarted = false;
+}
+
+// 내 진영 몫 두 곡만 건다. 상대 진영 음악은 이 판에서 한 번도 울리지 않는다.
+function musicSetup(side) {
+  const context = ensureAudio();
+  if (!context || !context.createMediaElementSource) return;
+  if (musicSide === side && musicTracks.size) return;
+  musicTeardown();
+  musicMoods.forEach((mood) => {
+    const el = new Audio(`${audioBasePath}music_${side}_${mood}.mp3`);
+    el.loop = true;
+    el.preload = "auto";
+    const gain = context.createGain();
+    gain.gain.value = 0;
+    try {
+      context.createMediaElementSource(el).connect(gain).connect(context.destination);
+    } catch (error) {
+      return;
+    }
+    musicTracks.set(mood, { el, gain });
+  });
+  musicSide = musicTracks.size ? side : null;
+}
+
+// 두 곡을 '동시에' 튼다. 한 곡만 틀어 놓고 나중에 갈아 끼우려 하면 아이폰에서
+// 막힌다 — 사파리는 사람이 화면을 건드린 그 순간에만 재생을 허락하고, 3초 뒤에
+// 부르는 play()는 손길과 무관한 것으로 본다. 그래서 교전곡도 지금 같이 틀되
+// 크기를 0으로 눌러 둔다. 나중에 하는 일은 크기를 올리는 것뿐이다.
+function musicStart() {
+  if (musicStarted) return;
+  const context = ensureAudio();
+  if (!context) return;
+  musicSetup((state?.playerSide ?? "allies") === "axis" ? "axis" : "allies");
+  if (!musicTracks.size) return;
+  musicStarted = true;
+  musicMood = "calm";
+  musicTracks.forEach(({ el, gain }, mood) => {
+    // 예약(setValueAtTime)이 아니라 값을 바로 박는다. 예약은 오디오 시계가 그
+    // 시각에 닿아야 반영되는데, 시작하는 이 순간에는 아직 닿기 전이라 첫 몇
+    // 밀리초 동안 평시곡이 0으로 남는 일이 생긴다.
+    gain.gain.value = mood === "calm" ? musicLevel : 0;
+    el.play().catch(() => {});
+  });
+}
+
+function musicSetMood(mood) {
+  if (!musicStarted || musicMood === mood || !audioContext) return;
+  musicMood = mood;
+  const now = audioContext.currentTime;
+  musicTracks.forEach((track, key) => {
+    const level = track.gain.gain;
+    level.cancelScheduledValues(now);
+    // 지금 값에서 출발시키지 않으면 넘어가던 중에 방향이 바뀔 때 소리가 튄다.
+    level.setValueAtTime(level.value, now);
+    level.linearRampToValueAtTime(key === mood ? musicLevel : 0, now + musicFadeSeconds);
+  });
+}
+
+// 적이 눈에 들어왔는가. 안개를 켜고 두면 '보이는 적'이 곧 답이고, 끄고 두면
+// 모든 적이 늘 보이므로 그것으로는 답이 안 된다 — 그때는 내 부대의 시야 안에
+// 들어온 적만 센다. 어느 쪽이든 뜻은 하나다: 우리 정찰이 적을 짚었다.
+function musicEnemyContact() {
+  if (!state?.units) return false;
+  const foes = state.units.filter((unit) => unit.owner !== "player");
+  if (!foes.length) return false;
+  if (fogOfWar) return foes.some((foe) => unitVisibleTo(foe, "player"));
+  const mine = state.units.filter((unit) => unit.owner === "player");
+  return foes.some((foe) => mine.some((unit) => distance(unit, foe) <= sightRangeOf(unit)));
+}
+
+function musicUpdate() {
+  if (!musicStarted) return;
+  // 판이 끝나면 북을 멈춘다. 결과 화면 뒤로 교전곡이 계속 도는 건 이상하다.
+  if (state?.gameOver) {
+    musicSetMood("calm");
+    return;
+  }
+  if (musicEnemyContact()) musicLastContactTurn = state.turn;
+  musicSetMood(state.turn - musicLastContactTurn <= musicCalmDelayTurns ? "alert" : "calm");
+}
+
+// 첫 손길에 시작한다. 브라우저는 사람이 화면을 건드리기 전에는 소리를 내주지
+// 않으므로, 이보다 먼저 부를 수 있는 자리가 없다. 이미 돌고 있으면 그냥 지나간다
+// (탭을 옮겼다 돌아왔을 때 멈춰 있는 것만 다시 민다).
+function musicNudge() {
+  musicStart();
+  musicTracks.forEach(({ el }) => {
+    if (el.paused) el.play().catch(() => {});
+  });
+  musicUpdate();
+}
+
+["pointerdown", "keydown"].forEach((type) => document.addEventListener(type, musicNudge));
+
 prefetchSounds();
 
 function applyLocale() {
@@ -1428,6 +1558,15 @@ function startGame(config = {}) {
   // 어느 진영을 잡는지가 여기서 정해진다. 첫 화면에서는 연합군 몫만 미리 받아 두었으므로,
   // 추축군을 골랐다면 이제부터 쓸 무전을 마저 받는다(이미 받아 둔 것은 건너뛴다).
   prefetchSounds(playerSide);
+  // 음악도 진영을 따라간다. 연합군으로 두다가 추축군으로 새 판을 열면 장조가
+  // 단조로 바뀐다. 여기는 "작전 개시"를 누른 손길 안이라 다시 트는 것이 허락된다.
+  // 새 판은 언제나 평시로 시작한다 — 지난 판의 접전을 물려받지 않는다.
+  musicLastContactTurn = -99;
+  const musicWanted = playerSide === "axis" ? "axis" : "allies";
+  if (musicSide && musicSide !== musicWanted) {
+    musicTeardown();
+    musicStart();
+  }
   const playerCommander = commanders.find((commander) => commander.id === config.playerCommanderId && commander.side === commanderSideName(playerSide)) ?? defaultCommanderForSide(playerSide);
   const aiCommander = defaultCommanderForSide(aiSide);
   const scenario = findScenario(config.scenarioId ?? state?.scenarioId ?? defaultScenarioId);
@@ -2236,6 +2375,9 @@ function render() {
   localizeRenderedText();
   const moveAnimationDelay = playUnitMoveAnimations();
   playCombatAnimations(moveAnimationDelay);
+  // 음악은 화면을 다시 그릴 때마다 제 자리를 확인한다. 부대가 한 칸 움직여
+  // 시야가 열리는 그 순간이 곧 화면을 다시 그리는 순간이기 때문이다.
+  musicUpdate();
 }
 
 function renderMapUnderlay() {
