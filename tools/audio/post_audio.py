@@ -114,6 +114,9 @@ COMMANDERS = [
     "cmd_zhukov", "cmd_rokossovsky", "cmd_slim",
     "cmd_rommel", "cmd_guderian", "cmd_manstein", "cmd_model",
     "cmd_yamashita", "cmd_student",
+    # 그 작전에만 나오는 여섯 — 파울루스·무타구치·프라이버그·퍼시벌·리치·드골.
+    "cmd_paulus", "cmd_mutaguchi", "cmd_freyberg",
+    "cmd_percival", "cmd_ritchie", "cmd_degaulle",
 ]
 
 

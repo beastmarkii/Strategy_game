@@ -6,10 +6,10 @@
 포탄이 다 모이기 전에는 안 움직인다고 한다. 그 한 줄이 곧 그 장군의 계수다.
 
 말은 그 사람 말로 한다. 미국·영국 장군은 영어, 소련 장군은 러시아어, 독일
-장군은 독일어, 야마시타는 일본어. 소련 원수가 영어로 말하면 그건 소련 원수가
-아니다 — 적 부대를 독일어로 말하게 만든 것과 같은 이유다.
+장군은 독일어, 일본 장군은 일본어, 드골은 프랑스어. 소련 원수가 영어로 말하면
+그건 소련 원수가 아니다 — 적 부대를 독일어로 말하게 만든 것과 같은 이유다.
 
-목소리는 열셋이 전부 다르다. 두 사람이 같은 목소리를 쓰면, 사람을 고르는
+목소리는 열아홉이 전부 다르다. 두 사람이 같은 목소리를 쓰면, 사람을 고르는
 화면에서 사람이 안 바뀐 것으로 들린다. 여기 쓴 아이디는 부대 무전 목소리
 (gen_voices.py / gen_voices_sides.py)와도 하나도 겹치지 않는다.
 
@@ -109,6 +109,40 @@ JOBS = [
     # 전선이라는 말 자체를 다르게 쓴다.
     ("student", "bGkjVHUyQ9rRhorWJufM", 0.5,
      "Wir kommen von oben. Für uns gibt es keine Front."),
+
+    # ── 그 작전에만 나오는 장군들 ─────────────────────────────────────────
+    # 상설 명부와 달리 판 하나에만 선다. 그래서 대사도 그 판의 대사다 —
+    # 파울루스는 포위 안에서, 무타구치는 보급 없이 산을 넘기 직전에 말한다.
+
+    # 파울루스가 1943년 1월 24일 스탈린그라드에서 히틀러에게 보낸 전문 그대로.
+    # 감정이 하나도 없다. 그래서 stability를 명부에서 가장 높게 준다 — 이 사람은
+    # 절망도 보고서 문장으로 말한다.
+    ("paulus", "daJ4gHLkIVFskWuoLuDX", 0.78,
+     "Truppe ohne Munition und Verpflegung. Wirksame Führung nicht mehr möglich."),
+
+    # 무타구치가 33사단에 실제로 내린 훈시. 게임의 보급 -3이 이 한 줄에서 나왔다.
+    # 일본어 목소리는 야마시타가 이미 쓰고 있어 겹칠 수 없으므로, 겹치지 않는
+    # 것 중 나이대와 음색이 가장 가까운 쪽으로 골랐다.
+    ("mutaguchi", "2I36mEahS1u7ZnTKUoaB", 0.35,
+     "日本人は元来草食動物である。この青い山の中で、食糧に困ることなどあるものか。"),
+
+    # 프라이버그가 크레타에서 낸 그날의 명령. 실제로는 진다는 걸 알고 있었는데
+    # 병사들에게는 이렇게 말했다.
+    ("freyberg", "z7i51AlFqQJ8JzM16o7e", 0.5,
+     "We shall maintain the integrity of Crete against any invader, and from this base we shall go forward."),
+
+    # 퍼시벌이 항복을 앞두고 한 말. 야마시타의 "예스냐 노냐"와 짝이 되는 문장이다.
+    ("percival", "L1aJrPa7pLJEyYlh3Ilq", 0.68,
+     "I have my honour to consider, and what posterity will think of us."),
+
+    # 리치는 남긴 한마디를 못 찾아 그의 방식대로 지었다. 가잘라에서 그가 실제로
+    # 한 일이 이것이다 — 부대를 상자처럼 흩어 놓고 각자 버티게 했다.
+    ("ritchie", "JWlKsAOcyfylxVyKfOQW", 0.58,
+     "Every box holds its own ground. Nobody waits to be relieved."),
+
+    # 드골이 1940년 6월 18일 런던에서 한 그 방송. 지고 있는 쪽의 문장이 아니다.
+    ("degaulle", "yhf80q1381zd2JJQ4tM7", 0.45,
+     "Quoi qu'il arrive, la flamme de la résistance française ne doit pas s'éteindre et ne s'éteindra pas."),
 ]
 
 

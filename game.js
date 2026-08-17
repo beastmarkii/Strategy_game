@@ -612,6 +612,40 @@ const commanders = [
   { id: "model", side: "Axis", name: "Walter Model", nation: "독일", rank: "원수", trait: "방어전", morale: 6, attack: -1, defense: 4, move: -1, supply: 2, stackMorale: 5 },
   { id: "yamashita", side: "Axis", name: "Tomoyuki Yamashita", nation: "일본", rank: "대장", trait: "정글 기동", morale: 6, attack: 0, defense: 2, move: 2, supply: -1, stackMorale: 6 },
   { id: "student", side: "Axis", name: "Kurt Student", nation: "독일", rank: "상급대장", trait: "공수 작전", morale: 4, attack: 1, defense: -1, move: 3, supply: -2, stackMorale: 4 },
+
+  // 여기부터는 그 작전 하나에만 나오는 사람들이다(only). 위의 상설 명부와 달리
+  // 아무 판에나 부를 수 없다 — 그 사람의 전쟁이 거기서 시작하거나 거기서 끝났기
+  // 때문이다. 그래서 값도 「잘하는 장군/못하는 장군」이 아니라 그 판을 어떻게
+  // 치르게 만들지로 정했다. 붙여 놓은 설명은 숫자 풀이가 아니라 손맛이다.
+
+  // 파울루스 — 계산은 맞는데 발이 안 떨어진다. 진지에 들어앉으면 잘 버티고
+  // 보급선도 길게 뻗지만, 치고 나가려 하면 매번 한 박자 늦는다. 포위가 조여드는
+  // 천왕성에서 「가만히 있으면 안전한데 가만히 있으면 죽는」 판을 만든다.
+  { id: "paulus", side: "Axis", only: ["uranus"], name: "Friedrich Paulus", nation: "독일", rank: "상급대장", trait: "참모의 계산", morale: 5, attack: -1, defense: 3, move: -2, supply: 2, stackMorale: 7 },
+
+  // 무타구치 — 병사는 어디로든 가고 어디서든 싸운다. 다만 보급선이 게임에서 가장
+  // 짧다. 임팔에서는 진격 자체가 어렵지 않고, 진격한 다음이 어렵다.
+  { id: "mutaguchi", side: "Axis", only: ["imphal"], name: "Renya Mutaguchi", nation: "일본", rank: "중장", trait: "무보급 강행", morale: 8, attack: 2, defense: -2, move: 2, supply: -3, stackMorale: 3 },
+
+  // 프라이버그 — 물러서지 않는다. 공격은 평범하지만 자리를 잡고 있으면 좀처럼
+  // 밀리지 않고, 여럿을 한 칸에 몰아 두어도 사기가 잘 안 꺾인다. 하늘에서 쏟아지는
+  // 메르쿠어에서 「버티는 쪽」을 실제로 버티게 해 준다.
+  { id: "freyberg", side: "Allies", only: ["merkur"], name: "Bernard Freyberg", nation: "뉴질랜드", rank: "소장", trait: "끈질긴 방어", morale: 7, attack: 0, defense: 3, move: 0, supply: 0, stackMorale: 6 },
+
+  // 퍼시벌 — 창고는 가득한데 사기가 얇다. 보급선이 길게 가고 방어도 되지만
+  // 먼저 치고 나갈 힘이 없다. 싱가포르에서 「지키기만 해서는 이길 수 없는」
+  // 답답함이 이 사람에게서 나온다.
+  { id: "percival", side: "Allies", only: ["singapore"], name: "Arthur Percival", nation: "영국", rank: "중장", trait: "요새 방비", morale: 4, attack: -2, defense: 2, move: -1, supply: 3, stackMorale: 7 },
+
+  // 리치 — 부대를 한 칸에 겹쳐 두면 사기가 게임에서 제일 빨리 무너진다. 대신 발은
+  // 빠르다. 가잘라에서 실제로 그랬듯 「뭉치지 말고 흩어서 각자 버텨라」를
+  // 강요당한다 — 잘 쓰면 넓게 걸치고, 못 쓰면 하나씩 잡아먹힌다.
+  { id: "ritchie", side: "Allies", only: ["gazala"], name: "Neil Ritchie", nation: "영국", rank: "중장", trait: "분산 배치", morale: 5, attack: 1, defense: 1, move: 2, supply: 1, stackMorale: 2 },
+
+  // 드골 — 게임에서 가장 세게 치고 가장 멀리 간다. 대신 맞으면 그대로 무너지고
+  // 보급도 짧다. 낫질에서 무너지는 전선을 상대로 「한 번의 반격에 전부 거는」
+  // 판을 만든다.
+  { id: "degaulle", side: "Allies", only: ["sichelschnitt"], name: "Charles de Gaulle", nation: "프랑스", rank: "준장", trait: "기갑 반격", morale: 7, attack: 3, defense: -2, move: 3, supply: -2, stackMorale: 4 },
 ];
 
 let state;
@@ -4287,23 +4321,12 @@ function renderCommanderList() {
   `;
 }
 
+// 사진은 이름표를 따라간다. 예전에는 장군 열셋의 파일 경로를 여기에 손으로
+// 한 줄씩 적어 뒀는데, 장군을 하나 늘릴 때마다 명부와 이 목록 두 곳을 고쳐야
+// 했고 한쪽을 잊으면 사진만 조용히 사라졌다. 사진이 없으면 아래 초상 자리가
+// 알아서 이름 첫 글자로 바뀌므로(onerror), 없는 파일을 가리켜도 화면은 멀쩡하다.
 function commanderPhoto(commander) {
-  const photos = {
-    patton: "assets/commanders/patton.jpg",
-    montgomery: "assets/commanders/montgomery.jpg",
-    eisenhower: "assets/commanders/eisenhower.jpg",
-    bradley: "assets/commanders/bradley.jpg",
-    zhukov: "assets/commanders/zhukov.jpg",
-    rokossovsky: "assets/commanders/rokossovsky.jpg",
-    slim: "assets/commanders/slim.jpg",
-    rommel: "assets/commanders/rommel.jpg",
-    guderian: "assets/commanders/guderian.jpg",
-    manstein: "assets/commanders/manstein.jpg",
-    model: "assets/commanders/model.jpg",
-    yamashita: "assets/commanders/yamashita.jpg",
-    student: "assets/commanders/student.jpg",
-  };
-  return photos[commander.id] ?? "";
+  return `assets/commanders/${commander.id}.jpg`;
 }
 
 function commanderInitials(commander) {
