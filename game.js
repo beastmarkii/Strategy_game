@@ -843,6 +843,7 @@ const uiDict = {
     "연합군은 능선 아래 통로를 뚫어라. 추축군은 통로를 여는 공병대를 없애라.": "Allies: force the pass below the ridge. Axis: destroy the engineers opening it.",
     "연합군은 칼라치 다리를 사흘 잡아라. 추축군은 다리 동쪽 진지를 사흘 지켜라.": "Allies: hold the Kalach bridge for three days. Axis: hold the east bank position for three days.",
     "추축군은 올호바트카 능선을 점령하라. 연합군은 이레를 버틴 뒤 동군 보급로를 끊어라.": "Axis: take the Olkhovatka ridge. Allies: hold seven days, then cut the eastern supply road.",
+    "최고": "Best",
     "연합군 공세": "Allied offensive",
     "추축군 공세": "Axis offensive",
     "{n}일": "{n} days",
@@ -2738,6 +2739,12 @@ function renderOperationScenarioChoices(side) {
       const opened = scenario.startDate ? `${scenario.startDate[0]}.${scenario.startDate[1]}.${scenario.startDate[2]}` : "";
       const lead = scenarioLeadLabel(scenario);
       const badge = lead ? `<span class="scenario-choice-lead" data-lead="${scenario.lead}">${lead}</span>` : "";
+      // 한 번도 안 돌린 작전은 자리를 비워 둔다. 「기록 없음」을 열두 줄로 적어
+      // 넣으면 명령서가 기록판처럼 보이고, 정작 고를 때 읽어야 할 목표가 밀린다.
+      const best = bestGradeFor(scenario.id);
+      const bestBadge = best
+        ? `<span class="scenario-choice-best" data-grade="${best}">${t("최고")} <b>${best}</b></span>`
+        : "";
       // 두 칸짜리 카드에서 이 줄은 자주 두 줄이 된다. 그건 괜찮은데, 「추축군」이
       // 「추축 / 군」으로 갈라지는 건 안 된다. 토막마다 줄바꿈을 막아 두면
       // 줄은 언제나 가운뎃점 자리에서만 넘어간다.
@@ -2749,7 +2756,7 @@ function renderOperationScenarioChoices(side) {
       <label class="scenario-choice">
         <input type="radio" name="operationScenario" value="${scenario.id}" />
         <span class="scenario-choice-body">
-          <span class="scenario-choice-head"><strong>${t(scenario.name)}</strong>${badge}</span>
+          <span class="scenario-choice-head"><strong>${t(scenario.name)}</strong>${badge}${bestBadge}</span>
           <span class="scenario-choice-meta">${meta}</span>
           <span class="scenario-choice-goal">${t(scenario.objectiveBrief)}</span>
         </span>
@@ -7714,6 +7721,45 @@ function operationGrade(kills, losses) {
   return gradeLetters[last - Math.max(0, Math.min(last, step))];
 }
 
+// 작전별 최고 성적. 판을 끝낼 때마다 한 글자만 적어 둔다.
+// 진 판의 F도 기록이다 — 아직 한 번도 이기지 못한 작전과 아예 안 건드린
+// 작전은 다른 상태고, 그 둘이 같아 보이면 명령서가 거짓말을 하게 된다.
+// 편이 달라지면 같은 지도도 전혀 다른 판이 되지만, 카드는 작전당 하나라
+// 양쪽을 통틀어 가장 잘한 한 판만 남긴다.
+const BEST_GRADE_KEY = "ww2TacticalCommand.bestGrades";
+
+function gradeRank(letter) {
+  const i = gradeLetters.indexOf(letter);
+  return i >= 0 ? i : gradeLetters.length; // 모르는 글자와 F는 맨 뒤다.
+}
+
+function bestGrades() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(BEST_GRADE_KEY));
+    return raw && typeof raw === "object" ? raw : {};
+  } catch (error) {
+    return {}; // 저장이 막혀 있으면 기록이 없는 것으로 본다.
+  }
+}
+
+function bestGradeFor(scenarioId) {
+  const letter = bestGrades()[scenarioId];
+  return typeof letter === "string" ? letter : "";
+}
+
+function recordGrade(scenarioId, letter) {
+  if (!scenarioId || !letter) return;
+  const all = bestGrades();
+  const had = all[scenarioId];
+  if (had && gradeRank(had) <= gradeRank(letter)) return;
+  all[scenarioId] = letter;
+  try {
+    localStorage.setItem(BEST_GRADE_KEY, JSON.stringify(all));
+  } catch (error) {
+    /* 저장이 막혀 있어도 이번 판의 성적은 그대로 뜼다. */
+  }
+}
+
 function showResultScreen(outcome) {
   if (!resultScreenEl) return;
   const chronicle = state.chronicle ?? [];
@@ -7724,9 +7770,9 @@ function showResultScreen(outcome) {
   if (resultVerdictEl) resultVerdictEl.textContent = verdictBanner(outcome.verdict);
   // 진 판은 성적을 따지지 않는다 — F 하나다. 비겼을 땐 목표를 놓친 것은
   // 아니므로 등급을 그대로 매긴다.
-  if (resultGradeEl) {
-    resultGradeEl.textContent = outcome.verdict === "lose" ? "F" : operationGrade(kills, losses);
-  }
+  const grade = outcome.verdict === "lose" ? "F" : operationGrade(kills, losses);
+  recordGrade(state.scenarioId, grade);
+  if (resultGradeEl) resultGradeEl.textContent = grade;
   if (resultReasonEl) resultReasonEl.textContent = outcome.reason;
   // 셋 다 "얼마나 걸렸고 무엇을 주고받았는가"다. 이긴 판과 진 판을 비교할 수 있는
   // 최소한의 숫자이자, 아래 이력을 다 읽지 않아도 남는 한 줄이다.

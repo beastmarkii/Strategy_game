@@ -6108,6 +6108,37 @@ body {
   flex-wrap: wrap;
 }
 
+/* 최고 성적. 이름·공세 표시와 같은 줄의 오른쪽 끝에 붙는다. 좌측은 「무슨
+   판인가」, 우측은 「내가 어떻게 했는가」다. 글자는 숫자판과 같은 기계체로 찍고,
+   A로 시작하는 성적만 초록으로 띄운다 — 목록을 내리다 눈에 걸리는 것은
+   다 잘한 판이어야 한다. */
+.scenario-choice-body .scenario-choice-best {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-left: auto;
+  color: #6b604f;
+  font-family: var(--tech);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.scenario-choice-body .scenario-choice-best b {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.scenario-choice-body .scenario-choice-best[data-grade^="A"] b {
+  color: #2f6b39;
+}
+
+.scenario-choice-body .scenario-choice-best[data-grade="F"] b {
+  color: #9c3b31;
+}
+
 .scenario-choice-body .scenario-choice-lead {
   display: inline-block;
   border: 1px solid currentcolor;

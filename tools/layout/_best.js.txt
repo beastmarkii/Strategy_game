@@ -1,0 +1,15 @@
+<script>
+// 명령서 카드의 최고 성적 표시 촬영판. 실제로 판을 열두 번 끝낼 수는 없으므로
+// 기록만 미리 적어 두고 진영을 골라 목록을 펼친다. 그리는 길은 실제와 같은 길이다.
+setTimeout(()=>{
+  try{
+    localStorage.setItem("ww2TacticalCommand.bestGrades", JSON.stringify({
+      elAlamein:"A-", uranus:"B+", bagration:"C", cobra:"A+", marketGarden:"F"
+    }));
+    document.querySelectorAll("#storageNotice,#coach,#coachSpot").forEach(el=>{el.hidden=true;el.style.display="none";});
+    const side=document.querySelector('input[name="operationSide"][value="allies"]');
+    if(side){ side.click(); }
+    document.title="OK "+document.querySelectorAll(".scenario-choice-best").length;
+  }catch(e){ document.title="ERR "+e.message; }
+},1500);
+</script>
