@@ -2289,6 +2289,21 @@ function frontMusicPlay(name) {
   musicPlayEl(el);
 }
 
+// 영상이 이미 돌고 있을 때만 부른다. 소리를 한 번 열어 보고, 그 때문에
+// 브라우저가 영상을 세워 버리면 도로 끄고 이어 튼다. 폰에서는 대개 손이
+// 닿기 전까지 여기서 되돌아간다 - 그건 막을 수 있는 일이 아니다.
+function titleClipTryLoud() {
+  const clip = document.querySelector("#titleIntroClip");
+  if (!clip || !musicAllowed()) return;
+  const wasAt = clip.currentTime;
+  clip.muted = false;
+  window.setTimeout(() => {
+    if (!clip.muted && !clip.paused && clip.currentTime > wasAt) return;
+    clip.muted = true;
+    if (clip.paused) clip.play().catch(() => {});
+  }, 200);
+}
+
 // 타이틀 영상에는 음악이 함께 구워져 있다. 그 소리는 오디오 시계를 거치지 않고
 // 영상 자체에서 나므로, 음악 끄기를 누른 뜻이 저기까지 닿게 여기서 맞춰 준다.
 function titleClipSyncSound() {
@@ -8117,30 +8132,30 @@ function titleOpen() {
   titleClipSeen = true;
   titleScreenEl.classList.add("intro");
   titleClipEl.volume = 0.9;
-  // 음악은 영상 안에 들어 있다. 소리를 살린 채로 먼저 걸어 본다 - 허락하는
-  // 기기에서는 들어온 그 순간부터 영상과 음악이 같이 나온다. 거절당하면
-  // 소리만 끄고 다시 건다. 그마저 거절당하면 첫 장면 그림을 잠깐 세워 두고
-  // 넘어간다 - 곧바로 제목으로 튀면 영상을 봤어야 할 사람이 아무것도 못 본다.
-  const clipPlay = (silent) => {
-    try {
-      titleClipEl.muted = silent || !musicAllowed();
-      const started = titleClipEl.play();
-      if (started && started.catch) started.catch(() => {
-        if (!silent) { clipPlay(true); return; }
-        titleClearTimers();
-        titleTimers.push(window.setTimeout(() => titleReveal(calm), 1800));
-      });
-    } catch (error) {
-      if (!silent) { clipPlay(true); return; }
-      titleReveal(calm);
-    }
-  };
+  // 영상은 무슨 일이 있어도 나와야 한다. 그래서 소리를 끈 채로 건다 - 폰은
+  // 소리 있는 영상의 자동 재생을 거절하고, 거절당하면 영상 자체가 안 나온다.
+  // 소리는 그 다음 일이다. 걸리고 나서 한 번 열어 보고, 그 때문에 영상이
+  // 멎으면 도로 끄고 이어 튼다. 소리 없는 영상이 멎은 영상보다 낫다.
   try {
     titleClipEl.currentTime = 0;
   } catch (error) {
     // 아직 한 조각도 안 받은 영상의 시각을 되돌리려 한 것뿐이다.
   }
-  clipPlay(false);
+  try {
+    titleClipEl.muted = true;
+    const started = titleClipEl.play();
+    if (started && started.then) {
+      started.then(titleClipTryLoud, () => {
+        // 소리를 껐는데도 거절당했다. 첫 장면 그림만 잠깐 세워 두고 넘어간다.
+        titleClearTimers();
+        titleTimers.push(window.setTimeout(() => titleReveal(calm), 1800));
+      });
+    } else {
+      titleClipTryLoud();
+    }
+  } catch (error) {
+    titleReveal(calm);
+  }
   // 영상이 뜨지 않거나 끝났다는 신호가 오지 않아도 화면은 넘어가야 한다.
   // 영상 길이는 30초다. 그보다 넉넉히 뒤에 둔다 - 이 시각이 영상보다 앞서면
   // 다 보지도 못한 채 제목이 덮는다.
