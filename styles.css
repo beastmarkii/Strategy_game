@@ -6696,7 +6696,10 @@ body {
   letter-spacing: 4px;
 }
 
-/* 도장. 테두리와 글자가 같은 색이고, 종이에 눌러 찍은 것처럼 조금 기울어 있다. */
+/* 도장. 테두리와 글자가 같은 색이고, 종이에 눌러 찍은 것처럼 조금 기울어 있다.
+   글자는 늘 대문자로 찍는다 — 낱말장에 Victory로 적혀 있든 VICTORY로 적혀
+   있든 도장 모양은 같아야 하고, 기록줄에서 쓰는 「Victory: …」는 그대로 둔다.
+   한글에는 대소문자가 없으므로 한국어판 글자는 손대지 않는다. */
 .result-verdict {
   align-self: center;
   margin: 2px 0 0;
@@ -6710,6 +6713,7 @@ body {
   letter-spacing: 8px;
   line-height: 1;
   text-indent: 8px;
+  text-transform: uppercase;
   transform: rotate(-2.2deg);
 }
 
