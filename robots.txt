@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://beastmarkii.github.io/Strategy_game/sitemap.xml
