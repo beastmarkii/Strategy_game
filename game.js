@@ -2289,6 +2289,15 @@ function frontMusicPlay(name) {
   musicPlayEl(el);
 }
 
+// 브라우저는 화면에 손이 닿기 전에는 소리를 못 내게 막는다. 타이틀 음악은 그
+// 전에 걸리므로 막힌 채로 끝난다. 첫 손짓에서 한 번 더 걸어 주는 자리다.
+function frontMusicResume() {
+  const context = ensureAudio();
+  if (!context || !frontPlaying) return;
+  const track = frontTracks.get(frontPlaying);
+  if (track) musicPlayEl(track.el);
+}
+
 function frontMusicStop() {
   const name = frontPlaying;
   frontPlaying = null;
@@ -8073,6 +8082,8 @@ const titleClipEl = document.querySelector("#titleIntroClip");
 //   done    다 들어왔다. 이때부터 버튼이 눌린다.
 let titleTimers = [];
 let titleClipSeen = false;
+// 이 화면에서 소리가 한 번이라도 열렸는지. 한 번 열리면 그 뒤로는 계속 열려 있다.
+let titleSoundOn = false;
 
 function titleClearTimers() {
   titleTimers.forEach((id) => window.clearTimeout(id));
@@ -8135,7 +8146,16 @@ function titleReveal(instant) {
 function titleTap() {
   if (!titleScreenEl || titleScreenEl.hidden) return;
   if (titleScreenEl.classList.contains("leaving")) return;
-  if (!titleScreenEl.classList.contains("done")) { titleReveal(true); return; }
+  const done = titleScreenEl.classList.contains("done");
+  // 첫 손짓은 소리를 여는 손짓이다. 그 한 번으로 영상까지 건너뛰면, 음악을
+  // 들으려고 화면을 만진 사람이 영상을 잃는다. 그래서 전투 장면이 흐르는
+  // 중이라면 소리만 켜고 영상은 그대로 둔다. 건너뛰려면 한 번 더 누르면 된다.
+  if (!titleSoundOn) {
+    titleSoundOn = true;
+    frontMusicResume();
+    if (!done) return;
+  }
+  if (!done) { titleReveal(true); return; }
   titleEnter();
 }
 

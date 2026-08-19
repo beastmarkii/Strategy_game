@@ -7546,7 +7546,7 @@ html[lang="en"] {
   display: none;
   place-items: center;
   overflow: hidden;
-  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820");
+  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820b");
   opacity: 1;
   transition: opacity 700ms ease;
 }
