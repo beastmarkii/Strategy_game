@@ -117,6 +117,16 @@ window.confirm = () => true; window.alert = () => {};
        say("목표칸항목", vis.join(" | "));
      } else say("목표칸", "없음");
    }
+   {
+     const et=document.getElementById("endTurn")||document.querySelector(".hud-actions button:last-child");
+     const mt=document.getElementById("musicToggle");
+     if(et&&mt){
+       const a=et.getBoundingClientRect(), b=mt.getBoundingClientRect();
+       const ov=!(a.right<b.left||b.right<a.left||a.bottom<b.top||b.bottom<a.top);
+       say("끝내기단추", et.textContent.trim()+" 글자넓이 "+Math.round(et.scrollWidth)+" / 칸 "+Math.round(a.width)+" / 넘침 "+(et.scrollWidth>Math.ceil(a.width)?"있음":"없음"));
+       say("소리단추겹침", ov?("겹침 "+Math.round(a.right-b.left)+"px"):"없음");
+     }
+   }
    say("isPhoneLayout", isPhoneLayout());
   }catch(e){ out.push("ERROR: "+e.message); }
   const T=out.join(String.fromCharCode(10));
