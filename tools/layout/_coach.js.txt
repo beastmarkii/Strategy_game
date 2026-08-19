@@ -1,0 +1,21 @@
+<script>
+// 첫 판 안내 촬영판. 판을 열고 안내를 띄운 뒤, 주소 끝 표시대로 마디를 골라
+// 그 자리에서 찍는다. #s1은 첫 마디, #s6은 마지막 마디(보급품)다.
+window.confirm = () => true; window.alert = () => {};
+setTimeout(()=>{
+  try{
+    startGame({ side:"west", scenarioId:"cobra" });
+    document.querySelectorAll("#newOperationModal,#storageNotice,#resultScreen,.setup-modal,.modal,#operationSetup").forEach(el=>{el.hidden=true;el.style.display="none";});
+    render();
+    fitBoardToScreen();
+    // 저장 알림 띠가 떠 있으면 안내는 기다린다(coachAllowed). 촬영에서는 치운다.
+    document.querySelectorAll("#storageNotice").forEach(el=>{el.hidden=true;el.style.display="none";});
+    const want = location.hash === "#s6" ? 5 : 0;
+    coachStart(true);
+    coachIndex = want;
+    coachBaseIndex = want;
+    coachBase = coachBaseline();
+    coachSync();
+  }catch(e){ document.title="ERR "+e.message; }
+},1200);
+</script>

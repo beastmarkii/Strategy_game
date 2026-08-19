@@ -668,6 +668,18 @@ const activePack = localePacks[activeLocale];
 // prettier-ignore
 const uiDict = {
   en: {
+    "이 판에서 이기는 법": "How you win this one",
+    "지도 위 노란 줄이 이번 작전의 목표다. 몇 번 칸을 며칠 쥐고 있어야 하는지가 거기 적혀 있다.": "The yellow bar above the map is this operation's objective. It says which tile to hold, and for how many days.",
+    "부대를 고른다": "Pick a unit",
+    "내 부대를 하나 누른다. 갈 수 있는 칸이 지도에 밝게 뜬다.": "Tap one of your units. The tiles it can reach light up on the map.",
+    "고른 부대를 옮긴다": "Move it",
+    "밝은 칸 하나를 누르면 그리로 간다. 한 부대는 하루에 한 번만 움직인다.": "Tap one of the lit tiles and the unit goes there. Each unit moves once a day.",
+    "적을 친다": "Attack",
+    "붉은 부대가 사거리 안에 들어오면, 그 부대를 누르는 것이 곧 공격이다. 사거리 밖이면 눌러도 아무 일도 일어나지 않는다.": "Once a red unit is in range, tapping it is the attack. Out of range, tapping does nothing.",
+    "하루를 끝낸다": "End the day",
+    "「턴 종료」를 누르면 적이 움직이고 다음 날 아침이 온다. 판은 그때마다 저절로 저장된다.": "Press End Turn: the enemy moves and the next morning comes. The game saves itself each time.",
+    "보급품으로 늘린다": "Spend your supply",
+    "위쪽 「보급품」이 매일 들어온다. 「지휘」를 눌러 증원하거나 다리·창고를 짓는 데 쓴다.": "Supply comes in every day — it is the figure at the top. Press Command to raise units, or to build bridges and depots.",
     "보급 두절 › 해당 부대는 매 턴 병력이 녹는다 · 보급선 안으로 후퇴시킬 것": "Supply cut › those units bleed strength every turn · pull them back inside the line",
     "기한 임박 › {n}턴 남음 · 목표 달성을 최우선으로": "Deadline near › {n} turns left · the objective comes first",
     "보급 고갈 › 보급은 거점에서 나온다 · 거점을 지키거나 공병대로 보급창고를 세울 것": "Out of supply › supply comes from bases · hold a base, or have engineers build a depot",
@@ -3236,8 +3248,8 @@ function coachSync() {
   coachWrite(String(coachIndex));
   coachEl.hidden = false;
   coachEl.dataset.step = step.id;
-  if (coachTitleEl) coachTitleEl.textContent = step.title;
-  if (coachBodyEl) coachBodyEl.textContent = step.body;
+  if (coachTitleEl) coachTitleEl.textContent = t(step.title);
+  if (coachBodyEl) coachBodyEl.textContent = t(step.body);
   if (coachCountEl) coachCountEl.textContent = `${coachIndex + 1} / ${coachSteps.length}`;
   // 해내야 넘어가는 마디에는 「다음」이 없다. 버튼이 있으면 그걸 누르지, 시킨 것을
   // 하지 않는다.
