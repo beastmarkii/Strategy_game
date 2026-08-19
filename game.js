@@ -844,6 +844,12 @@ const uiDict = {
     "연합군은 칼라치 다리를 사흘 잡아라. 추축군은 다리 동쪽 진지를 사흘 지켜라.": "Allies: hold the Kalach bridge for three days. Axis: hold the east bank position for three days.",
     "추축군은 올호바트카 능선을 점령하라. 연합군은 이레를 버틴 뒤 동군 보급로를 끊어라.": "Axis: take the Olkhovatka ridge. Allies: hold seven days, then cut the eastern supply road.",
     "최고": "Best",
+    "점령": "Take",
+    "건너기": "Cross",
+    "타격": "Strike",
+    "끊기": "Cut",
+    "그만": "Cancel",
+    "명령 선택": "Choose an order",
     "연합군 공세": "Allied offensive",
     "추축군 공세": "Axis offensive",
     "{n}일": "{n} days",
@@ -6019,9 +6025,119 @@ function replaceCommanderPhoto(image, initials, side) {
   image.replaceWith(fallback);
 }
 
+const tileChoiceEl = document.querySelector("#tileChoice");
+// 지금 묻고 있는 칸. 지도가 움직이면 선택창도 그 칸을 따라가야 한다.
+let tileChoiceAt = null;
+
+function hideTileChoice() {
+  tileChoiceAt = null;
+  if (!tileChoiceEl) return;
+  tileChoiceEl.hidden = true;
+  tileChoiceEl.innerHTML = "";
+}
+
+// 선택창을 그 칸 바로 옆에 세운다. 지도는 누워져 있고 손가락으로 밀려 다니므로
+// 칸의 격자를 직접 재지 않고 화면에 그려진 자리를 그대로 쓴다. 오른쪽이
+// 원칙이되, 화면 밖으로 나가면 왼쪽으로 넘긴다 — 폰에서는 오른쪽 끝 칸을
+// 누를 일이 흔하다.
+function placeTileChoice(x, y) {
+  const cell = boardEl?.querySelector(`.tile[data-x="${x}"][data-y="${y}"]`);
+  if (!cell || !tileChoiceEl) return;
+  const spot = cell.getBoundingClientRect();
+  const box = tileChoiceEl.getBoundingClientRect();
+  const edge = 6;
+  const gap = 8;
+  let left = spot.right + gap;
+  if (left + box.width > window.innerWidth - edge) left = spot.left - box.width - gap;
+  left = Math.min(Math.max(edge, left), Math.max(edge, window.innerWidth - box.width - edge));
+  let top = spot.top + spot.height / 2 - box.height / 2;
+  top = Math.min(Math.max(edge, top), Math.max(edge, window.innerHeight - box.height - edge));
+  tileChoiceEl.style.left = `${Math.round(left)}px`;
+  tileChoiceEl.style.top = `${Math.round(top)}px`;
+}
+
+function showTileChoice(x, y, options) {
+  if (!tileChoiceEl) return;
+  tileChoiceEl.innerHTML = "";
+  options.forEach((option) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `tile-choice-item${option.danger ? " danger" : ""}`;
+    button.textContent = option.label;
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      hideTileChoice();
+      option.run();
+    });
+    tileChoiceEl.appendChild(button);
+  });
+  tileChoiceEl.hidden = false;
+  tileChoiceAt = { x, y };
+  placeTileChoice(x, y);
+}
+
+// 지도를 밀거나 창 크기가 바뀌면 칸은 움직이는데 선택창만 제자리에 서 있게
+// 된다. 접지 않고 따라간다 — 폰은 주소창이 접힐 때마다 창 크기가 바뀌므로,
+// 크기가 바뀌었다고 지우면 고르는 도중에 질문이 사라진다.
+function keepTileChoiceBeside() {
+  if (tileChoiceAt) placeTileChoice(tileChoiceAt.x, tileChoiceAt.y);
+}
+document.querySelector("#mapStage")?.addEventListener("scroll", keepTileChoiceBeside, { passive: true });
+window.addEventListener("resize", keepTileChoiceBeside);
+
+// 갈 칸으로 옮기기. 선택창에서 「점령」·「건너기」를 고르면 이리로 온다.
+function moveSelectedTo(unit, x, y) {
+  if (!confirmConstructionMove(unit)) return;
+  // 가는 길에 적을 발견하면 거기서 멈춘다. 명령한 칸까지 그냥 밀어 넣으면
+  // 매복을 밟고도 지나쳐 서 있게 된다.
+  const halt = ambushHalt(unit, x, y);
+  const stopAt = halt && !halt.atGoal ? halt : { x, y };
+  recordUnitMove(unit, stopAt.x, stopAt.y);
+  unit.x = stopAt.x;
+  unit.y = stopAt.y;
+  unit.moved = true;
+  coachMoveTicks += 1;
+  unit.acted = unit.type === "artillery";
+  captureBase(unit);
+  state.selectedId = unit.acted ? null : unit.id;
+  state.inspectedId = null;
+  state.inspectedTile = null;
+  if (halt) {
+    addLog(t("{unit} › ({x},{y}) {foe} 발견 · 정지", { unit: unitLabel(unit), x: stopAt.x, y: stopAt.y, foe: sideUnitLabel(halt.foe) }));
+  }
+  addLog(unit.acted
+    ? t("{unit} › ({x},{y}) 기동", { unit: unitLabel(unit), x: stopAt.x, y: stopAt.y })
+    : t("{unit} › ({x},{y}) 기동 · 공격 가능", { unit: unitLabel(unit), x: stopAt.x, y: stopAt.y }));
+  checkVictory();
+  render();
+}
+
+function raidBaseAction(unit, base) {
+  raidBase(unit, base);
+  unit.acted = true;
+  state.selectedId = null;
+  state.inspectedId = null;
+  state.inspectedTile = null;
+  checkVictory();
+  render();
+}
+
+function bombardDeckAction(unit, deck, x, y) {
+  bombardDeck(unit, deck);
+  unit.acted = true;
+  state.selectedId = null;
+  state.inspectedId = null;
+  state.inspectedTile = { x, y };
+  checkVictory();
+  render();
+}
+
 function handleTileClick(x, y) {
   if (state.gameOver) return;
   ensureAudio();
+  // 다른 칸을 눌렀다는 것은 앞서 물은 것을 그만둔다는 뜻이다. 선택창의 단추는
+  // 클릭이 칸까지 내려가지 않게 막아 두었으므로 여기에 걸리지 않는다.
+  hideTileChoice();
   if (state.phase === "deploy") {
     handleDeployClick(x, y);
     return;
@@ -6111,56 +6227,39 @@ function handleTileClick(x, y) {
     return;
   }
 
-  if (!clickedEnemy && clickedBase?.owner === "enemy" && canRaidBase(selected, clickedBase)) {
-    raidBase(selected, clickedBase);
-    selected.acted = true;
-    state.selectedId = null;
-    state.inspectedId = null;
-    state.inspectedTile = null;
-    checkVictory();
-    render();
-    return;
-  }
-
-  // 다리 포격은 이동보다 뒤에 둔다. 걸어 올라갈 수 있는 다리를 눌렀을 때 부대가
-  // 건너지 않고 쏘아 버리면, 다리를 건너려던 클릭이 다리를 끊는 클릭이 된다.
-  // 그래서 실제로 쏘게 되는 것은 이번 턴에 닿지 못하는 다리 — 대개 강 건너편이다.
+  // 한 칸에 명령이 둘 걸릴 수 있으면 묻는다. 다리는 건너기도 끊기도 하고, 빈 거점은
+  // 올라타 점령하기도 밖에서 두드리기도 한다. 지금까지는 코드가 대신 골랐고, 그래서
+  // 건너려던 부교를 스스로 끊고 점령하려던 거점을 두들기는 일이 생겼다.
+  //
+  // 닿지 못하는 표적은 고를 것이 하나뿐이지만 그때도 묻는다. 야포와 자주포는
+  // 사거리가 발보다 길어서 누르는 곳이 대개 이번 턴에 못 가는 곳이다 — 그걸
+  // 「못 가니까 쓴다」로 두면 누를 때마다 쓰게 된다.
   const clickedDeck = deckAt(x, y);
-  if (clickedDeck && !clickedEnemy && !canMoveTo(selected, x, y) && canBombardDeck(selected, clickedDeck)) {
-    bombardDeck(selected, clickedDeck);
-    selected.acted = true;
-    state.selectedId = null;
+  const canWalk = canMoveTo(selected, x, y);
+  const canRaid = !clickedEnemy && clickedBase?.owner === "enemy" && canRaidBase(selected, clickedBase);
+  const canShell = !!clickedDeck && !clickedEnemy && canBombardDeck(selected, clickedDeck);
+
+  if (canRaid || canShell) {
+    const mover = selected;
+    const options = [];
+    if (canWalk) {
+      options.push({
+        label: clickedBase ? t("점령") : t("건너기"),
+        run: () => moveSelectedTo(mover, x, y),
+      });
+    }
+    if (canRaid) options.push({ label: t("타격"), danger: true, run: () => raidBaseAction(mover, clickedBase) });
+    if (canShell) options.push({ label: t("끊기"), danger: true, run: () => bombardDeckAction(mover, clickedDeck, x, y) });
+    if (!canWalk) options.push({ label: t("그만"), run: () => {} });
     state.inspectedId = null;
     state.inspectedTile = { x, y };
-    checkVictory();
     render();
+    showTileChoice(x, y, options);
     return;
   }
 
-  if (canMoveTo(selected, x, y)) {
-    if (!confirmConstructionMove(selected)) return;
-    // 가는 길에 적을 발견하면 거기서 멈춘다. 명령한 칸까지 그냥 밀어 넣으면
-    // 매복을 밟고도 지나쳐 서 있게 된다.
-    const halt = ambushHalt(selected, x, y);
-    const stopAt = halt && !halt.atGoal ? halt : { x, y };
-    recordUnitMove(selected, stopAt.x, stopAt.y);
-    selected.x = stopAt.x;
-    selected.y = stopAt.y;
-    selected.moved = true;
-    coachMoveTicks += 1;
-    selected.acted = selected.type === "artillery";
-    captureBase(selected);
-    state.selectedId = selected.acted ? null : selected.id;
-    state.inspectedId = null;
-    state.inspectedTile = null;
-    if (halt) {
-      addLog(t("{unit} › ({x},{y}) {foe} 발견 · 정지", { unit: unitLabel(selected), x: stopAt.x, y: stopAt.y, foe: sideUnitLabel(halt.foe) }));
-    }
-    addLog(selected.acted
-      ? t("{unit} › ({x},{y}) 기동", { unit: unitLabel(selected), x: stopAt.x, y: stopAt.y })
-      : t("{unit} › ({x},{y}) 기동 · 공격 가능", { unit: unitLabel(selected), x: stopAt.x, y: stopAt.y }));
-    checkVictory();
-    render();
+  if (canWalk) {
+    moveSelectedTo(selected, x, y);
     return;
   }
 
@@ -6256,10 +6355,10 @@ function getHighlights() {
       if (canStillMove && canMoveTo(unit, x, y)) moves.add(posKey(x, y));
       if (canStillAttack && target && canAttack(unit, target)) attacks.add(posKey(x, y));
       if (canStillAttack && !target && base?.owner !== unit.owner && canRaidBase(unit, base)) raids.add(posKey(x, y));
-      // 다리도 포격 표적으로 켠다. 단 이번 턴에 걸어 올라갈 수 있는 다리는 빼는데,
-      // 클릭 처리에서 이동이 이기기 때문이다 — 표시와 실제 동작이 달라지면 안 된다.
+      // 다리도 포격 표적으로 켠다. 걸어 올라갈 수 있는 다리도 함께 켠다 — 이제는
+      // 둘 다 되는 칸을 누르면 어느 쪽인지를 칸 옆에서 묻기 때문이다.
       const deck = deckAt(x, y);
-      if (canStillAttack && !target && deck && !moves.has(posKey(x, y)) && canBombardDeck(unit, deck)) {
+      if (canStillAttack && !target && deck && canBombardDeck(unit, deck)) {
         raids.add(posKey(x, y));
       }
     }
@@ -7756,7 +7855,7 @@ function recordGrade(scenarioId, letter) {
   try {
     localStorage.setItem(BEST_GRADE_KEY, JSON.stringify(all));
   } catch (error) {
-    /* 저장이 막혀 있어도 이번 판의 성적은 그대로 뜼다. */
+    /* 저장이 막혀 있어도 이번 판의 성적은 그대로 뜨다. */
   }
 }
 

@@ -1,0 +1,51 @@
+<script>
+// 칸 옆 선택창 촬영판. 실제로 손으로 눌러 볼 수 없으니 클릭 처리 함수를 그대로
+// 부른다. 그리는 길은 실제와 같은 길이다.
+//   #bridge : 야포/자주포로 다리를 눌렀을 때
+//   #base   : 근접 부대가 바로 옆 빈 적 보급 거점을 눌렀을 때
+window.confirm = () => true; window.alert = () => {};
+setTimeout(()=>{
+  try{
+    const SC = "supplyBridge";
+    startGame({ side:"west", scenarioId: SC });
+    document.querySelectorAll("#newOperationModal,#storageNotice,#coach,#coachSpot,#resultScreen,.setup-modal,.modal,#operationSetup").forEach(el=>{el.hidden=true;el.style.display="none";});
+    if (state.phase === "deploy" && typeof finishDeployment === "function") finishDeployment();
+    state.phase = "player";
+    render();
+    fitBoardToScreen();
+
+    const mine = state.units.filter(u=>u.owner==="player");
+    let note = "";
+
+    if (location.hash === "#base") {
+      // 근접 부대를 빈 적 거점 바로 옆에 세운다.
+      const base = state.bases.find(b=>b.owner==="enemy" && !state.units.some(u=>u.x===b.x&&u.y===b.y));
+      const unit = mine.find(u=>unitTypes[u.type].range<=1) || mine[0];
+      if (base && unit) {
+        const spot = [[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy])=>({x:base.x+dx,y:base.y+dy}))
+          .find(p=>tileAt(p.x,p.y) && !state.units.some(u=>u.x===p.x&&u.y===p.y));
+        if (spot) { unit.x=spot.x; unit.y=spot.y; unit.moved=false; unit.acted=false;
+          state.selectedId=unit.id; render(); handleTileClick(base.x, base.y);
+          note = "base ("+base.x+","+base.y+") from ("+spot.x+","+spot.y+")"; }
+      }
+    } else {
+      // 다리 하나를 잡고, 그 다리를 쏠 수 있는 자리에 야포를 세운다.
+      const deck = state.improvements.find(i=>bridgeKinds[i.type]);
+      const gun = mine.find(u=>unitTypes[u.type].range>1);
+      if (deck && gun) {
+        const range = unitTypes[gun.type].range;
+        for (let d=1; d<=range; d++) {
+          const p = {x: deck.x - d, y: deck.y};
+          if (tileAt(p.x,p.y) && !state.units.some(u=>u.x===p.x&&u.y===p.y)) {
+            gun.x=p.x; gun.y=p.y; break;
+          }
+        }
+        gun.moved=false; gun.acted=false;
+        state.selectedId=gun.id; render(); handleTileClick(deck.x, deck.y);
+        note = "deck ("+deck.x+","+deck.y+") gun ("+gun.x+","+gun.y+") r"+range;
+      }
+    }
+    document.title = "OK " + document.querySelectorAll(".tile-choice-item").length + " | " + note;
+  }catch(e){ document.title = "ERR " + e.message; }
+},1400);
+</script>
