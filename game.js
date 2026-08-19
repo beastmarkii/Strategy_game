@@ -522,7 +522,11 @@ const localePacks = {
       endTurn: "End Turn",
       restart: "New Operation",
     },
-    status: ["Day", "Initiative", "Supplies", "Next Supply"],
+    // 계기 띠 다섯 칸. 폰에서 폭이 정해진 자리라 긴 낱말은 안 들어간다 —
+    // Initiative(10칸)는 「주도권」(6칸)보다 넓어서 띠를 한 줄 더 접게 만든다.
+    status: ["Day", "Turn", "Supply", "Income", "Units"],
+    legend: "Legend",
+    folds: ["Army Reinforcements", "Navy", "Air Force", "AI"],
     hint: "Click a unit to show available commands.",
     select: "Select a unit",
     editor: "Game Values Editor",
@@ -570,7 +574,9 @@ const localePacks = {
       endTurn: "结束回合",
       restart: "新作战",
     },
-    status: ["作战日", "主动权", "补给", "下回补给"],
+    status: ["作战日", "主动权", "补给", "下回补给", "战斗部队"],
+    legend: "图例",
+    folds: ["陆军增援", "海军", "空军", "AI"],
     hint: "点击部队显示可用命令。",
     select: "选择部队",
     editor: "游戏数值编辑器",
@@ -615,7 +621,9 @@ const localePacks = {
       endTurn: "作戦終了",
       restart: "新作戦",
     },
-    status: ["作戦日", "主導権", "補給", "次回補給"],
+    status: ["作戦日", "主導権", "補給", "次回補給", "戦闘部隊"],
+    legend: "凡例",
+    folds: ["陸軍増援", "海軍", "空軍", "AI"],
     hint: "部隊をクリックすると使用可能な命令が表示されます。",
     select: "部隊を選択",
     editor: "ゲーム数値エディター",
@@ -2084,7 +2092,11 @@ function applyLocale() {
   document.querySelector(".command-panel")?.setAttribute("aria-label", activePack.title);
   document.querySelector(".battlefield-wrap")?.setAttribute("aria-label", "Battlefield");
   document.querySelector(".balance-editor")?.setAttribute("aria-label", activePack.editor);
-  document.querySelector("summary").textContent = activePack.editor;
+  if (activePack.folds) {
+    document.querySelectorAll(".command-panel details > summary").forEach((node, index) => {
+      if (activePack.folds[index]) node.textContent = activePack.folds[index];
+    });
+  }
 
   Object.entries(activePack.units).forEach(([type, label]) => {
     if (unitTypes[type]) unitTypes[type].label = label;
@@ -2093,7 +2105,7 @@ function applyLocale() {
     if (terrain[key]) terrain[key].name = name;
   });
 
-  document.querySelectorAll(".status-grid span").forEach((node, index) => {
+  document.querySelectorAll(".operation-hud .hud-stat > span").forEach((node, index) => {
     if (activePack.status[index]) node.textContent = activePack.status[index];
   });
   if (!state?.selectedId && !state?.inspectedId && !state?.inspectedTile) {
@@ -2129,8 +2141,11 @@ function applyLocale() {
   }
 
   const legend = document.querySelector(".legend");
-  if (legend) {
-    legend.innerHTML = `
+  const legendSummary = legend?.querySelector("summary");
+  if (legendSummary && activePack.legend) legendSummary.textContent = activePack.legend;
+  const legendItems = legend?.querySelector(".legend-items");
+  if (legendItems) {
+    legendItems.innerHTML = `
       <span><i class="chip player"></i>${activePack.side.player}</span>
       <span><i class="chip enemy"></i>${activePack.side.enemy}</span>
       <span><i class="terrain plain"></i>${terrain.P.name}</span>
