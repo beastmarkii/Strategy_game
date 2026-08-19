@@ -8118,20 +8118,38 @@ function titleReveal(instant) {
   } catch (error) {}
   titleTimers.push(window.setTimeout(() => {
     titleScreenEl.classList.add("done");
-  }, instant ? 40 : 2620));
+  }, instant ? 40 : 2200));
 }
 
-// 아무 데나 누르면 끝난 모습으로 건너뛴다. 두 번째로 보는 사람에게 3초를
-// 강요하지 않기 위한 것이다. 버튼은 다 들어오기 전까지 눌리지 않으므로,
-// 이 누름이 「작전 개시」를 잘못 누르는 일은 없다.
-function titleSkip() {
+// 이 화면에는 버튼이 없다. 누르는 자리는 화면 전체이고, 한 번 누르는 것이
+// 무슨 뜻인지는 연출이 끝났는지에 따라 갈린다.
+//   끝나기 전에 누름 = 연출을 건너뛴다. 두 번째로 보는 사람을 붙잡지 않는다.
+//   끝난 뒤에 누름   = 작전 명령으로 넘어간다.
+// 두 뜻을 한 번의 누름에 겹쳐 놓지 않는다 - 겹치면 건너뛰려던 손짓이 그대로
+// 판을 시작해 버린다.
+function titleTap() {
   if (!titleScreenEl || titleScreenEl.hidden) return;
-  if (titleScreenEl.classList.contains("done")) return;
-  titleReveal(true);
+  if (titleScreenEl.classList.contains("leaving")) return;
+  if (!titleScreenEl.classList.contains("done")) { titleReveal(true); return; }
+  titleEnter();
+}
+
+function titleEnter() {
+  hideTitleScreen();
+  openNewOperationSetup();
+  // 이 기계에서 한 번도 안 해 본 사람에게만 붙는다. 예전에는 게임을 켜자마자
+  // 붙었는데, 그 자리를 이제 타이틀이 덮는다.
+  if (coachRead() !== "done") coachStart();
 }
 
 titleClipEl?.addEventListener("ended", () => titleReveal(false));
-titleScreenEl?.addEventListener("pointerdown", titleSkip);
+titleScreenEl?.addEventListener("pointerdown", titleTap);
+// 손이 아니라 자판으로 오는 사람도 있다.
+titleScreenEl?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  titleTap();
+});
 
 function showTitleScreen() {
   if (!titleScreenEl) return;
@@ -8171,20 +8189,6 @@ function hideEndingScreen() {
   endingScreenEl.classList.remove("show");
   endingScreenEl.hidden = true;
 }
-
-document.querySelector("#titleStart")?.addEventListener("click", () => {
-  hideTitleScreen();
-  openNewOperationSetup();
-  // 이 기계에서 한 번도 안 해 본 사람에게만 붙는다. 예전에는 게임을 켜자마자
-  // 붙었는데, 그 자리를 이제 타이틀이 덮는다.
-  if (coachRead() !== "done") coachStart();
-});
-
-document.querySelector("#titleGuide")?.addEventListener("click", () => {
-  hideTitleScreen();
-  openNewOperationSetup();
-  coachStart(true);
-});
 
 document.querySelector("#endingNext")?.addEventListener("click", () => {
   hideEndingScreen();
@@ -10928,5 +10932,5 @@ showTitleScreen();
 
 // 이 기계에서 한 번도 안 해 본 사람에게만 안내가 붙는다. 「그만 보기」를 누르거나
 // 여섯 마디를 다 넘기면 다시는 안 뜬다 — 다시 보고 싶으면 지휘 서랍의 「조작 안내」.
-// 안내는 타이틀에서 「작전 개시」를 누를 때 시작한다(#titleStart 처리). 여기서
+// 안내는 타이틀을 누를 때 시작한다(titleEnter 처리). 여기서
 // 부르면 타이틀 밑에 깔린 채로 혼자 돌아 버린다.
