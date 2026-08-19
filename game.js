@@ -692,7 +692,7 @@ const uiDict = {
     "미확인 적 › 가까이 가서 봐야 사격 가능": "Unidentified enemy › close in and spot it before firing",
     "관측 없음 › 앞에 부대를 세워야 원거리 사격 가능": "No observation › put a unit forward to fire at range",
     "사거리 밖 › {gap}칸 이격, 사거리 {range}칸": "Out of range › {gap} tiles away, reach is {range}",
-    "능선이 사선 차단 › 우회하거나 붙어서 타격": "Ridge blocks the line › go around it or close in",
+    "능선이 사선 차단 › 높은 곳에 올라 쏘거나 붙어서 타격": "Ridge blocks the line › take higher ground or close in",
     "현재 이 적을 타격할 수 없음": "This enemy cannot be hit right now",
     "보급 두절 사령부 / 무효": "HQ out of supply / void",
     "대대 보충권": "Battalion recovery zone",
@@ -947,7 +947,7 @@ const uiDict = {
     "보급 불안": "Strained",
     "보급선 이탈": "Out of range",
     "강변 또는 주요 접근로 / 이동 가능": "Riverbank or main approach / passable",
-    "원거리 포격 차단 / 전차, 자주포 진입 불가": "Blocks arty fire / no tanks or SPGs",
+    "같은 높이 이상에서만 포격 가능 / 전차, 자주포 진입 불가": "Arty needs equal height / no tanks or SPGs",
     "하천: 교량 없이는 통과 불가": "River: impassable without a bridge",
     "다리 위: 엄폐가 없어 개활지보다 맞기 쉽고, 다리가 끊기면 함께 빠진다": "On the bridge: no cover, easier to hit than open ground, and lost with the bridge",
     "방어 유리 / 포격 효과 감소": "Good cover / arty less effective",
@@ -1175,8 +1175,11 @@ const uiDict = {
     " 안에 달성 실패 시 패배": " — fail to finish inside it and you lose",
     "작전 기한 {limit}턴{tail}": "Deadline {limit} turns{tail}",
     "작전 기한 없음": "No deadline",
-    "아군: {goal}": "Ours: {goal}",
-    "적: {goal}": "Theirs: {goal}",
+    "승리: {goal}": "Win: {goal}",
+    "패배: {goal}": "Lose: {goal}",
+    "{label} 상실{both}": "Lose {label}{both}",
+    "{label} ({x}, {y}) 피탈{both}": "{label} ({x}, {y}) falls{both}",
+    " · 둘 다 놓칠 때": " · only if both go",
     "작전 기한이 끝날 때까지 전선을 지켜냈습니다.": "The line held until the deadline ran out.",
     "작전 기한 안에 목표를 달성하지 못했습니다.": "The objective was not met inside the deadline.",
     "작전 기한이 끝나 전선이 교착되었습니다.": "The deadline ran out with the front deadlocked.",
@@ -5951,7 +5954,7 @@ function formatElevation(elevation) {
 
 function terrainTraitText(x, y) {
   if (getTerrainKey(x, y) === "C") return t("강변 또는 주요 접근로 / 이동 가능");
-  if (getTerrainKey(x, y) === "H") return t("원거리 포격 차단 / 전차, 자주포 진입 불가");
+  if (getTerrainKey(x, y) === "H") return t("같은 높이 이상에서만 포격 가능 / 전차, 자주포 진입 불가");
   if (getTerrainKey(x, y) === "W" && !deckAt(x, y)) return t("하천: 교량 없이는 통과 불가");
   if (deckAt(x, y)) return t("다리 위: 엄폐가 없어 개활지보다 맞기 쉽고, 다리가 끊기면 함께 빠진다");
   if (getTerrainKey(x, y) === "F") return t("방어 유리 / 포격 효과 감소");
@@ -7667,9 +7670,31 @@ function missionBriefText() {
   const deadline = Number.isFinite(limit)
     ? t("작전 기한 {limit}턴{tail}", { limit, tail: deadlineTail })
     : t("작전 기한 없음");
-  const mine = objectivesFor("player").map((objective) => t("아군: {goal}", { goal: objectiveGoalText(objective) }));
-  const theirs = objectivesFor("enemy").map((objective) => t("적: {goal}", { goal: objectiveGoalText(objective) }));
-  return [deadline, ...mine, ...theirs].join(" · ");
+  // 명령서는 내 쪽 말로만 적는다. 적이 무엇을 노리는지를 나란히 적으면 줄은 두 배가
+  // 되고, 정작 "내가 무엇을 해야 이기고 무엇을 놓치면 지는가"가 묻힌다.
+  // 적의 목표는 그것이 이뤄졌을 때 내가 잃는 것으로 바꿔 적는다.
+  //
+  // 사수 목표도 이기는 조건이 아니라 지는 조건이다 — 지켜낸다고 이기는 게 아니라
+  // 잃으면 그 자리에서 끝난다. 그래서 아래쪽으로 내린다.
+  const objectives = missionObjectives();
+  const win = objectives
+    .filter((objective) => objective.owner === "player" && objective.kind !== "protect")
+    .map((objective) => t("승리: {goal}", { goal: objectiveGoalText(objective) }));
+  const lose = objectives
+    .filter((objective) => objective.owner !== "player" || objective.kind === "protect")
+    .map((objective) => t("패배: {goal}", { goal: objectiveLossText(objective) }));
+  return [deadline, ...win, ...lose].join(" · ");
+}
+
+// 적의 목표를 내가 잃는 것으로 바꿔 적는다. "적이 어디를 며칠 쥐면"까지
+// 적으면 적의 사정을 설명하는 줄이 되고, 내가 지켜야 할 칸이 무엇인지는
+// 오히려 흐려진다. 둘이 묶인 목표는 하나만 놓쳐서는 지지 않으므로 그것만 밝힌다.
+function objectiveLossText(objective) {
+  const both = objective.group ? t(" · 둘 다 놓칠 때") : "";
+  if (objective.kind === "protect" || objective.kind === "destroy") {
+    return t("{label} 상실{both}", { label: t(objective.label), both });
+  }
+  return t("{label} ({x}, {y}) 피탈{both}", { label: t(objective.label), x: objective.x, y: objective.y, both });
 }
 
 function timeoutMessage() {
@@ -8564,7 +8589,7 @@ function attackBlockReason(attacker, defender) {
   if (!hasObservation(attacker, defender)) return t("관측 없음 › 앞에 부대를 세워야 원거리 사격 가능");
   const gap = distance(attacker, defender);
   if (gap > spec.range) return t("사거리 밖 › {gap}칸 이격, 사거리 {range}칸", { gap, range: spec.range });
-  if (ridgeBlocksFire(attacker, defender)) return t("능선이 사선 차단 › 우회하거나 붙어서 타격");
+  if (ridgeBlocksFire(attacker, defender)) return t("능선이 사선 차단 › 높은 곳에 올라 쏘거나 붙어서 타격");
   return t("현재 이 적을 타격할 수 없음");
 }
 
@@ -8598,11 +8623,25 @@ function bombardDeck(attacker, deck) {
   }
 }
 
+// 고지를 높이로 본다. 지형 글자("H")를 직접 보면 산이 한 종류 늘 때마다
+// 이 함수를 고쳐야 하지만, 높이로 재면 어느 지도에도 그대로 붙는다.
+//
+// 규칙은 둘이다.
+//   • 높은 곳에 선 표적은 나도 그만큼 높이 서 있어야 맞힐 수 있다.
+//   • 사이에 낌 능선은 여전히 사선을 막는다. 단, 내가 그 능선만큼 높으면 넘겨 쏘다.
+// 이렇게 두면 고지는 "손을 못 대는 칸"이 아니라 "먼저 올라가야 하는 칸"이 된다.
+// 고지의 포격 엄폐(-2)와 방어(+2)는 그대로라 올라간 쪽도 피해는 적게 준다.
 function ridgeBlocksFire(attacker, target) {
   if (unitTypes[attacker.type].range <= 1 || distance(attacker, target) <= 1) return false;
-  if (getTerrainKey(target.x, target.y) === "H") return true;
+  const eyeUp = tileAt(attacker.x, attacker.y)?.elevation ?? 0;
+  const targetUp = tileAt(target.x, target.y)?.elevation ?? 0;
+  if (targetUp > eyeUp) return true;
   return pathsBetween(attacker, target).every((path) =>
-    path.some((point) => (point.x !== target.x || point.y !== target.y) && getTerrainKey(point.x, point.y) === "H"),
+    path.some(
+      (point) =>
+        (point.x !== target.x || point.y !== target.y) &&
+        (tileAt(point.x, point.y)?.elevation ?? 0) > eyeUp,
+    ),
   );
 }
 
@@ -8643,7 +8682,7 @@ function pathsBetween(start, end) {
 // 강이 있는지 모르는 것은 전략이 아니라 불편이다.
 
 // 능선이 시야를 막는가. 사격 차단(ridgeBlocksFire)과 일부러 규칙을 다르게 둔다.
-// 사격은 고지 위의 표적 자체를 못 맞히지만, 시야는 반대다 — 능선 위에 선 것은
+// 사격은 내가 표적만큼 높아야 닿지만, 시야는 더 너그럽다 — 능선 위에 선 것은
 // 오히려 하늘을 배경으로 드러난다. 가리는 것은 사이에 낀 산등성이뿐이고,
 // 관측자가 그 산등성이만큼 높이 서 있으면 넘겨다본다.
 function ridgeBlocksSight(from, to) {

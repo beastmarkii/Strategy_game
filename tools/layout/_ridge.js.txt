@@ -1,0 +1,29 @@
+<script>
+// 고지 사격 규칙과 명령서 문구 확인판. 화면이 아니라 글자로 받는다.
+window.confirm = () => true; window.alert = () => {};
+setTimeout(()=>{
+  const out = [];
+  try{
+    scenarios.forEach(sc=>{
+      startGame({ side:"west", scenarioId: sc.id });
+      out.push("[" + sc.id + "] " + missionBriefText());
+    });
+
+    startGame({ side:"west", scenarioId: scenarios[0].id });
+    const gun = { owner:"player", type:"spArtillery", x:0, y:0 };
+    const foe = { owner:"enemy", type:"infantry", x:3, y:0 };
+    const set = (x,y,k)=>{ terrainMap[y] = terrainMap[y].substring(0,x) + k + terrainMap[y].substring(x+1); };
+    const say = (m)=>out.push(m + ": " + (ridgeBlocksFire(gun,foe) ? "차단" : "타격가능"));
+    out.push("--- 고지 사격 ---");
+    ["P","P","P","H"].forEach((k,i)=>set(i,0,k));
+    say("평지에서 고지 위 적");
+    set(0,0,"H"); say("고지에서 고지 위 적");
+    set(0,0,"P"); set(3,0,"P"); set(2,0,"H"); say("평지, 사이에 능선");
+    set(0,0,"H"); say("고지, 사이에 능선");
+  }catch(e){ out.push("ERR " + e.message + " | " + e.stack); }
+  const pre = document.createElement("pre");
+  pre.id = "ridgeout";
+  pre.textContent = out.join("\n");
+  document.body.appendChild(pre);
+},1200);
+</script>

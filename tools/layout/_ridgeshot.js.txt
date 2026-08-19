@@ -1,0 +1,14 @@
+<script>
+// 명령서 줄과 고지 사격 표시를 찍기 위한 판.
+window.confirm = () => true; window.alert = () => {};
+setTimeout(()=>{
+  try{
+    startGame({ side:"east", scenarioId:"gazala" });
+    document.querySelectorAll("#newOperationModal,#storageNotice,#coach,#coachSpot,#resultScreen,.setup-modal,.modal,#operationSetup").forEach(el=>{el.hidden=true;el.style.display="none";});
+    if (state.phase === "deploy" && typeof finishDeployment === "function") finishDeployment();
+    state.phase = "player";
+    render(); fitBoardToScreen();
+    document.title = "OK";
+  }catch(e){ document.title = "ERR " + e.message; }
+},1300);
+</script>
