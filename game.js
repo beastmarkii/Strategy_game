@@ -1207,7 +1207,10 @@ function detectLocale() {
   if (language.startsWith("en")) return "en";
   if (language.startsWith("zh")) return "zh";
   if (language.startsWith("ja")) return "ja";
-  return "ko";
+  if (language.startsWith("ko")) return "ko";
+  // 넷 중 어디에도 안 걸리는 언어(불어, 독어, 스페인어 …)는 영어로 연다.
+  // 한국어 기계는 위에서 이미 걸러졌으므로 여기까지 오지 않는다.
+  return "en";
 }
 
 function handleMapWheel(event) {
