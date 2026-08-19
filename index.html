@@ -104,22 +104,22 @@
           <details id="navyCommandMenu" class="command-menu">
             <summary>해군</summary>
             <div class="command-menu-grid">
-              <button type="button" disabled>상륙정 준비 중</button>
-              <button type="button" disabled>구축함 준비 중</button>
+              <button type="button" disabled data-i18n>상륙정 준비 중</button>
+              <button type="button" disabled data-i18n>구축함 준비 중</button>
             </div>
           </details>
           <details id="airCommandMenu" class="command-menu">
             <summary>공군</summary>
             <div class="command-menu-grid">
-              <button type="button" disabled>정찰기 준비 중</button>
-              <button type="button" disabled>전술폭격 준비 중</button>
+              <button type="button" disabled data-i18n>정찰기 준비 중</button>
+              <button type="button" disabled data-i18n>전술폭격 준비 중</button>
             </div>
           </details>
           <details id="aiCommandMenu" class="command-menu">
             <summary>AI</summary>
             <div class="command-menu-grid">
-              <button type="button" disabled>자동 편제 준비 중</button>
-              <button type="button" disabled>자동 보급 준비 중</button>
+              <button type="button" disabled data-i18n>자동 편제 준비 중</button>
+              <button type="button" disabled data-i18n>자동 보급 준비 중</button>
             </div>
           </details>
           <button id="buildBridge" type="button">다리 건설 <span>1일</span></button>
@@ -129,7 +129,7 @@
           <!-- 턴 종료·배치 완료는 지도 위 상황판으로 옮겼다(아래 .hud-actions).
                매 턴 누르는 단 하나의 버튼이 긴 명령 목록 맨 아래에 있어서, 부대를
                고를 때마다 목록이 길어지면 화면 밖으로 밀려났기 때문이다. -->
-          <button id="showCoach" type="button">조작 안내</button>
+          <button id="showCoach" type="button" data-i18n>조작 안내</button>
           <button id="restart" type="button">새 작전</button>
           <!-- 이 기계에 적어 둔 것을 통째로 지우는 단추와, 무엇을 적어 두는지 다
                적힌 문서. 「지웠다」고 말하려면 지우는 방법이 게임 안에 있어야 한다. -->
@@ -150,7 +150,7 @@
           <strong id="missionNameLabel">총력전</strong>
           <span id="missionBriefLabel"></span>
         </div>
-        <div class="operation-hud" aria-label="작전 상황">
+        <div class="operation-hud" aria-label="작전 상황" data-i18n-attr="aria-label">
           <div class="hud-stat">
             <span>작전일</span>
             <strong id="hudTurnLabel">1</strong>
@@ -256,8 +256,8 @@
       </div>
       <p id="coachBody"></p>
       <div class="coach-actions">
-        <button id="coachSkip" type="button">그만 보기</button>
-        <button id="coachNext" type="button" class="primary">다음</button>
+        <button id="coachSkip" type="button" data-i18n>그만 보기</button>
+        <button id="coachNext" type="button" class="primary" data-i18n>다음</button>
       </div>
     </div>
 
@@ -268,8 +268,8 @@
       <div class="operation-dialog" role="dialog" aria-modal="true" aria-labelledby="operationDialogTitle">
         <div class="operation-dialog-header">
           <p class="eyebrow">OPERATION ORDER · 1944</p>
-          <h2 id="operationDialogTitle">작전 명령서</h2>
-          <span class="dialog-stamp">기밀</span>
+          <h2 id="operationDialogTitle" data-i18n>작전 명령서</h2>
+          <span class="dialog-stamp" data-i18n>기밀</span>
         </div>
 
         <!-- 하다 만 판이 있을 때만 뜬다. 다섯 칸을 고르기 전에 보여야 하므로 맨 위다 —
@@ -277,12 +277,12 @@
              아니라 "그 판을 마저 할 것인가"다. -->
         <div id="resumeNotice" class="resume-notice" hidden>
           <div class="resume-notice-text">
-            <strong>중단된 작전</strong>
+            <strong data-i18n>중단된 작전</strong>
             <span id="resumeNoticeMeta"></span>
           </div>
           <div class="resume-notice-actions">
-            <button id="resumeOperation" type="button" class="primary">이어하기</button>
-            <button id="discardOperation" type="button">지우기</button>
+            <button id="resumeOperation" type="button" class="primary" data-i18n>이어하기</button>
+            <button id="discardOperation" type="button" data-i18n>지우기</button>
           </div>
         </div>
 
@@ -295,17 +295,17 @@
              이 판을 얼마나 세게 할지라서, 넷을 다 정한 뒤 맨 끝에 둔다. -->
         <div class="operation-dialog-body">
           <section class="scenario-section stage" data-order="1" data-stage="side">
-            <h3>진영</h3>
+            <h3 data-i18n>진영</h3>
             <div class="stage-shell">
               <div class="stage-content">
-                <div class="side-choice" role="radiogroup" aria-label="진영 선택">
+                <div class="side-choice" role="radiogroup" aria-label="진영 선택" data-i18n-attr="aria-label">
                   <label>
                     <input type="radio" name="operationSide" value="allies" />
-                    <span>연합군</span>
+                    <span data-i18n>연합군</span>
                   </label>
                   <label>
                     <input type="radio" name="operationSide" value="axis" />
-                    <span>추축군</span>
+                    <span data-i18n>추축군</span>
                   </label>
                 </div>
               </div>
@@ -313,28 +313,28 @@
                 <span class="stage-leaf stage-leaf-l"></span>
                 <span class="stage-leaf stage-leaf-r"></span>
                 <span class="stage-seam"></span>
-                <b class="stage-lock">개방 대기</b>
+                <b class="stage-lock" data-i18n>개방 대기</b>
               </div>
             </div>
           </section>
 
           <section class="scenario-section stage" data-order="2" data-stage="scenario">
-            <h3>작전</h3>
+            <h3 data-i18n>작전</h3>
             <div class="stage-shell">
               <div class="stage-content">
-                <div id="operationScenarioChoices" class="scenario-choice-list" role="radiogroup" aria-label="작전 선택"></div>
+                <div id="operationScenarioChoices" class="scenario-choice-list" role="radiogroup" aria-label="작전 선택" data-i18n-attr="aria-label"></div>
               </div>
               <div class="stage-doors" aria-hidden="true">
                 <span class="stage-leaf stage-leaf-l"></span>
                 <span class="stage-leaf stage-leaf-r"></span>
                 <span class="stage-seam"></span>
-                <b class="stage-lock">진영 지정 후 개방</b>
+                <b class="stage-lock" data-i18n>진영 지정 후 개방</b>
               </div>
             </div>
           </section>
 
           <section class="scenario-section stage" data-order="3" data-stage="commander">
-            <h3>지휘관</h3>
+            <h3 data-i18n="명령서 지휘관">지휘관</h3>
             <div class="stage-shell">
               <div class="stage-content">
                 <div id="operationCommanderChoices" class="commander-choice-list"></div>
@@ -343,32 +343,32 @@
                 <span class="stage-leaf stage-leaf-l"></span>
                 <span class="stage-leaf stage-leaf-r"></span>
                 <span class="stage-seam"></span>
-                <b class="stage-lock">작전 지정 후 개방</b>
+                <b class="stage-lock" data-i18n>작전 지정 후 개방</b>
               </div>
             </div>
           </section>
 
           <section class="scenario-section stage" data-order="4" data-stage="deploy">
-            <h3>초기 배치</h3>
+            <h3 data-i18n>초기 배치</h3>
             <div class="stage-shell">
               <div class="stage-content">
-                <div class="side-choice" role="radiogroup" aria-label="초기 배치 방식">
+                <div class="side-choice" role="radiogroup" aria-label="초기 배치 방식" data-i18n-attr="aria-label">
                   <label>
                     <input type="radio" name="operationDeploy" value="auto" />
-                    <span>참모부 자동 배치</span>
+                    <span data-i18n>참모부 자동 배치</span>
                   </label>
                   <label>
                     <input type="radio" name="operationDeploy" value="manual" />
-                    <span>직접 배치</span>
+                    <span data-i18n>직접 배치</span>
                   </label>
                 </div>
-                <p class="muted">자동 배치는 장군의 보급 역량에 맞춰 부대 간격을 좁힙니다. 직접 배치는 작전 개시 전 배치 단계를 엽니다.</p>
+                <p class="muted" data-i18n>자동 배치는 장군의 보급 역량에 맞춰 부대 간격을 좁힙니다. 직접 배치는 작전 개시 전 배치 단계를 엽니다.</p>
               </div>
               <div class="stage-doors" aria-hidden="true">
                 <span class="stage-leaf stage-leaf-l"></span>
                 <span class="stage-leaf stage-leaf-r"></span>
                 <span class="stage-seam"></span>
-                <b class="stage-lock">지휘관 지정 후 개방</b>
+                <b class="stage-lock" data-i18n>지휘관 지정 후 개방</b>
               </div>
             </div>
           </section>
@@ -377,24 +377,24 @@
                적 전선의 머릿수·보급·증원 주기만 바뀐다. 그래서 칸마다 그 세 숫자를
                그대로 적어 둔다 — 무엇이 어려워지는지 모르고 고르면 찍는 것이다. -->
           <section class="scenario-section stage" data-order="5" data-stage="difficulty">
-            <h3>상대 참모부</h3>
+            <h3 data-i18n>상대 참모부</h3>
             <div class="stage-shell">
               <div class="stage-content">
-                <div id="operationDifficultyChoices" class="difficulty-choice-list" role="radiogroup" aria-label="난이도 선택"></div>
+                <div id="operationDifficultyChoices" class="difficulty-choice-list" role="radiogroup" aria-label="난이도 선택" data-i18n-attr="aria-label"></div>
               </div>
               <div class="stage-doors" aria-hidden="true">
                 <span class="stage-leaf stage-leaf-l"></span>
                 <span class="stage-leaf stage-leaf-r"></span>
                 <span class="stage-seam"></span>
-                <b class="stage-lock">배치 방식 지정 후 개방</b>
+                <b class="stage-lock" data-i18n>배치 방식 지정 후 개방</b>
               </div>
             </div>
           </section>
         </div>
 
         <div class="operation-dialog-actions">
-          <button id="cancelOperationSetup" type="button">취소</button>
-          <button id="confirmOperationSetup" type="button" class="primary" disabled>작전 개시</button>
+          <button id="cancelOperationSetup" type="button" data-i18n>취소</button>
+          <button id="confirmOperationSetup" type="button" class="primary" disabled data-i18n>작전 개시</button>
         </div>
       </div>
     </div>
@@ -411,9 +411,9 @@
         <p class="result-verdict" id="resultVerdict">승 리</p>
         <p class="result-reason" id="resultReason"></p>
         <p class="result-tally" id="resultTally"></p>
-        <div class="result-log" id="resultLog" aria-label="작전 이력"></div>
+        <div class="result-log" id="resultLog" aria-label="작전 이력" data-i18n-attr="aria-label"></div>
         <div class="result-actions">
-          <button id="resultDone" type="button" class="primary">완료</button>
+          <button id="resultDone" type="button" class="primary" data-i18n>완료</button>
         </div>
       </div>
     </div>

@@ -668,6 +668,46 @@ const activePack = localePacks[activeLocale];
 // prettier-ignore
 const uiDict = {
   en: {
+    "열기": "Open",
+    "닫기": "Close",
+    "상륙정 준비 중": "Landing craft — soon",
+    "구축함 준비 중": "Destroyer — soon",
+    "정찰기 준비 중": "Recon plane — soon",
+    "전술폭격 준비 중": "Tactical bomber — soon",
+    "자동 편제 준비 중": "Auto-organise — soon",
+    "자동 보급 준비 중": "Auto-supply — soon",
+    "조작 안내": "How to play",
+    "그만 보기": "Don't show again",
+    "다음": "Next",
+    "작전 명령서": "Operation Orders",
+    "기밀": "SECRET",
+    "중단된 작전": "Operation in progress",
+    "이어하기": "Resume",
+    "지우기": "Discard",
+    "지휘관 명부": "Commander file",
+    "아군 지휘": "Our CO",
+    "진영": "Side",
+    "명령서 지휘관": "Commander",
+    "연합군": "Allies",
+    "추축군": "Axis",
+    "개방 대기": "Locked",
+    "진영 지정 후 개방": "Unlocks after side",
+    "작전 지정 후 개방": "Unlocks after operation",
+    "초기 배치": "Opening deployment",
+    "참모부 자동 배치": "Staff deploys for me",
+    "직접 배치": "I deploy myself",
+    "자동 배치는 장군의 보급 역량에 맞춰 부대 간격을 좁힙니다. 직접 배치는 작전 개시 전 배치 단계를 엽니다.": "Staff deployment tightens unit spacing to match your general's supply reach. Deploying yourself opens a placement step before the operation begins.",
+    "지휘관 지정 후 개방": "Unlocks after commander",
+    "상대 참모부": "Enemy staff",
+    "배치 방식 지정 후 개방": "Unlocks after deployment",
+    "취소": "Cancel",
+    "작전 개시": "Begin operation",
+    "작전 상황": "Operation status",
+    "진영 선택": "Choose a side",
+    "작전 선택": "Choose an operation",
+    "초기 배치 방식": "Deployment method",
+    "난이도 선택": "Choose a difficulty",
+    "작전 이력": "Operation log",
     "전장 이상 없음": "All quiet",
     "작전": "Operation",
     // 부대 이름과 작전 목표 이름. 장비 이름은 원래 표기를 그대로 둔다.
@@ -2209,9 +2249,44 @@ musicToggleEl?.addEventListener("click", (event) => {
 
 prefetchSounds();
 
+// index.html 에 표시해 둔 자리를 한 번만 훑어서 원래 한글을 적어 둔다.
+// 표시가 없어져도 조용히 넘어가지 않도록, 처음 훑을 때 개수를 남긴다.
+let markedTextNodes = null;
+let markedAttrNodes = null;
+function collectMarkedNodes() {
+  if (markedTextNodes) return;
+  markedTextNodes = [];
+  document.querySelectorAll("[data-i18n]").forEach((node) => {
+    if (node.children.length) return; // 안에 다른 칸이 든 자리는 건드리지 않는다
+    const ko = node.textContent.trim();
+    // 표시에 값이 있으면 그 값이 사전 열쇠다. 같은 한글이 자리마다 다른 영어를
+    // 가져야 할 때 쓴다. 값이 없으면 한글 자신이 열쇠다.
+    markedTextNodes.push({ node, ko, key: node.dataset.i18n || ko });
+  });
+  markedAttrNodes = [];
+  document.querySelectorAll("[data-i18n-attr]").forEach((node) => {
+    const names = node.getAttribute("data-i18n-attr").split(/\s*,\s*/).filter(Boolean);
+    names.forEach((name) => {
+      const ko = node.getAttribute(name);
+      if (ko) markedAttrNodes.push({ node, name, ko });
+    });
+  });
+}
+
+function applyMarkedNodes() {
+  collectMarkedNodes();
+  markedTextNodes.forEach(({ node, ko, key }) => {
+    node.textContent = activeLocale === "ko" ? ko : t(key);
+  });
+  markedAttrNodes.forEach(({ node, name, ko }) => {
+    node.setAttribute(name, activeLocale === "ko" ? ko : t(ko));
+  });
+}
+
 function applyLocale() {
   if (!activePack) return;
   document.documentElement.lang = activeLocale;
+  applyMarkedNodes();
   document.title = activePack.title;
   document.querySelector("h1").textContent = activePack.title;
   document.querySelector(".command-panel")?.setAttribute("aria-label", activePack.title);
@@ -5298,7 +5373,7 @@ function syncCommandPanelState() {
   const button = document.querySelector("#toggleCommandPanel");
   if (button) {
     button.setAttribute("aria-expanded", String(!collapsed));
-    button.textContent = collapsed ? "열기" : "닫기";
+    button.textContent = collapsed ? t("열기") : t("닫기");
   }
   const scrim = document.querySelector("#panelScrim");
   // 좁은 화면인지 재는 자는 하나뿐이다. 여기만 innerWidth를 따로 보면 경계가
@@ -5666,7 +5741,7 @@ function terrainTraitText(x, y) {
 function renderCommanderList() {
   const commander = state.commanders.player;
   commanderListEl.innerHTML = `
-    <h2>지휘관 명부</h2>
+    <h2>${t("지휘관 명부")}</h2>
     <div class="commander-grid">
       <article class="commander-entry">
         <img
@@ -5677,7 +5752,7 @@ function renderCommanderList() {
           onerror="replaceCommanderPhoto(this, '${commanderInitials(commander)}', '${commander.side}')"
         />
         <span class="commander-entry-body">
-          <span class="commander-tag">아군 지휘</span>
+          <span class="commander-tag">${t("아군 지휘")}</span>
           <strong>${commander.name}</strong>
           <span>${t(commander.nation)} ${t(commander.rank)} · ${t(commander.trait)}</span>
         </span>
