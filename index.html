@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>전선 사령부 1944</title>
+    <title>FRONT COMMAND 1944</title>
 
     <!-- ── 겉표지 ────────────────────────────────────────────────────────────
          주소를 카카오톡·엑스·디스코드에 붙이거나 검색 결과에 뜰 때, 상대 쪽
@@ -34,9 +34,9 @@
     <link rel="alternate" hreflang="x-default" href="https://beastmarkii.github.io/Strategy_game/" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="전선 사령부" />
+    <meta property="og:site_name" content="FRONT COMMAND" />
     <meta property="og:locale" content="ko_KR" />
-    <meta property="og:title" content="전선 사령부 1944" />
+    <meta property="og:title" content="FRONT COMMAND 1944" />
     <meta
       property="og:description"
       content="연합군·추축군 12개 작전. 부대를 움직이고 보급선을 지켜 목표 거점을 잡는 제2차 세계대전 턴제 전술 게임."
@@ -55,7 +55,7 @@
     />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="전선 사령부 1944" />
+    <meta name="twitter:title" content="FRONT COMMAND 1944" />
     <meta
       name="twitter:description"
       content="연합군·추축군 12개 작전. 부대를 움직이고 보급선을 지켜 목표 거점을 잡는 제2차 세계대전 턴제 전술 게임."
@@ -71,9 +71,9 @@
     <link rel="apple-touch-icon" href="assets/icon-180.png" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#202317" />
-    <meta name="apple-mobile-web-app-title" content="전선 사령부" />
+    <meta name="apple-mobile-web-app-title" content="FRONT COMMAND" />
 
-    <link rel="stylesheet" href="styles.css?v=20260819" />
+    <link rel="stylesheet" href="styles.css?v=20260819b" />
   </head>
   <body>
     <main class="shell">
@@ -81,7 +81,7 @@
         <button id="toggleCommandPanel" class="panel-toggle panel-toggle-left" type="button" aria-controls="commandPanel" aria-expanded="true">닫기</button>
         <div>
           <p class="eyebrow">World War II Tactical Command</p>
-          <h1>전선 사령부</h1>
+          <h1>FRONT COMMAND</h1>
         </div>
 
         <!-- 예전에는 여기에도 작전일·주도권·보급품·다음 보급·전투 정원 다섯 칸이 있었다.
@@ -440,11 +440,23 @@
          누르기 전에는 소리를 못 낸다. 여태는 그 첫 누름이 「작전 개시」였고,
          그전까지 뜬 명령서는 소리 없이 떴다. 이제 그 첫 누름이 여기서 일어난다. -->
     <div id="titleScreen" class="title-screen">
+      <!-- 전투 장면. 세로 화면 기준으로 만들었고, 넓은 화면에서 좌우로 남는
+           자리는 같은 전장의 가로 그림이 메운다. 소리는 없다 - 이 자리에는
+           타이틀 음악이 이미 깔려 있고, 브라우저는 소리 있는 영상의 자동
+           재생을 막는다. -->
+      <div class="title-intro" id="titleIntro" aria-hidden="true">
+        <video id="titleIntroClip" class="title-intro-clip"
+               src="assets/video/intro.mp4?v=20260819b"
+               poster="assets/video/intro-poster.jpg?v=20260819b"
+               muted playsinline autoplay preload="auto"></video>
+      </div>
       <div class="title-screen-inner">
         <p class="title-eyebrow">WORLD WAR II · TURN-BASED TACTICAL COMMAND</p>
-        <h1 class="title-name">전선 사령부</h1>
-        <p class="title-name-en">FRONT COMMAND</p>
-        <p class="title-sub">1944</p>
+        <h1 class="title-mark">
+          <span class="title-word">FRONT</span>
+          <span class="title-word">COMMAND</span>
+        </h1>
+        <p class="title-year"><span>1944</span></p>
         <div class="title-actions">
           <button id="titleStart" type="button" class="primary" data-i18n>작전 개시</button>
           <button id="titleGuide" type="button" data-i18n>조작 안내</button>
@@ -461,7 +473,7 @@
         <p class="ending-eyebrow">END OF OPERATION</p>
         <p class="ending-verdict" id="endingVerdict"></p>
         <p class="ending-line" id="endingLine"></p>
-        <p class="ending-name">전선 사령부 1944</p>
+        <p class="ending-name">FRONT COMMAND 1944</p>
         <div class="ending-actions">
           <button id="endingNext" type="button" class="primary" data-i18n>다음 작전</button>
           <button id="endingTitle" type="button" data-i18n>타이틀로</button>
@@ -480,7 +492,7 @@
       </svg>
     </button>
 
-    <script src="scenarios.js?v=20260819"></script>
-    <script src="game.js?v=20260819"></script>
+    <script src="scenarios.js?v=20260819b"></script>
+    <script src="game.js?v=20260819b"></script>
   </body>
 </html>

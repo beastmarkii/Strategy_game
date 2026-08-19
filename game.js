@@ -8063,17 +8063,88 @@ const titleScreenEl = document.querySelector("#titleScreen");
 const endingScreenEl = document.querySelector("#endingScreen");
 const endingVerdictEl = document.querySelector("#endingVerdict");
 const endingLineEl = document.querySelector("#endingLine");
+const titleClipEl = document.querySelector("#titleIntroClip");
+
+// 여는 연출은 두 토막이다. 전투 장면이 흐르고, 끝나면 제목이 박힌다.
+// 화면의 상태는 이름 세 개로만 나타낸다. 셋 다 없으면 제목이 완성된 채로
+// 서 있다 — 아래 코드가 통째로 죽어도 타이틀은 멀쩡히 보인다.
+//   intro   전투 장면이 흐르는 중
+//   ready   제목이 차례로 들어오는 중
+//   done    다 들어왔다. 이때부터 버튼이 눌린다.
+let titleTimers = [];
+let titleClipSeen = false;
+
+function titleClearTimers() {
+  titleTimers.forEach((id) => window.clearTimeout(id));
+  titleTimers = [];
+}
+
+// 전투 장면은 한 판에 한 번만 튼다. 종막에서 타이틀로 돌아온 사람에게 5초짜리
+// 영상을 다시 보이면 그것은 연출이 아니라 가로막는 벽이다.
+function titleOpen() {
+  if (!titleScreenEl) return;
+  titleClearTimers();
+  titleScreenEl.classList.remove("ready", "done", "instant", "intro");
+  const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  if (calm) {
+    titleReveal(true);
+    return;
+  }
+  if (titleClipSeen || !titleClipEl) {
+    titleReveal(false);
+    return;
+  }
+  titleClipSeen = true;
+  titleScreenEl.classList.add("intro");
+  try {
+    titleClipEl.currentTime = 0;
+    const started = titleClipEl.play();
+    if (started && started.catch) started.catch(() => titleReveal(false));
+  } catch (error) {
+    titleReveal(false);
+  }
+  // 영상이 뜨지 않거나 끝났다는 신호가 오지 않아도 화면은 넘어가야 한다.
+  titleTimers.push(window.setTimeout(() => titleReveal(false), 5400));
+}
+
+function titleReveal(instant) {
+  if (!titleScreenEl) return;
+  titleClearTimers();
+  titleScreenEl.classList.remove("intro");
+  if (instant) titleScreenEl.classList.add("instant");
+  titleScreenEl.classList.add("ready");
+  try {
+    titleClipEl?.pause();
+  } catch (error) {}
+  titleTimers.push(window.setTimeout(() => {
+    titleScreenEl.classList.add("done");
+  }, instant ? 40 : 2620));
+}
+
+// 아무 데나 누르면 끝난 모습으로 건너뛴다. 두 번째로 보는 사람에게 3초를
+// 강요하지 않기 위한 것이다. 버튼은 다 들어오기 전까지 눌리지 않으므로,
+// 이 누름이 「작전 개시」를 잘못 누르는 일은 없다.
+function titleSkip() {
+  if (!titleScreenEl || titleScreenEl.hidden) return;
+  if (titleScreenEl.classList.contains("done")) return;
+  titleReveal(true);
+}
+
+titleClipEl?.addEventListener("ended", () => titleReveal(false));
+titleScreenEl?.addEventListener("pointerdown", titleSkip);
 
 function showTitleScreen() {
   if (!titleScreenEl) return;
   titleScreenEl.hidden = false;
   titleScreenEl.classList.remove("leaving");
+  titleOpen();
   frontMusicPlay("title");
 }
 
 // 닫는 일은 반드시 사람이 누른 그 처리 안에서 일어난다. 아이폰은 손길과 떨어진
 // play()를 거절하므로, 다음 곡을 거는 것도 여기서 이어져야 한다.
 function hideTitleScreen() {
+  titleClearTimers();
   frontMusicStop();
   if (!titleScreenEl) return;
   titleScreenEl.classList.add("leaving");
