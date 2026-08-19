@@ -668,6 +668,32 @@ const activePack = localePacks[activeLocale];
 // prettier-ignore
 const uiDict = {
   en: {
+    "연합군은 능선 아래 통로를 뚫어라. 추축군은 통로를 여는 공병대를 없애라.": "Allies: force the pass below the ridge. Axis: destroy the engineers opening it.",
+    "연합군은 칼라치 다리를 사흘 잡아라. 추축군은 다리 동쪽 진지를 사흘 지켜라.": "Allies: hold the Kalach bridge for three days. Axis: hold the east bank position for three days.",
+    "추축군은 올호바트카 능선을 점령하라. 연합군은 이레를 버틴 뒤 동군 보급로를 끊어라.": "Axis: take the Olkhovatka ridge. Allies: hold seven days, then cut the eastern supply road.",
+    "연합군 공세": "Allied offensive",
+    "추축군 공세": "Axis offensive",
+    "{n}일": "{n} days",
+    "기한 없음": "No deadline",
+    "기한 넘기면 무승부": "Time out = draw",
+    "기한 넘기면 연합군": "Time out = Allies",
+    "기한 넘기면 추축군": "Time out = Axis",
+    "사기 +{m} · 공격 {a} · 방어 {d} · 이동 {v} · 보급 {s}": "Morale +{m} · Atk {a} · Def {d} · Move {v} · Supply {s}",
+    "개시 병력 +{n}": "Start force +{n}",
+    "개시 병력 {n}": "Start force {n}",
+    "개시 병력 그대로": "Start force as usual",
+    "보급 ×{n}": "Supply ×{n}",
+    "예비대 아군과 같이": "Reserves match yours",
+    "예비대 아군의 ×{n}": "Reserves ×{n} yours",
+    "적 참모부": "Enemy staff",
+    "신병": "Green",
+    "정규": "Regular",
+    "노련": "Veteran",
+    "정예": "Elite",
+    "적 전선이 한 부대 얇고, 예비대도 아군보다 얇게 선다.": "The enemy line is one unit thinner, and their reserves come in below yours.",
+    "지금까지의 그 전선. 적 예비대는 아군과 같은 수로 선다.": "The line as it has always been. Enemy reserves match yours unit for unit.",
+    "적이 두 부대 더 서서 시작하고, 예비대를 아군보다 조금 더 세운다.": "The enemy starts with two more units and fields slightly more reserves than you.",
+    "적이 네 부대 더 서서 시작하고, 보급이 배 가까이 들어온다.": "The enemy starts with four more units and draws nearly double the supply.",
     "열기": "Open",
     "닫기": "Close",
     "상륙정 준비 중": "Landing craft — soon",
@@ -2518,8 +2544,8 @@ function scenariosForSide(side) {
 // 이 작전에서 먼저 움직인 쪽. 카드에 붙여 두면 "내가 미는 판인지 막는 판인지"를
 // 고르기 전에 안다.
 function scenarioLeadLabel(scenario) {
-  if (scenario.lead === "allies") return "연합군 공세";
-  if (scenario.lead === "axis") return "추축군 공세";
+  if (scenario.lead === "allies") return t("연합군 공세");
+  if (scenario.lead === "axis") return t("추축군 공세");
   return "";
 }
 
@@ -2528,7 +2554,7 @@ function renderOperationScenarioChoices(side) {
   operationScenarioChoicesEl.innerHTML = scenariosForSide(side)
     .map((scenario) => {
       const size = `${scenario.terrain[0].length}×${scenario.terrain.length}`;
-      const deadline = scenario.turnLimit ? `${scenario.turnLimit}일` : "기한 없음";
+      const deadline = scenario.turnLimit ? t("{n}일", { n: scenario.turnLimit }) : t("기한 없음");
       const opened = scenario.startDate ? `${scenario.startDate[0]}.${scenario.startDate[1]}.${scenario.startDate[2]}` : "";
       const lead = scenarioLeadLabel(scenario);
       const badge = lead ? `<span class="scenario-choice-lead" data-lead="${scenario.lead}">${lead}</span>` : "";
@@ -2557,8 +2583,8 @@ function renderOperationScenarioChoices(side) {
 // 두 칸짜리 카드에서 "기한 만료 시 추축군 승리"는 마지막 낱말이 잘려 내려간다.
 // 글자를 줄일 수는 없으니 말을 줄인다 — 뜻은 그대로다.
 function scenarioOutcomeLabel(scenario) {
-  if (!scenario.timeoutWinner) return "기한 넘기면 무승부";
-  return scenario.timeoutWinner === "west" ? "기한 넘기면 연합군" : "기한 넘기면 추축군";
+  if (!scenario.timeoutWinner) return t("기한 넘기면 무승부");
+  return scenario.timeoutWinner === "west" ? t("기한 넘기면 연합군") : t("기한 넘기면 추축군");
 }
 
 function closeNewOperationSetup() {
@@ -2591,18 +2617,22 @@ function renderOperationDifficultyChoices() {
   const selectedId = selectedOperationDifficulty();
   operationDifficultyChoicesEl.innerHTML = difficultyLevels
     .map((level) => {
-      const force = level.startUnits > 0 ? `개시 병력 +${level.startUnits}` : level.startUnits < 0 ? `개시 병력 ${level.startUnits}` : "개시 병력 그대로";
-      const income = `보급 ×${level.income}`;
+      const force = level.startUnits > 0
+        ? t("개시 병력 +{n}", { n: level.startUnits })
+        : level.startUnits < 0
+          ? t("개시 병력 {n}", { n: level.startUnits })
+          : t("개시 병력 그대로");
+      const income = t("보급 ×{n}", { n: level.income });
       // 예비대가 아군을 어떻게 따라오는지가 이제 적 병력이 정해지는 유일한 방식이라
       // 칸에 그대로 적는다. 1이면 아군과 같은 수, 1.5면 아군의 한 배 반이다.
-      const cadence = level.force === 1 ? "예비대 아군과 같이" : `예비대 아군의 ×${level.force}`;
+      const cadence = level.force === 1 ? t("예비대 아군과 같이") : t("예비대 아군의 ×{n}", { n: level.force });
       return `
       <label class="difficulty-choice">
         <input type="radio" name="operationDifficulty" value="${level.id}" ${level.id === selectedId ? "checked" : ""} />
         <span class="difficulty-choice-body">
-          <strong>${level.name}</strong>
+          <strong>${t(level.name)}</strong>
           <span class="difficulty-choice-meta">${force} · ${income} · ${cadence}</span>
-          <span>${level.brief}</span>
+          <span>${t(level.brief)}</span>
         </span>
       </label>
     `;
@@ -2739,7 +2769,13 @@ function signedStat(value) {
 }
 
 function commanderStatSummary(commander) {
-  return `사기 +${commander.morale} · 공격 ${signedStat(commander.attack)} · 방어 ${signedStat(commander.defense)} · 이동 ${signedStat(commander.move ?? 0)} · 보급 ${signedStat(commander.supply ?? 0)}`;
+  return t("사기 +{m} · 공격 {a} · 방어 {d} · 이동 {v} · 보급 {s}", {
+    m: commander.morale,
+    a: signedStat(commander.attack),
+    d: signedStat(commander.defense),
+    v: signedStat(commander.move ?? 0),
+    s: signedStat(commander.supply ?? 0),
+  });
 }
 
 function confirmNewOperationSetup() {
@@ -3456,7 +3492,7 @@ function startGame(config = {}) {
   // 맞은편 장군 이름은 여기서 안 알려 준다. 개전 전문에 이름을 박아 두면 사령부를
   // 찾아낼 이유가 없어진다 — 적 대대사령부를 눌러야 누구인지 알게 해 두었다.
   addLog(`${sideName("enemy")} 방어선 › 지휘관 미상 · 적 대대사령부 확인 요망`);
-  addLog(`적 참모부 「${difficulty.name}」 · ${difficulty.brief}`);
+  addLog(`${t("적 참모부")} 「${t(difficulty.name)}」 · ${t(difficulty.brief)}`);
   addLog("공병대 배치 · 다리 1일, 보급창고·철도 수일 소요");
   addLog("공병대 › 보병보다 빠르고 튼튼 · 전투력은 소총분대의 80%");
   if (state.deployMode === "manual") {
