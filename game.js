@@ -2414,6 +2414,13 @@ function applyMarkedNodes() {
 }
 
 function applyLocale() {
+  // 처리방침 문서는 이 판이 지금 쓰는 말로 열려야 한다. 그 문서는 game.js를
+  // 읽지 않으므로, 어느 말로 열지 알려 주는 길은 주소에 얹어 보내는 것뿐이다.
+  // 한국어까지 포함해 늘 붙인다 — 브라우저는 영어인데 주소로 한국어를 못 박고
+  // 보는 사람이 있고, 그 사람에게 영어 방침서를 내밀면 안 된다.
+  document.querySelectorAll('a[href^="privacy.html"]').forEach((link) => {
+    link.setAttribute("href", `privacy.html?lang=${activeLocale}`);
+  });
   if (!activePack) return;
   document.documentElement.lang = activeLocale;
   applyMarkedNodes();
