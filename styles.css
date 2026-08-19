@@ -6700,6 +6700,45 @@ body {
    글자는 늘 대문자로 찍는다 — 낱말장에 Victory로 적혀 있든 VICTORY로 적혀
    있든 도장 모양은 같아야 하고, 기록줄에서 쓰는 「Victory: …」는 그대로 둔다.
    한글에는 대소문자가 없으므로 한국어판 글자는 손대지 않는다. */
+/* 도장과 성적을 한 줄에 세운다. 좁은 화면에서는 성적이 아래로 내려가게 둔다. */
+.result-headline {
+  display: flex;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+/* 성적. 도장과 같은 빨간·초록·노랑을 그대로 따른다 — 둘을 따로 보이게
+   하면 눈이 두 번 멈춘다. 진 판의 F만 크게 찍는다. */
+.result-grade {
+  margin: 2px 0 0;
+  color: var(--engrave);
+  font-family: var(--tech);
+  font-size: 46px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
+.result-screen[data-verdict="win"] .result-grade {
+  color: var(--lamp-on);
+  text-shadow: 0 0 22px rgb(134 214 143 / 40%);
+}
+
+.result-screen[data-verdict="draw"] .result-grade {
+  color: var(--readout);
+  text-shadow: 0 0 22px rgb(240 200 106 / 34%);
+}
+
+.result-screen[data-verdict="lose"] .result-grade {
+  color: #d2564a;
+  font-size: 84px;
+  text-shadow: 0 0 30px rgb(168 51 43 / 55%);
+}
+
 .result-verdict {
   align-self: center;
   margin: 2px 0 0;

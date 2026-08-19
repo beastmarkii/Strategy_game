@@ -1294,6 +1294,7 @@ const resultScreenEl = document.querySelector("#resultScreen");
 const resultVerdictEl = document.querySelector("#resultVerdict");
 const resultReasonEl = document.querySelector("#resultReason");
 const resultTallyEl = document.querySelector("#resultTally");
+const resultGradeEl = document.querySelector("#resultGrade");
 const resultLogEl = document.querySelector("#resultLog");
 const bannerEl = document.createElement("div");
 bannerEl.className = "banner";
@@ -7682,6 +7683,37 @@ function verdictBanner(verdict) {
   return t("무승부");
 }
 
+// 성적. 지도마다 병력도 기한도 목표도 다르므로 절대수는 쓰지 않고 비율만 재서,
+// 지도를 더 만들어도 값을 따로 맞추지 않아도 되게 한다. 세 가지를 각각 0~1로
+// 재서 가중해 더한다 — 얼마나 빨랐는가, 얼마나 아켔는가, 얼마나 부쑱는가.
+// 시작 병력을 따로 저장하지 않고 「살아남은 수 + 잃은 수」로 되짚는다. 새 값을
+// 넣지 않으니 저장 파일 형식을 올릴 일도, 예전 저장본이 깨질 일도 없다.
+// 기한이 없는 작전은 속도를 재지 않고 나머지 둘로만 가른다.
+const gradeWeights = { speed: 0.3, preserve: 0.5, destroy: 0.2 };
+const gradeLetters = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-"];
+
+function operationGrade(kills, losses) {
+  const aliveOf = (owner) =>
+    state.units.filter((unit) => unit.owner === owner && isCombatUnit(unit)).length;
+  const parts = [];
+  const limit = missionTurnLimit();
+  if (Number.isFinite(limit) && limit > 0) {
+    parts.push([gradeWeights.speed, (limit - state.turn + 1) / limit]);
+  }
+  const ownStart = aliveOf("player") + losses;
+  if (ownStart > 0) parts.push([gradeWeights.preserve, 1 - losses / ownStart]);
+  const foeStart = aliveOf("enemy") + kills;
+  if (foeStart > 0) parts.push([gradeWeights.destroy, kills / foeStart]);
+
+  const weight = parts.reduce((sum, [w]) => sum + w, 0);
+  if (weight <= 0) return "C";
+  const score = parts.reduce((sum, [w, v]) => sum + w * Math.max(0, Math.min(1, v)), 0) / weight;
+  // 0.28 미만이 D-이고 0.06마다 한 칸씩 올라 0.88 이상이 A+다.
+  const step = Math.floor((score - 0.28) / 0.06);
+  const last = gradeLetters.length - 1;
+  return gradeLetters[last - Math.max(0, Math.min(last, step))];
+}
+
 function showResultScreen(outcome) {
   if (!resultScreenEl) return;
   const chronicle = state.chronicle ?? [];
@@ -7690,6 +7722,11 @@ function showResultScreen(outcome) {
 
   resultScreenEl.dataset.verdict = outcome.verdict;
   if (resultVerdictEl) resultVerdictEl.textContent = verdictBanner(outcome.verdict);
+  // 진 판은 성적을 따지지 않는다 — F 하나다. 비겼을 땐 목표를 놓친 것은
+  // 아니므로 등급을 그대로 매긴다.
+  if (resultGradeEl) {
+    resultGradeEl.textContent = outcome.verdict === "lose" ? "F" : operationGrade(kills, losses);
+  }
   if (resultReasonEl) resultReasonEl.textContent = outcome.reason;
   // 셋 다 "얼마나 걸렸고 무엇을 주고받았는가"다. 이긴 판과 진 판을 비교할 수 있는
   // 최소한의 숫자이자, 아래 이력을 다 읽지 않아도 남는 한 줄이다.
