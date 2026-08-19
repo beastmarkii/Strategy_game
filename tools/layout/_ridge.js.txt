@@ -1,5 +1,5 @@
 <script>
-// 고지 사격 규칙과 명령서 문구 확인판. 화면이 아니라 글자로 받는다.
+// 고지 규칙 확인판. 화면이 아니라 글자로 받는다.
 window.confirm = () => true; window.alert = () => {};
 setTimeout(()=>{
   const out = [];
@@ -10,16 +10,29 @@ setTimeout(()=>{
     });
 
     startGame({ side:"west", scenarioId: scenarios[0].id });
+    const set = (x,y,k)=>{ terrainMap[y] = terrainMap[y].substring(0,x) + k + terrainMap[y].substring(x+1); };
     const gun = { owner:"player", type:"spArtillery", x:0, y:0 };
     const foe = { owner:"enemy", type:"infantry", x:3, y:0 };
-    const set = (x,y,k)=>{ terrainMap[y] = terrainMap[y].substring(0,x) + k + terrainMap[y].substring(x+1); };
     const say = (m)=>out.push(m + ": " + (ridgeBlocksFire(gun,foe) ? "차단" : "타격가능"));
-    out.push("--- 고지 사격 ---");
-    ["P","P","P","H"].forEach((k,i)=>set(i,0,k));
-    say("평지에서 고지 위 적");
+    out.push("--- 사선 ---");
+    [0,1,2,3].forEach(i=>set(i,0,"P"));
+    set(3,0,"H"); say("평지에서 고지 위 적");
     set(0,0,"H"); say("고지에서 고지 위 적");
-    set(0,0,"P"); set(3,0,"P"); set(2,0,"H"); say("평지, 사이에 능선");
-    set(0,0,"H"); say("고지, 사이에 능선");
+    set(3,0,"P"); say("고지에서 평지 적");
+    set(0,0,"P"); set(2,0,"H"); say("평지, 사이 능선");
+    set(0,0,"H"); say("고지, 사이 능선");
+
+    out.push("--- 피해 (소총분대 근접) ---");
+    [0,1,2,3].forEach(i=>set(i,0,"P"));
+    const a = state.units.find(u=>u.owner==="player" && unitTypes[u.type].range<=1);
+    const d = state.units.find(u=>u.owner==="enemy" && unitTypes[u.type].range<=1);
+    const shot = (ka,kd,label)=>{ set(0,0,ka); set(1,0,kd); a.x=0;a.y=0;d.x=1;d.y=0;
+      out.push(label + ": " + combatDamage(a,d)); };
+    shot("P","P","평지 → 평지");
+    shot("H","P","고지 → 평지");
+    shot("P","H","평지 → 고지");
+    out.push("(공격측 " + a.type + " 공" + unitTypes[a.type].attack + " / 방어측 " + d.type + ")");
+    out.push("고지 값: 공격 +" + highGroundAttack + " / 방어 +" + highGroundDefense);
   }catch(e){ out.push("ERR " + e.message + " | " + e.stack); }
   const pre = document.createElement("pre");
   pre.id = "ridgeout";

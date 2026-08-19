@@ -1,0 +1,18 @@
+<script>
+// 고지 칸 정보 카드를 찍기 위한 판.
+window.confirm = () => true; window.alert = () => {};
+setTimeout(()=>{
+  try{
+    startGame({ side:"west", scenarioId:"zitadelle" });
+    document.querySelectorAll("#newOperationModal,#storageNotice,#coach,#coachSpot,#resultScreen,.setup-modal,.modal,#operationSetup").forEach(el=>{el.hidden=true;el.style.display="none";});
+    if (state.phase === "deploy" && typeof finishDeployment === "function") finishDeployment();
+    state.phase = "player";
+    let spot = null;
+    terrainMap.forEach((row,y)=>{ [...row].forEach((k,x)=>{ if (!spot && k === "H") spot = {x,y}; }); });
+    render(); fitBoardToScreen();
+    inspectTile(spot.x, spot.y);
+    render();
+    document.title = "OK (" + spot.x + "," + spot.y + ")";
+  }catch(e){ document.title = "ERR " + e.message; }
+},1300);
+</script>

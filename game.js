@@ -207,6 +207,12 @@ let baseDefenseBonus = 3;
 // 방향값을 읽게 되어, 아무도 안 오는 방향의 능선을 명당으로 착각한다.
 // 0으로 두면 예전처럼 글자만 뜨고 계산에는 안 들어간다.
 let ridgeFacingDefense = 2;
+// 높은 자리는 내려다보며 찍기도 좋고 올려치는 것을 받기도 좋다. 둘을 따로
+// 둔다 — 하나로 묶으면 고지를 "먼저 올라가는 칸"으로 만들려고 공격만 올렸는데
+// 버티는 힘까지 같이 올라 자리싸움이 끝없이 길어진다. 고도 차로 재므로 지도마다
+// 따로 적을 것이 없고, 0으로 두면 그 규칙만 꺼진다.
+let highGroundAttack = 2;
+let highGroundDefense = 1;
 // 내가 가진 보급 거점 위에 선 부대가 턴마다 회복하는 병력. 거점을 "생산 숫자가
 // 붙은 칸"에서 "부대를 다시 세우는 자리"로 만든다. 0으로 두면 이 규칙이 꺼진다.
 let baseRepairRate = 1;
@@ -353,6 +359,8 @@ const defaultBalance = {
     baseLossGraceTurns,
     baseDefenseBonus,
     ridgeFacingDefense,
+    highGroundAttack,
+    highGroundDefense,
     baseRepairRate,
     baseEfficiencyRepair,
     enemyBaseSeekRange,
@@ -468,6 +476,8 @@ const ruleEditorFields = [
   ["baseLossGraceTurns", "거점 상실 패배 유예 턴 (0=즉시)", 0, 20, 1],
   ["baseDefenseBonus", "거점 안 부대 방어 버프", 0, 8, 1],
   ["ridgeFacingDefense", "능선 정면 방어 보정", 0, 8, 1],
+  ["highGroundAttack", "고지에서 내려칠 때 공격 보정", 0, 8, 1],
+  ["highGroundDefense", "고지에서 받을 때 방어 보정", 0, 8, 1],
   ["baseRepairRate", "거점 위 재편성 회복 (0=끔)", 0, 5, 1],
   ["baseEfficiencyRepair", "거점 효율 턴당 복구 (0=끔)", 0, 0.5, 0.05],
   ["enemyBaseSeekRange", "적 중립 거점 확보 반경 (0=안 감)", 0, 20, 1],
@@ -5360,6 +5370,8 @@ function balanceSnapshot() {
       baseLossGraceTurns,
       baseDefenseBonus,
       ridgeFacingDefense,
+      highGroundAttack,
+      highGroundDefense,
       baseRepairRate,
       baseEfficiencyRepair,
       enemyBaseSeekRange,
@@ -5414,6 +5426,8 @@ function ruleValue(key) {
     baseLossGraceTurns,
     baseDefenseBonus,
     ridgeFacingDefense,
+    highGroundAttack,
+    highGroundDefense,
     baseRepairRate,
     baseEfficiencyRepair,
     enemyBaseSeekRange,
@@ -5474,6 +5488,8 @@ function setRuleValue(key, value) {
   if (key === "baseLossGraceTurns") baseLossGraceTurns = value;
   if (key === "baseDefenseBonus") baseDefenseBonus = value;
   if (key === "ridgeFacingDefense") ridgeFacingDefense = value;
+  if (key === "highGroundAttack") highGroundAttack = value;
+  if (key === "highGroundDefense") highGroundDefense = value;
   if (key === "baseRepairRate") baseRepairRate = value;
   if (key === "baseEfficiencyRepair") baseEfficiencyRepair = value;
   if (key === "enemyBaseSeekRange") enemyBaseSeekRange = value;
@@ -7129,7 +7145,11 @@ function combatDamage(attacker, defender) {
   const attackerSpec = unitTypes[attacker.type];
   const defenderTile = tileAt(defender.x, defender.y);
   const elevationDelta = tileAt(attacker.x, attacker.y).elevation - defenderTile.elevation;
-  const heightModifier = elevationDelta > 0 ? 2 : elevationDelta < 0 ? -2 : 0;
+  const heightModifier = elevationDelta > 0 ? highGroundAttack : elevationDelta < 0 ? -highGroundAttack : 0;
+  // 높은 쪽이 방어할 때 붙는 값. 지형 엄폐(coverAt)와 따로 둔다 — 엄폐는 그 칸이
+  // 어떤 칸인가를 말하고, 이건 둘이 얼마나 떨어져 있는가를 말한다. 섞으면 AI가
+  // 자리를 고를 때 상대가 어느 쪽에서 오는지 모르는 채 이 값을 읽게 된다.
+  const heightCover = elevationDelta < 0 ? highGroundDefense : 0;
   const artilleryPenalty = isArtilleryUnit(attacker) ? defenderTile.artilleryCover : 0;
   const commander = commanderFor(attacker.owner);
   const directArtilleryVulnerability = isArtilleryUnit(defender) && unitTypes[attacker.type].range <= 1 ? artilleryVulnerability(defender) : 0;
@@ -7148,7 +7168,7 @@ function combatDamage(attacker, defender) {
   // 능선 방어방향은 여기서만 빠진다. 미리보기도 자살 공격 판정도 이 함수를 거치므로
   // 화면에 뜨는 숫자와 실제로 들어가는 피해가 저절로 같아진다.
   const ridgeFacing = ridgeFacingBonus(attacker, defender);
-  const rawDamage = attackerSpec.attack + heightModifier + commanderAttack + directArtilleryVulnerability + defenderSupplyPenalty - coverAt(defender.x, defender.y) - defenderArmor - artilleryPenalty - ridgeFacing;
+  const rawDamage = attackerSpec.attack + heightModifier + commanderAttack + directArtilleryVulnerability + defenderSupplyPenalty - coverAt(defender.x, defender.y) - defenderArmor - artilleryPenalty - ridgeFacing - heightCover;
   const moraleAdjusted = rawDamage * (effectiveMorale(attacker) / 100);
   return Math.max(1, Math.round(moraleAdjusted));
 }
