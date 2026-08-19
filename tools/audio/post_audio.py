@@ -48,6 +48,11 @@ LOUD_SFX = "loudnorm=I=-17:TP=-1.5:LRA=11"
 # 음악에 묻혀서 무슨 말인지 안 들린다 — 배경음악은 들리는 것이 아니라
 # 있는 줄도 모르다가 꺼 보면 허전한 것이어야 한다.
 LOUD_MUSIC = "loudnorm=I=-24:TP=-2:LRA=9"
+# 타이틀과 종막은 예외다. 위 값은 무전 대사 밑에 깔리는 소리의 크기인데,
+# 이 두 화면에서는 위에 엉힐 말이 없다. 곱이 화면의 배경이 아니라 화면 그 자체다.
+# 같은 크기로 구우면 시작 버튼을 누를 때까지 음악이 켜졌는지도 모른다.
+LOUD_MUSIC_FRONT = "loudnorm=I=-18:TP=-2:LRA=9"
+FRONT_MUSIC = ("music_title", "music_ending")
 # 되감을 때의 이음매. 곡 끝에서 뚝 끊고 처음으로 돌아가면 딸깍 소리가 나고,
 # 그 딸깍이 매 100초마다 규칙적으로 들리면 사람이 그것만 기다리게 된다.
 # 앞뒤를 짧게 여닫아 숨을 한 번 쉬게 한다.
@@ -107,7 +112,7 @@ SFX = [
 #   <진영>_calm   평시 — 지도를 들여다보는 시간
 #   <진영>_alert  교전 — 적이 보이는 시간
 #   briefing      명령서 — 판을 고르는 시간. 진영을 고르기 전이라 진영이 없다.
-MUSIC = ["music_allies_calm", "music_allies_alert", "music_axis_calm", "music_axis_alert", "music_briefing"]
+MUSIC = ["music_allies_calm", "music_allies_alert", "music_axis_calm", "music_axis_alert", "music_briefing", "music_title", "music_ending"]
 
 # 지휘관 한마디. 이것만 무전 처리를 안 거친다 — 부대는 무전기 너머에 있지만
 # 장군은 지금 이 방에서 명령서를 앞에 두고 말하는 사람이다. 같은 잡음을 씌우면
@@ -204,7 +209,7 @@ def build_music(name):
     body = WORK / f"{name}.body.wav"
     run([
         FFMPEG, "-y", "-i", str(src),
-        "-af", f"{TRIM_HEAD},{TRIM_TAIL},{LOUD_MUSIC}",
+        "-af", f"{TRIM_HEAD},{TRIM_TAIL},{LOUD_MUSIC_FRONT if name in FRONT_MUSIC else LOUD_MUSIC}",
         "-ac", "2", "-ar", "44100", str(body),
     ])
     # 페이드아웃 시작점은 다듬은 뒤의 길이에서 역산한다. 원본 길이로 잡으면

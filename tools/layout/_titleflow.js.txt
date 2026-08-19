@@ -1,0 +1,18 @@
+<script>
+// 타이틀 → 명령서 → 종막 세 장면 촬영판. 실제 처리 함수를 그대로 부른다.
+//   (없음) : 타이틀
+//   #order : 「작전 개시」를 눌렀을 때
+//   #end   : 판이 끝나고 결과 보고에서 「완료」를 눌렀을 때
+setTimeout(() => {
+  try {
+    if (location.hash === "#order") {
+      document.querySelector("#titleStart").click();
+    } else if (location.hash === "#end") {
+      document.querySelector("#titleStart").click();
+      document.querySelectorAll("#coach,#coachSpot,#newOperationModal").forEach((el) => { el.hidden = true; });
+      showEndingScreen("승 리", "올호바트카 능선을 2턴 동안 지켜 냈다. 동군 보급로는 끝까지 열려 있었다.");
+    }
+    document.title = "OK";
+  } catch (e) { document.title = "ERR " + e.message; }
+}, 1200);
+</script>

@@ -7317,3 +7317,214 @@ html[lang="en"] {
   --card-more: "More";
   --card-less: "Less ▴";
 }
+
+/* ── 타이틀 화면 ──────────────────────────────────────────────────────────
+   판보다 위, 명령서보다 위에 깔린다(2200). 음악 손잡이(2400)만 그 위에 남긴다 —
+   첫 화면에서 소리를 끄고 싶은 사람이 있고, 그 단추가 여기서 안 보이면 끌 방법이
+   탭을 닫는 것뿐이다.
+
+   바탕은 body와 같은 결이되 더 어둡다. 뒤에 깔린 지도가 비쳐 보이면 "무엇을
+   먼저 봐야 하는가"가 흐려진다. 완전히 덮되, 격자만 남겨 지도 위임을 알린다. */
+.title-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: grid;
+  place-items: center;
+  padding: 24px 18px;
+  background:
+    radial-gradient(circle at 50% 32%, rgb(214 198 156 / 12%), transparent 46%),
+    linear-gradient(rgb(255 255 255 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 3%) 1px, transparent 1px),
+    linear-gradient(160deg, #14170f, #2b2a1a 54%, #101309);
+  background-size: auto, 34px 34px, 34px 34px, auto;
+  opacity: 1;
+  transition: opacity 480ms ease;
+}
+
+/* 사라질 때만 서서히 걷힌다. 즉시 사라지면 「작전 개시」를 눌렀는지 안 눌렀는지
+   손에 남는 것이 없다. */
+.title-screen[hidden] {
+  display: none;
+}
+
+.title-screen.leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.title-screen-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 620px;
+  text-align: center;
+}
+
+.title-eyebrow {
+  margin: 0;
+  color: #a9a184;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  line-height: 1.6;
+}
+
+/* 제목은 이 화면에서 제일 큰 것이어야 한다. 320px에서도 "전선 사령부" 여섯 자는
+   한 줄에 들어간다 — 연도를 뗀 이유 중 하나다. */
+.title-name {
+  margin: 0;
+  color: #f0e6c8;
+  font-size: clamp(38px, 12vw, 76px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-shadow: 0 3px 0 rgb(0 0 0 / 45%);
+}
+
+.title-name-en {
+  margin: 0;
+  padding: 6px 0 0;
+  border-top: 1px solid rgb(214 198 156 / 32%);
+  color: #cdbf95;
+  font-size: clamp(13px, 4vw, 20px);
+  font-weight: 700;
+  letter-spacing: 0.42em;
+  /* 자간을 벌리면 마지막 글자 뒤에도 그만큼 빈칸이 붙어 가운데가 왼쪽으로 밀린다. */
+  text-indent: 0.42em;
+}
+
+/* 부제는 연도 넉 자뿐이다. 문장이 아니라 도장이므로 자간을 벌리고 굵게 찍는다.
+   본제보다 작지만 영문 줄보다는 크다 — 읽는 순서가 제목 → 연도 → 영문이다. */
+.title-sub {
+  margin: 0;
+  color: #b8ac86;
+  font-size: clamp(20px, 6vw, 30px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+}
+
+.title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.title-actions button {
+  min-width: 148px;
+  padding: 12px 22px;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+
+/* ── 종막 화면 ────────────────────────────────────────────────────────────
+   결과 보고와 겹치지 않는다. 보고를 닫은 뒤에만 뜬다. 그래서 숫자가 없다 —
+   숫자는 방금 앞 화면에서 다 읽었고, 여기 남는 것은 판정 한 줄뿐이다. */
+.ending-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: grid;
+  place-items: center;
+  padding: 24px 18px;
+  background:
+    radial-gradient(circle at 50% 40%, rgb(160 150 120 / 10%), transparent 52%),
+    linear-gradient(160deg, #0d0f0a, #1d1e14 56%, #0a0c07);
+  opacity: 0;
+  transition: opacity 700ms ease;
+}
+
+.ending-screen[hidden] {
+  display: none;
+}
+
+.ending-screen.show {
+  opacity: 1;
+}
+
+.ending-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 560px;
+  text-align: center;
+}
+
+.ending-eyebrow {
+  margin: 0;
+  color: #8d876e;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+}
+
+/* 판정 글자에 색을 입히지 않는다. 이겼든 졌든 같은 색이다 — 여기는 성적을
+   알리는 자리가 아니라 판이 끝났다는 것을 알리는 자리다. */
+.ending-verdict {
+  margin: 0;
+  color: #ece2c4;
+  font-size: clamp(30px, 10vw, 54px);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  line-height: 1.15;
+}
+
+.ending-line {
+  margin: 0;
+  max-width: 46ch;
+  color: #b3ab8c;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.7;
+}
+
+.ending-name {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid rgb(214 198 156 / 24%);
+  color: #877f66;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+}
+
+.ending-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.ending-actions button {
+  min-width: 140px;
+  padding: 11px 20px;
+  font-size: 15px;
+}
+
+/* 320px. 두 화면 다 세로로만 쌓이므로 넘칠 것은 단추 줄뿐이다. 두 단추를
+   한 줄에 밀어 넣으면 각 74px이 되어 글자가 접힌다 — 그럴 바엔 세로로 쌓는다. */
+@media (max-width: 380px) {
+  .title-actions,
+  .ending-actions {
+    flex-direction: column;
+    align-self: stretch;
+  }
+
+  .title-actions button,
+  .ending-actions button {
+    width: 100%;
+  }
+
+  .title-name-en {
+    letter-spacing: 0.24em;
+    text-indent: 0.24em;
+  }
+}

@@ -892,6 +892,9 @@ const uiDict = {
     "자동 편제 준비 중": "Auto-organise — soon",
     "자동 보급 준비 중": "Auto-supply — soon",
     "조작 안내": "How to play",
+    // 타이틀·종막 화면.
+    "다음 작전": "Next operation",
+    "타이틀로": "Title screen",
     "그만 보기": "Don't show again",
     "다음": "Next",
     "작전 명령서": "Operation Orders",
@@ -2239,6 +2242,74 @@ function briefingMusicPlay() {
   musicPlayEl(briefingTrack.el);
 }
 
+// ── 타이틀·종막 음악 ────────────────────────────
+//
+// 명령서 곱과 만드는 법은 같지만 섞일 일이 없다. 이 두 화면은 판 위가 아니라
+// 판 앞뒤에 있고, 그동안 전투곱은 아예 선다. 그래서 넣고 빼는 순서를 따지지
+// 않고 바로 올린다.
+//
+// 한 가지 못 하는 것이 있다. 브라우저는 사람이 화면을 한 번 누르기 전에는 소리를
+// 거절한다. 그래서 게임을 처음 켜면 타이틀 곱이 안 나올 수 있다 — 그때는 화면을
+// 어디든 한 번 누르는 순간 들어온다. 종막은 이미 한 판을 둔 뒤라 항상 들린다.
+const frontLevel = 0.9;
+const frontFadeSeconds = 1.6;
+const frontTracks = new Map(); // 이름 -> { el, gain }
+let frontPlaying = null;
+
+function frontMusicPlay(name) {
+  frontPlaying = name;
+  const context = ensureAudio();
+  if (!context || !context.createMediaElementSource) return;
+  if (!frontTracks.has(name)) {
+    const el = new Audio(`${audioBasePath}music_${name}.mp3`);
+    el.loop = true;
+    el.preload = "auto";
+    const gain = context.createGain();
+    gain.gain.value = 0;
+    try {
+      context.createMediaElementSource(el).connect(gain).connect(context.destination);
+    } catch (error) {
+      return;
+    }
+    frontTracks.set(name, { el, gain });
+  }
+  // 판 위의 소리는 다 세운다. 크기만 눈러 두면 어딘가에서 값이 되살아난다.
+  musicSuppress(true, musicDuckSeconds);
+  musicPauseTracks();
+  try {
+    briefingTrack?.el.pause();
+  } catch (error) {
+    // 아직 틀지도 않은 것을 멈추려 한 것뿐이다.
+  }
+  const { el, gain } = frontTracks.get(name);
+  const now = context.currentTime;
+  gain.gain.cancelScheduledValues(now);
+  gain.gain.setValueAtTime(gain.gain.value, now);
+  gain.gain.linearRampToValueAtTime(frontLevel, now + frontFadeSeconds);
+  musicPlayEl(el);
+}
+
+function frontMusicStop() {
+  const name = frontPlaying;
+  frontPlaying = null;
+  const track = name ? frontTracks.get(name) : null;
+  if (!track || !audioContext) return;
+  const { el, gain } = track;
+  const now = audioContext.currentTime;
+  gain.gain.cancelScheduledValues(now);
+  gain.gain.setValueAtTime(gain.gain.value, now);
+  gain.gain.linearRampToValueAtTime(0, now + musicDuckSeconds);
+  window.setTimeout(() => {
+    if (frontPlaying === name) return;
+    try {
+      el.pause();
+      el.currentTime = 0;
+    } catch (error) {
+      // 이미 멈춰 있는 것이다.
+    }
+  }, musicDuckSeconds * 1000 + 80);
+}
+
 function briefingMusicStop() {
   briefingOpen = false;
   // 나갈 때도 순서는 같다. 명령서 곡을 0.45초에 끊고, 전투곡은 그 뒤에 들어온다.
@@ -2352,6 +2423,7 @@ function musicNudge() {
 function musicSilence() {
   musicPauseTracks();
   try {
+    frontTracks.forEach(({ el }) => el.pause());
     briefingTrack?.el.pause();
   } catch (error) {
     // 아직 틀지도 않은 것을 멈추려 한 것뿐이다.
@@ -2362,7 +2434,8 @@ function musicSilence() {
 // 있으면 전투 곡 — 둘을 같이 밀면 그게 곧 겹침이다.
 function musicRestore() {
   if (!musicAllowed()) return;
-  if (briefingOpen) musicPlayEl(briefingTrack?.el);
+  if (frontPlaying) musicPlayEl(frontTracks.get(frontPlaying)?.el);
+  else if (briefingOpen) musicPlayEl(briefingTrack?.el);
   else if (musicStarted && !musicSuppressed) musicResumeTracks();
 }
 
@@ -7974,9 +8047,83 @@ function revealWholeChronicle() {
 // 「완료」는 이력이 흐르는 도중에도 눌린다. 누르면 곧바로 새 작전 명령서로 간다 —
 // 끝난 판을 다시 들여다볼 이유는 없고, 여기서 멈춰 세우면 그 자리가 막다른 길이 된다.
 function closeResultScreen() {
+  // 문구는 결과 보고에서 그대로 가져온다. 같은 판정을 두 번 계산하면 규칙이 바뀔 때
+  // 한쪽만 고치고 다른 쪽은 옛말을 그대로 내미는 일이 생긴다.
+  const verdict = resultVerdictEl?.textContent ?? "";
+  const reason = resultReasonEl?.textContent ?? "";
   hideResultScreen();
-  openNewOperationSetup();
+  showEndingScreen(verdict, reason);
 }
+
+// ── 타이틀과 종막 ────────────────────────────────────────────────────
+//
+// 순서는 타이틀 → 명령서 → 판 → 결과 보고 → 종막 → 다시 타이틀이다.
+// 두 화면 모두 판을 건드리지 않는다 — 덮기만 하므로 뒤에 깔린 판은 그대로 있다.
+const titleScreenEl = document.querySelector("#titleScreen");
+const endingScreenEl = document.querySelector("#endingScreen");
+const endingVerdictEl = document.querySelector("#endingVerdict");
+const endingLineEl = document.querySelector("#endingLine");
+
+function showTitleScreen() {
+  if (!titleScreenEl) return;
+  titleScreenEl.hidden = false;
+  titleScreenEl.classList.remove("leaving");
+  frontMusicPlay("title");
+}
+
+// 닫는 일은 반드시 사람이 누른 그 처리 안에서 일어난다. 아이폰은 손길과 떨어진
+// play()를 거절하므로, 다음 곡을 거는 것도 여기서 이어져야 한다.
+function hideTitleScreen() {
+  frontMusicStop();
+  if (!titleScreenEl) return;
+  titleScreenEl.classList.add("leaving");
+  window.setTimeout(() => {
+    if (titleScreenEl.classList.contains("leaving")) titleScreenEl.hidden = true;
+  }, 520);
+}
+
+function showEndingScreen(verdict, reason) {
+  if (!endingScreenEl) {
+    openNewOperationSetup();
+    return;
+  }
+  if (endingVerdictEl) endingVerdictEl.textContent = verdict;
+  if (endingLineEl) endingLineEl.textContent = reason;
+  endingScreenEl.hidden = false;
+  frontMusicPlay("ending");
+  requestAnimationFrame(() => endingScreenEl.classList.add("show"));
+}
+
+function hideEndingScreen() {
+  frontMusicStop();
+  if (!endingScreenEl) return;
+  endingScreenEl.classList.remove("show");
+  endingScreenEl.hidden = true;
+}
+
+document.querySelector("#titleStart")?.addEventListener("click", () => {
+  hideTitleScreen();
+  openNewOperationSetup();
+  // 이 기계에서 한 번도 안 해 본 사람에게만 붙는다. 예전에는 게임을 켜자마자
+  // 붙었는데, 그 자리를 이제 타이틀이 덮는다.
+  if (coachRead() !== "done") coachStart();
+});
+
+document.querySelector("#titleGuide")?.addEventListener("click", () => {
+  hideTitleScreen();
+  openNewOperationSetup();
+  coachStart(true);
+});
+
+document.querySelector("#endingNext")?.addEventListener("click", () => {
+  hideEndingScreen();
+  openNewOperationSetup();
+});
+
+document.querySelector("#endingTitle")?.addEventListener("click", () => {
+  hideEndingScreen();
+  showTitleScreen();
+});
 
 function hideResultScreen() {
   window.clearInterval(chronicleTimer);
@@ -10704,8 +10851,11 @@ loadSavedDefaultBalance();
 // 닫히면 되도록 — 그때부터 판을 되살리기 시작하면 이어하는 느낌이 안 난다.
 if (restoreSavedOperation()) operationCommenced = true;
 else startGame();
-openNewOperationSetup();
+// 명령서보다 한 장 앞이 생겼다. 여태는 게임을 켜면 아직 무슨 게임인지도 모르는
+// 사람에게 진영·작전·장군·난이도를 먼저 물었다.
+showTitleScreen();
 
 // 이 기계에서 한 번도 안 해 본 사람에게만 안내가 붙는다. 「그만 보기」를 누르거나
 // 여섯 마디를 다 넘기면 다시는 안 뜬다 — 다시 보고 싶으면 지휘 서랍의 「조작 안내」.
-if (coachRead() !== "done") coachStart();
+// 안내는 타이틀에서 「작전 개시」를 누를 때 시작한다(#titleStart 처리). 여기서
+// 부르면 타이틀 밑에 깔린 채로 혼자 돌아 버린다.

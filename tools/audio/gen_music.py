@@ -1,4 +1,4 @@
-"""1944 전선 사령부 — 배경음악 생성 (ElevenLabs 직결 /v1/music).
+"""전선 사령부 — 배경음악 생성 (ElevenLabs 직결 /v1/music).
 
 넉 장이다. 진영 둘 × 상황 둘.
 
@@ -94,6 +94,36 @@ JOBS = [
      "pizzicato pulse, distant low timpani hits, brooding minor key, slow around 70 BPM, building "
      "pressure without any fast drums and without releasing into a climax, even loopable texture "
      "throughout, cinematic and grave, instrumental only, no vocals"),
+
+    # ── 타이틀 ──────────────────────────────────────────
+    # 첫 화면에서 도는 곳. 여기만은 진영이 없다 — 연합군을 고를지 추축군을 고를지를
+    # 아직 정하지 않았기 때문이다. 그래서 장조로 가되 어느 나라 군가도 아닌 소리,
+    # 그냥 "진군한다"만 말하는 소리로 간다.
+    #
+    # 교전곳과도 갈라야 한다. 교전곳은 복복한 소리로 손을 재촉하지만, 타이틀은
+    # 손이 할 일이 단추 하나다. 급한 것이 아니라 큰 것이어야 한다 — 금관이 앞에
+    # 나오고 북은 받치기만 한다.
+    ("music_title",
+     "Grand triumphant orchestral military march for a war film main title. Bold full brass fanfare "
+     "carrying a broad memorable melody in unison, sweeping high strings answering, crashing cymbals "
+     "and a confident snare drum march pattern, deep timpani accents, wide symphonic scoring, around "
+     "112 BPM in a bright major key, majestic and stirring, cinematic main-theme energy sustained "
+     "evenly all the way through, loopable, instrumental only, no vocals"),
+
+    # ── 종막 ───────────────────────────────────────────
+    # 판이 끝나고 마지막으로 남는 소리. 이겼든 졌든 같은 곱을 둔다 — 이긴 사람에게도
+    # 어느 칸에서 부대가 지워졌는지는 남아 있기 때문이다.
+    #
+    # 타이틀과 정반대로 간다. 행진곱은 금관이 앞에 나오고 북이 받치는데, 이쪽은
+    # 북이 아예 없다. 피아노가 느린 세잛으로 같은 모양을 계속 굴리고, 그 위로 현이
+    # 한 줄씩 떠오른다. 원곡을 그대로 따가면 남의 공이 되므로, 질감만 빌리고
+    # 선율은 새로 쓴다.
+    ("music_ending",
+     "Slow mournful orchestral closing piece for the end of a war film. A solo piano playing steady "
+     "quiet triplet arpeggios in a dark minor key throughout, a simple aching melody entering above "
+     "it on muted strings and a lone cello, distant soft horn, no drums and no percussion at all, "
+     "around 54 BPM, contemplative and elegiac, restrained and never swelling into a climax, an "
+     "original nocturne rather than any existing piece, even loopable texture, instrumental only, no vocals"),
 ]
 
 
