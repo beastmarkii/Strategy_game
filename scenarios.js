@@ -104,6 +104,8 @@ const scenarios = [
     ],
     // 사령부는 반드시 자기 거점 보급망 안에서 시작한다. 밖에서 시작하면 1턴차부터 죽어간다.
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "미국",
       bases: [
         { x: 6, y: 10, production: 6 },
         { x: 10, y: 13, production: 5, neutral: true },
@@ -119,6 +121,8 @@ const scenarios = [
       objectives: [{ kind: "seize", x: 18, y: 11, label: "돌파 목표" }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 13, y: 7, production: 6 },
         { x: 15, y: 8, production: 5, neutral: true },
@@ -213,6 +217,8 @@ const scenarios = [
       "....................",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "미국",
       bases: [
         { x: 1, y: 14, production: 6 },
         { x: 5, y: 15, production: 5, neutral: true },
@@ -228,6 +234,8 @@ const scenarios = [
       objectives: [{ kind: "seize", x: 19, y: 8, label: "도하 출구" }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 1, production: 6 },
         { x: 13, y: 9, production: 5, neutral: true },
@@ -304,6 +312,8 @@ const scenarios = [
       "....................",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "미국",
       bases: [
         { x: 2, y: 1, production: 6 },
         { x: 9, y: 7, production: 5, neutral: true },
@@ -320,6 +330,8 @@ const scenarios = [
       objectives: [],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 4, production: 6 },
         { x: 17, y: 13, production: 5, neutral: true },
@@ -396,6 +408,8 @@ const scenarios = [
       "....................",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "미국",
       bases: [
         { x: 3, y: 12, production: 6 },
         { x: 1, y: 14, production: 5, neutral: true },
@@ -410,6 +424,8 @@ const scenarios = [
       objectives: [{ kind: "destroy", targetType: "battalionHQ", label: "대대 사령부" }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 0, production: 6 },
         { x: 16, y: 3, production: 5, neutral: true },
@@ -475,6 +491,8 @@ const scenarios = [
       "................",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "미국",
       bases: [
         { x: 1, y: 1, production: 6 },
         { x: 1, y: 10, production: 5, neutral: true },
@@ -507,6 +525,8 @@ const scenarios = [
       ],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 14, y: 4, production: 6 },
         { x: 13, y: 9, production: 5, neutral: true },
@@ -604,6 +624,8 @@ const scenarios = [
       "....................",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "미국",
       bases: [
         { x: 1, y: 7, production: 6 },
         { x: 2, y: 14, production: 5, neutral: true },
@@ -625,6 +647,8 @@ const scenarios = [
       objectives: [{ kind: "supply", x: 15, y: 8, label: "화물역", holdTurns: 3 }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 4, production: 6 },
         { x: 17, y: 11, production: 5, neutral: true },
@@ -665,7 +689,7 @@ const scenarios = [
     name: "엘 알라메인",
     lead: "allies",
     summary: "북은 바다, 남은 소금 늪. 옆으로 돌 길이 없어 정면으로만 뚫는 회랑이다.",
-    objectiveBrief: "연합군은 동쪽 능선을 점령하라. 추축군은 통로를 여는 공병대를 없애라.",
+    objectiveBrief: "연합군은 능선 아래 통로를 뚫어라. 추축군은 통로를 여는 공병대를 없애라.",
     turnLimit: 12,
     startDate: [1942, 10, 23],
     // 시간은 수비 측 편이다. 못 뚫으면 전선은 그대로 굳는다.
@@ -716,6 +740,8 @@ const scenarios = [
       "....................",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "영국",
       bases: [
         { x: 1, y: 4, production: 6 },
         { x: 2, y: 10, production: 5, neutral: true },
@@ -732,9 +758,13 @@ const scenarios = [
         ["engineer", 3, 5],
         ["battalionHQ", 1, 5],
       ],
-      objectives: [{ kind: "seize", x: 17, y: 9, label: "동쪽 능선" }],
+      // 능선 꼭대기(17,9)는 고지라 전차와 자주포가 아예 들어가지 못한다.
+      // 목표는 능선 바로 아래 접근로로 내린다. 전 병종이 함께 밀 수 있는 자리다.
+      objectives: [{ kind: "seize", x: 17, y: 7, label: "능선 아래 통로" }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 5, production: 6 },
         { x: 17, y: 12, production: 5, neutral: true },
@@ -758,7 +788,7 @@ const scenarios = [
     name: "천왕성",
     lead: "allies",
     summary: "돈 강이 판을 세로로 가른다. 건널 곳은 칼라치 다리 하나뿐이다.",
-    objectiveBrief: "연합군은 칼라치 다리를 사흘 잡아라. 추축군은 서쪽 탈출로를 열어라.",
+    objectiveBrief: "연합군은 칼라치 다리를 사흘 잡아라. 추축군은 다리 동쪽 진지를 사흘 지켜라.",
     turnLimit: 10,
     startDate: [1942, 11, 19],
     // 자루가 반쯤 닫힌 채 끝나면 어느 쪽도 이기지 못한 것이다.
@@ -809,6 +839,8 @@ const scenarios = [
     // 공병이 더 놓을 수는 있지만 두 개가 최대라 강은 여전히 목을 조른다.
     bridges: [[9, 8]],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "소련",
       bases: [
         { x: 1, y: 1, production: 6 },
         { x: 2, y: 11, production: 5, neutral: true },
@@ -825,6 +857,8 @@ const scenarios = [
       objectives: [{ kind: "seize", x: 9, y: 8, label: "칼라치 다리", holdTurns: 3 }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 2, production: 6 },
         { x: 17, y: 14, production: 5, neutral: true },
@@ -839,8 +873,9 @@ const scenarios = [
         ["battalionHQ", 18, 1],
         ["battalionHQ", 16, 14],
       ],
-      // 갇히기 전에 서쪽 끝으로 빠져나가면 포위는 실패다.
-      objectives: [{ kind: "seize", x: 0, y: 8, label: "서쪽 탈출로" }],
+      // 판 반대쪽 끝(0,8)까지 빠져나가는 건 기한 안에 물리적으로 불가능했다.
+      // 다리 건너편 한 칸을 붙잡고 있으면 자루는 닫히지 않는다. 싸움이 한자리에서 붙는다.
+      objectives: [{ kind: "seize", x: 10, y: 8, label: "칼라치 동안 진지", holdTurns: 3 }],
     },
   },
 
@@ -901,6 +936,8 @@ const scenarios = [
       [10, 13],
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "소련",
       bases: [
         { x: 1, y: 1, production: 6 },
         { x: 2, y: 14, production: 5, neutral: true },
@@ -923,6 +960,8 @@ const scenarios = [
       ],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 1, production: 6 },
         { x: 18, y: 14, production: 5, neutral: true },
@@ -994,6 +1033,8 @@ const scenarios = [
       "....................",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "미국",
       bases: [
         { x: 1, y: 1, production: 6 },
         { x: 2, y: 15, production: 5, neutral: true },
@@ -1007,9 +1048,11 @@ const scenarios = [
         ["battalionHQ", 1, 3],
         ["battalionHQ", 2, 14],
       ],
-      objectives: [{ kind: "seize", x: 10, y: 15, label: "남쪽 출구" }],
+      objectives: [{ kind: "seize", x: 10, y: 15, label: "남쪽 출구", fromTurn: 4 }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 1, production: 6 },
         { x: 18, y: 14, production: 5, neutral: true },
@@ -1017,14 +1060,14 @@ const scenarios = [
       // 회랑 양옆 고지에 미리 앉혀 둔다. 목표가 그 아래 한 칸이라 첫날부터 압박이 된다.
       units: [
         ["infantry", 17, 1],
-        ["infantry", 12, 6],
+        ["infantry", 15, 6],
         ["armor", 16, 2],
-        ["armor", 13, 7],
+        ["armor", 16, 8],
         ["artillery", 18, 2],
         ["battalionHQ", 18, 0],
         ["battalionHQ", 17, 14],
       ],
-      objectives: [{ kind: "seize", x: 10, y: 7, label: "회랑 절단점", holdTurns: 2 }],
+      objectives: [{ kind: "seize", x: 10, y: 7, label: "회랑 절단점", holdTurns: 2, fromTurn: 4 }],
     },
   },
 
@@ -1051,10 +1094,10 @@ const scenarios = [
       "PPFFPPPPPCPPPPFFPPPP",
       "WWWWWWWWWWWWWWWWWWWW",
       "PPPPPPPPPCPPPPPPPPPP",
-      "PPPPPHHPPCPPHHPPPPPP",
+      "PPPPPHHPPBPPHHPPPPPP",
       "PPPPPHHPPCPPHHPPPPPP",
       "WWWWWWWWWWWWWWWWWWWW",
-      "PPPPBPPPPCPPPPPPPPPP",
+      "PPPPPPPPPCPPPPPPPPPP",
       "PPFFPPPPPCPPPPFFPPPP",
       "PPFFPPPPPCPPPPFFPPPP",
       "WWWWWWWWWWWWWWWWWWWW",
@@ -1087,9 +1130,13 @@ const scenarios = [
       [9, 11],
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "영국",
       bases: [
         { x: 1, y: 14, production: 6 },
-        { x: 4, y: 8, production: 5, neutral: true },
+        // 교두보(9,2)는 남쪽 거점에서 열 수 없다 — 보급선이 닿지 않는다.
+        // 회랑 한가운데 이 창고를 먼저 잡아야 그때부터 선이 이어진다.
+        { x: 9, y: 5, production: 5, neutral: true },
       ],
       units: [
         ["infantry", 2, 14],
@@ -1104,14 +1151,16 @@ const scenarios = [
       objectives: [{ kind: "supply", x: 9, y: 2, label: "아른헴 교두보", holdTurns: 3 }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 1, production: 6 },
         { x: 15, y: 12, production: 5, neutral: true },
       ],
       units: [
         ["infantry", 12, 2],
-        ["infantry", 9, 8],
-        ["infantry", 9, 4],
+        ["infantry", 13, 8],
+        ["infantry", 12, 4],
         ["armor", 14, 4],
         ["artillery", 17, 2],
         ["engineer", 17, 1],
@@ -1119,7 +1168,7 @@ const scenarios = [
         ["battalionHQ", 14, 12],
       ],
       // 가운데 다리에 앉으면 그것만으로 북쪽 보급선이 끊긴다. 목표 하나가 두 몫을 한다.
-      objectives: [{ kind: "seize", x: 9, y: 7, label: "회랑 절단점", holdTurns: 2 }],
+      objectives: [{ kind: "seize", x: 9, y: 7, label: "회랑 절단점", holdTurns: 2, fromTurn: 5 }],
     },
   },
 
@@ -1178,6 +1227,8 @@ const scenarios = [
       "..........NN........",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "영국",
       bases: [
         { x: 8, y: 6, production: 6 },
         { x: 8, y: 13, production: 5, neutral: true },
@@ -1196,6 +1247,8 @@ const scenarios = [
       objectives: [{ kind: "supply", x: 12, y: 13, label: "남쪽 도로", holdTurns: 3 }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "일본",
       bases: [
         { x: 18, y: 1, production: 6 },
         { x: 17, y: 13, production: 5, neutral: true },
@@ -1266,6 +1319,8 @@ const scenarios = [
       [10, 7],
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "프랑스",
       bases: [
         { x: 1, y: 1, production: 6 },
         { x: 2, y: 9, production: 5, neutral: true },
@@ -1286,6 +1341,8 @@ const scenarios = [
       objectives: [{ kind: "destroy", targetType: "armor", label: "기갑부대" }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 5, production: 6 },
         { x: 18, y: 11, production: 5, neutral: true },
@@ -1309,7 +1366,7 @@ const scenarios = [
     id: "merkur",
     name: "메르쿠어",
     lead: "axis",
-    summary: "하늘에서 내려앉은 부대가 거점 없이 흩어져 있다. 비행장을 잡기 전에 굶는다.",
+    summary: "비행장을 둘러싸고 흩어져 내렸다. 강바닥에 급조한 보급소 하나로는 여드레를 못 버틴다.",
     objectiveBrief: "추축군은 말레메 비행장을 이틀 잡아라. 연합군은 강하부대를 모두 쓸어라.",
     turnLimit: 8,
     startDate: [1941, 5, 20],
@@ -1317,9 +1374,11 @@ const scenarios = [
     timeoutWinner: "west",
     map: { enabled: true },
     // 판에 깔린 그림은 어느 작전이나 같은 한 장이다. 이름만 이 전장의 것으로 바꿔 단다.
+    // 판의 서쪽이 타브로니티스 강바닥(강하부대가 내린 곳), 가운데가 말레메 비행장,
+    // 동쪽이 하니아·수다 만(수비대의 후방)이다. 실제 크레타의 동서 순서 그대로다.
     mapLabels: {
-      sea: "KRITIKO PELAGOS", west: "CHANIA", east: "RETHYMNO", region: "KRITI", city: "MALEME",
-      towns: ["Galatas", "Platanias", "Souda", "Kastelli", "Georgioupoli", "Sfakia"],
+      sea: "KRITIKO PELAGOS", west: "TAVRONITIS", east: "CHANIA", region: "KRITI", city: "MALEME",
+      towns: ["Pirgos", "Platanias", "Galatas", "Souda", "Kastelli", "Sfakia"],
     },
     terrain: [
       "WWWWWWWWWWWWWWWWWWWW",
@@ -1335,52 +1394,78 @@ const scenarios = [
       "CCCCCCCCCCCCCCCCCCCC",
       "WWWWWWWWWWWWWWWWWWWW",
     ],
+    // 공격은 서쪽 강바닥에서 온다. 능선은 전부 그쪽을 막아선다.
     hillDefense: [
       "....................",
       "....................",
       "....................",
       "....................",
-      "...EE...NN...WW.....",
-      "...EE...NN...WW.....",
+      "...WW...WW...WW.....",
+      "...WW...WW...WW.....",
       "....................",
-      "...EE........WW.....",
-      "...EE........WW.....",
+      "...NN........WW.....",
+      "...NN........WW.....",
       "....................",
       "....................",
       "....................",
     ],
+    // 이 판이 한 번 못 쓰게 만들어졌던 이유를 적어 둔다. 비행장이 연합군의 본거지였고,
+    // 그 본거지가 연합군 전 병력에 둘러싸여 있었고, 추축군은 판 반대쪽 끝에서
+    // 시작했다. 즉 「이틀 잡아라」가 아니라 「여드레 안에 적 수도를 함락하라」였다.
+    // 세 가지를 고쳤다. 비행장은 아무의 것도 아닌 거점이 되었고, 강하부대는 그
+    // 비행장을 빙 둘러싸고 내리며, 수비대의 주력은 동쪽 하니아에서 달려온다.
+    // 남은 것은 그대로다 — 기한도 여드레, 시간이 다하면 하늘에서 온 쪽이 굶어 죽는다.
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "뉴질랜드",
+      // 크레타 수비대. 후방은 하니아, 앞은 비행장과 107고지뿐이다.
       bases: [
-        { x: 6, y: 3, production: 6 },
-        { x: 1, y: 6, production: 5, neutral: true },
+        { x: 18, y: 4, production: 6 },
+        { x: 17, y: 8, production: 4, neutral: true },
       ],
+      // 앞의 넷과 사령부 하나가 비행장 수비대다. 이 전방 사령부가 죽으면 활주로 위의
+      // 부대들은 후방 거점에서 열두 칸 떨어진 채 남는다 — 강하부대가 노려야 할 자리다.
+      // 기갑·야포는 동쪽에서 온다. 이틀은 걸린다.
       units: [
-        ["infantry", 5, 3],
+        ["infantry", 6, 3],
         ["infantry", 7, 3],
-        ["infantry", 2, 7],
-        ["armor", 5, 4],
-        ["artillery", 6, 2],
-        ["engineer", 2, 6],
-        ["battalionHQ", 6, 4],
+        ["infantry", 4, 4],
+        ["infantry", 4, 5],
+        ["battalionHQ", 5, 4],
+        ["armor", 11, 4],
+        ["artillery", 12, 4],
+        ["engineer", 16, 5],
+        ["battalionHQ", 17, 4],
       ],
       objectives: [{ kind: "destroy", targetType: "infantry", label: "강하부대" }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
+      // 강바닥에 급조한 보급소 하나. 생산도 연합군 본거지의 절반이 안 된다.
+      // 비행장을 잡으면 그것이 두 배가 된다 — 이 판에서 비행장을 잡을 이유다.
       bases: [
-        { x: 18, y: 4, production: 6 },
-        { x: 17, y: 8, production: 5, neutral: true },
+        { x: 1, y: 6, production: 4 },
+        { x: 6, y: 3, production: 6, neutral: true },
       ],
-      // 기갑이 없다. 하늘로 온 부대는 전차를 데려오지 못한다 — 그것이 이 판의 전부다.
-      // 앞의 넷은 거점에서 멀리 떨어진 채 시작해 첫날부터 보급이 흔들린다.
+      // 기갑도 야포도 없다. 하늘로 온 부대는 그것들을 데려오지 못한다 —
+      // 시작할 때만이 아니라 끝까지 그렇다. 활주로를 못 잡으면 전차는 영영 안 온다.
+      // 전차와 자주포는 궤도차량이라 수송기에 실리지 않는다. 야포는 남긴다 —
+      // 강하부대의 무반동포는 실제로 낙하산에 매달려 내려왔다.
+      noRecruit: ["armor", "spArtillery"],
+      // 대신 머릿수가 둘 많고, 비행장을 삼면에서 둘러싸고 내렸다.
+      // 동쪽에 떨어진 둘은 첫날부터 보급선 밖이다. 살려 데려오든 미끼로 쓰든
+      // 그건 지휘관이 정한다 — 흩어진 강하란 원래 그런 것이다.
       units: [
-        ["infantry", 8, 4],
+        ["infantry", 2, 3],
+        ["infantry", 3, 3],
+        ["infantry", 2, 4],
+        ["infantry", 4, 6],
+        ["infantry", 6, 6],
+        ["infantry", 8, 5],
         ["infantry", 9, 6],
-        ["infantry", 11, 3],
-        ["infantry", 10, 8],
-        ["artillery", 16, 4],
-        ["engineer", 17, 5],
-        ["battalionHQ", 17, 4],
-        ["battalionHQ", 16, 8],
+        ["engineer", 2, 6],
+        ["battalionHQ", 1, 5],
       ],
       objectives: [{ kind: "seize", x: 6, y: 3, label: "말레메 비행장", holdTurns: 2 }],
     },
@@ -1440,6 +1525,8 @@ const scenarios = [
       "....................",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "영국",
       bases: [
         { x: 2, y: 6, production: 6 },
         { x: 1, y: 13, production: 5, neutral: true },
@@ -1460,6 +1547,8 @@ const scenarios = [
       objectives: [{ kind: "destroy", targetType: "engineer", label: "공병대" }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "일본",
       bases: [
         { x: 18, y: 1, production: 6 },
         { x: 18, y: 14, production: 5, neutral: true },
@@ -1530,6 +1619,8 @@ const scenarios = [
       "....................",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "영국",
       bases: [
         { x: 3, y: 2, production: 6 },
         { x: 2, y: 13, production: 5, neutral: true },
@@ -1552,9 +1643,13 @@ const scenarios = [
       ],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 4, production: 6 },
-        { x: 18, y: 15, production: 5, neutral: true },
+        // 여기만 거점을 둘 준다. 사령부가 이미 판 끝 열이라 뒤로 더 물릴 자리가 없어서,
+        // 전차 한 대에 거점을 뺏기는 순간 이레 만에 몰수패가 나던 판이었다.
+        { x: 18, y: 15, production: 4 },
       ],
       units: [
         ["infantry", 17, 4],
@@ -1595,7 +1690,7 @@ const scenarios = [
       "PPPPPPPPPPPPPPPPPPPP",
       "CCCCCCCCCCCCCCCCCCCC",
       "PPPPPPHHPPPPPPPPPPPP",
-      "PPPPPPHHPPPBPPPPPPPP",
+      "PPPPPPHHBPPBPPPPPPPP",
       "PPPPPPPPPPPPPPPPPPPP",
       "PPPPPPPPPPPPPPPPPPBP",
       "CCCCCCCCCCCCCCCCCCCC",
@@ -1625,9 +1720,16 @@ const scenarios = [
       "....................",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "소련",
       bases: [
-        { x: 11, y: 6, production: 6 },
-        { x: 4, y: 13, production: 5, neutral: true },
+        // 거점이 곧 목표 칸이면 한 번 뺏기는 순간 목표 달성과 보급 붕괴가 같이 온다.
+        // 사령부는 서쪽(8,6)으로 물리고, 도시 자체는 양쪽이 다투는 무주공산으로 둔다.
+        { x: 8, y: 6, production: 6 },
+        { x: 11, y: 6, production: 5, neutral: true },
+        // 남쪽 무리에게도 제 거점을 준다. 양쪽 군대가 서로 코앞에서 시작하는 판이라
+        // 거점이 하나뿐이면 사흘 만에 몰수패가 나고 목표는 열리지도 못했다.
+        { x: 4, y: 13, production: 4 },
       ],
       units: [
         ["infantry", 10, 5],
@@ -1640,12 +1742,15 @@ const scenarios = [
         ["battalionHQ", 11, 7],
         ["battalionHQ", 5, 13],
       ],
-      objectives: [{ kind: "seize", x: 19, y: 9, label: "동쪽 진출선" }],
+      objectives: [{ kind: "seize", x: 19, y: 9, label: "동쪽 진출선", fromTurn: 3 }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 8, production: 6 },
-        { x: 18, y: 15, production: 5, neutral: true },
+        // 서쪽과 같은 이유로 남쪽 무리에게도 거점을 준다.
+        { x: 18, y: 15, production: 4 },
       ],
       // 예비 기갑 셋이 뒤에 모여 있다. 손대지 않은 주먹이 반격의 전부다.
       units: [
@@ -1659,7 +1764,7 @@ const scenarios = [
         ["battalionHQ", 18, 6],
         ["battalionHQ", 17, 15],
       ],
-      objectives: [{ kind: "seize", x: 11, y: 6, label: "하르코프" }],
+      objectives: [{ kind: "seize", x: 11, y: 6, label: "하르코프", fromTurn: 3 }],
     },
   },
 
@@ -1668,7 +1773,7 @@ const scenarios = [
     name: "성채",
     lead: "axis",
     summary: "능선 하나를 두고 정면으로 민다. 미는 쪽이 지치는 날, 다른 쪽 명령이 열린다.",
-    objectiveBrief: "추축군은 올호바트카 능선을 점령하라. 연합군은 여드레를 버틴 뒤 동군 후방 거점을 잡아라.",
+    objectiveBrief: "추축군은 올호바트카 능선을 점령하라. 연합군은 이레를 버틴 뒤 동군 보급로를 끊어라.",
     turnLimit: 12,
     startDate: [1943, 7, 5],
     timeoutWinner: "west",
@@ -1716,6 +1821,8 @@ const scenarios = [
       "....................",
     ],
     west: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "소련",
       bases: [
         { x: 1, y: 3, production: 6 },
         { x: 2, y: 13, production: 5, neutral: true },
@@ -1732,9 +1839,13 @@ const scenarios = [
         ["battalionHQ", 3, 13],
       ],
       // 아흐레째가 되기 전에는 없는 명령이다. 그때까지는 능선을 내주지 않는 것만이 할 일이다.
-      objectives: [{ kind: "seize", x: 18, y: 13, label: "동군 후방 거점", fromTurn: 9 }],
+      // 판 끝(18,13)은 아흐레 뒤 남은 사흘로 갈 수 있는 거리가 아니었다.
+      // 능선 뒤 보급로로 목표를 당긴다. 버티다 반격한다는 이야기가 그제야 성립한다.
+      objectives: [{ kind: "seize", x: 12, y: 5, label: "동군 보급로", fromTurn: 8 }],
     },
     east: {
+      // 이 자리에 실제로 서 있던 군대. 장군 명부의 순서에만 쓴다.
+      army: "독일",
       bases: [
         { x: 18, y: 3, production: 6 },
         { x: 18, y: 13, production: 5, neutral: true },

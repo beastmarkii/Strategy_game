@@ -62,13 +62,16 @@ UNITS = ("infantry", "armor", "artillery", "spArtillery", "engineer", "battalion
 #   <병종>_taunt         연합군, 적 부대 (쏘아붙임)
 #   axis_<병종>_select   추축군, 내 부대
 #   axis_<병종>_taunt    추축군, 적 부대
+#   ja_<병종>_select     일본군 지휘관 밑, 내 부대
+#   ja_<병종>_taunt      일본군 지휘관 밑, 적 부대
 VOICES = [
     f"{prefix}{unit}_{kind}_{i}"
-    for prefix in ("", "axis_")
+    for prefix in ("", "axis_", "ja_")
     for kind in ("select", "taunt")
     for unit in UNITS
     for i in (1, 2, 3)
-] + ["work_complete", "unit_ready", "axis_work_complete", "axis_unit_ready"]
+] + ["work_complete", "unit_ready", "axis_work_complete", "axis_unit_ready",
+     "ja_work_complete", "ja_unit_ready"]
 
 # 이동과 파괴는 병종만 가른다 — 궤도가 굴러가는 소리와 포탄이 터지는 소리에는
 # 국적이 없다. 사격만 진영을 따라간다: 총은 나라마다 소리가 다르고, 그 차이가

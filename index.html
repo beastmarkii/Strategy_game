@@ -418,6 +418,17 @@
       </div>
     </div>
 
+    <!-- 음악 손잡이. 판/명령서/결과 보고 어느 화면 위에도 같은 자리에 뜬다.
+         게임 안에 끄는 방법이 없으면 사람이 할 수 있는 것은 탭을 닫는 것뿐이고,
+         그건 소리가 아니라 게임을 끄는 것이다. -->
+    <button id="musicToggle" class="music-toggle" type="button" data-state="on" aria-pressed="false" aria-label="음악 끄기" title="음악 끄기">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path class="music-toggle-horn" d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z" />
+        <path class="music-toggle-wave" d="M15.4 8.6a4.8 4.8 0 0 1 0 6.8M18 6a8.4 8.4 0 0 1 0 12" />
+        <path class="music-toggle-slash" d="M4.5 4.5l15 15" />
+      </svg>
+    </button>
+
     <script src="scenarios.js"></script>
     <script src="game.js"></script>
   </body>
