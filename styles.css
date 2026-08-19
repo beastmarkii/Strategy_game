@@ -2315,6 +2315,19 @@ h1 {
   margin-bottom: 12px;
 }
 
+/* 지형 카드에는 그림이 없다. 그림 칸을 그대로 두면 제목이 72px 칸에 갇혀
+   세로로 접힌다. 부대 카드와 지형 카드가 같은 껍데기를 쓰는 대가로 이 한 줄이
+   필요하다 — 껍데기를 나누면 「누르면 펴진다」 표시를 두 번 관리하게 된다. */
+.unit-card-visual:not(:has(.unit-card-image)) {
+  grid-template-columns: 1fr auto;
+}
+
+/* 이름은 두 벌이다. 기본은 긴 이름이고, 접힌 카드에서만 짧은 이름으로 바꾼다.
+   여기(넓은 화면 포함)에서는 늘 긴 이름이다. */
+.unit-card h2 .name-short {
+  display: none;
+}
+
 /* 적 대대사령부를 눌렀을 때만 나오는 칸. 맞은편 장군의 얼굴과 특기다.
    명부에서 뺀 것을 여기로 옮겼다 — 상대가 누구인지는 거저 주는 정보가 아니라
    사령부를 찾아내서 얻는 정보여야 한다.
@@ -4039,13 +4052,31 @@ h1 {
 
   /* 전장은 남는 세로를 전부 가져간다. 판이 화면보다 넓어지면 여기서 밀린다 —
      20칸짜리 전선을 320px 폭에 욱여넣으면 한 칸이 16px이 되어 손가락으로
-     짚을 수가 없다. 판을 키우고 옆으로 미는 쪽이 전략게임답다. */
+     짚을 수가 없다. 판을 키우고 옆으로 미는 쪽이 전략게임답다.
+
+     세로도 같은 이유로 민다. 칸을 44px 아래로 못 줄이게 막아 두었으므로 세로줄이
+     많은 지도는 화면 높이를 넘긴다. 여기가 hidden이면 넘긴 만큼이 그냥 잘려서
+     아랫줄 부대를 아예 만질 수 없다. */
   .map-stage {
     flex: 1 1 auto;
-    min-height: 0;
+    /* 지도가 가져갈 최소 높이. 220px은 44px 칸으로 다섯 줄이 남는 크기다.
+       그런데 그것을 고정값으로 박으면 320×568짜리 작은 폰에서 상황판·카드·범례를
+       다 더한 합이 화면을 넘긴다. 넘긴 만큼은 스크롤로 갈 수 없고 그냥 잘린다
+       (.battlefield-wrap과 body가 둘 다 overflow:hidden이다) — 잘리는 것은 맨
+       아래의 행동 안내라, 무엇을 눌러야 하는지를 못 읽게 된다.
+       그래서 화면 높이의 21%를 넘지 않는 선에서만 220px을 요구한다. 큰 폰에서는
+       220px 그대로고, 작은 폰에서는 화면에 맞춰 같이 줄어든다.
+       24%로 잡은 이유: 경보 줄(30px)이 뜨는 턴이 있다. 그 줄이 붙으면 누군가는
+       그만큼을 내놓아야 하는데, 내놓을 수 있는 것은 지도뿐이다 — 행동 안내는
+       잘리면 무엇을 눌러야 하는지를 못 읽고, 부대 정보는 접힌 높이 아래로
+       내려가면 고른 부대가 무엇인지 안 보인다. 지도는 밀어서 볼 수 있다.
+       그래도 세 줄(44px 칸 × 3 = 132px)은 지킨다. 두 줄만 보이면 고른 칸의
+       북쪽 또는 남쪽 이동 후보 중 하나가 늘 화면 밖이라, 한 번 움직일 때마다
+       지도를 밀었다 놨다 해야 한다. */
+    min-height: min(220px, calc(24dvh - env(safe-area-inset-bottom)));
     overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     border-radius: 6px;
     box-shadow:
       inset 0 0 0 1px rgb(8 10 6 / 45%),
@@ -4109,8 +4140,8 @@ h1 {
     display: flex;
     flex: 0 0 auto;
     flex-wrap: wrap;
-    gap: 4px;
-    padding: 4px;
+    gap: 3px;
+    padding: 3px;
   }
 
   .hud-stat {
@@ -4143,24 +4174,52 @@ h1 {
     display: none;
   }
 
-  /* 고른 부대는 지도 '위에' 떠서 지도 아랫단을 덮는다. 줄 세워 놓으면 부대 정보
-     열아홉 줄이 펼쳐지는 순간 지도가 150px로 눌려서, 정작 어디로 갈지 볼 수가
-     없다. 떠 있으면 지도의 크기는 늘 그대로다 — 전략게임이 다 이렇게 한다.
-     내용이 길면 이 칸 안에서만 구른다. */
+  /* 고른 부대의 정보는 지도 아래에 제 자리를 갖는다. 덮지 않는다.
+     예전에는 지도 위에 띄웠다. 그때는 지도가 화면 안에 통째로 들어가 있어서
+     띄우는 것 말고는 방법이 없었다 — 줄을 세우면 지도가 150px로 눌렸다.
+     지금은 지도가 화면보다 크고 위아래·좌우로 밀린다(.map-stage overflow).
+     그래서 카드에 자리를 내주어도 지도가 작아지는 것이 아니라 한 번에 보이는
+     범위만 줄고, 밀면 다 볼 수 있다. 덮으면 그 아래 칸은 밀어도 안 보인다.
+
+     카드 높이는 화면의 34%까지만 쓴다. 열아홉 줄을 다 펴면 그 안에서 구른다.
+     지도에는 220px을 남겨 둔다 — 44px 칸으로 다섯 줄이 남는 크기다. */
   .unit-card {
-    position: absolute;
-    right: 4px;
-    bottom: calc(99px + env(safe-area-inset-bottom));
-    left: 4px;
-    z-index: 20;
-    min-height: 0;
-    max-height: 46dvh;
+    position: static;
+    /* 0 1 auto — 남는 자리가 모자라면 카드가 먼저 양보한다. 0 0 auto면 카드가
+       제 높이를 끝까지 우기고 그 밑에 있는 행동 안내가 화면 밖으로 밀려난다.
+       다만 끝까지 양보시키면 320×568짜리 화면에서 25px까지 눌려서, 안에서 굴리기
+       전에는 한 줄도 안 보인다. 그 아래로는 안 내려간다 — 눌린 카드보다 지도를
+       조금 덜 보여 주는 쪽이 낫다. 지도는 밀어서 볼 수 있고 카드는 아니다. */
+    flex: 0 1 auto;
+    /* 카드가 내놓을 수 있는 바닥. 「자세히 ▾」를 카드 바닥에 붙박아 두었으므로
+       (위 ::after 규칙) 이 값이 그 줄을 지킬 필요가 없어졌다. 남은 근거는
+       하나뿐이다 — 눌려도 부대 이름과 항목 한 줄은 보여야 무엇을 골랐고 그것이
+       지금 어떤 상태인지 알아볼 수 있다. 320px 폭 실측으로 이름 줄 24px, 항목
+       한 줄 19px, 붙박은 「자세히 ▾」 22px, 카드 안쪽 여백 22px — 합 96px이다.
+       시스템이 가져가는 아래쪽 몫(env)은 여기서 빼지 않는다 — 아래 .map-stage
+       한 곳에서만 뺀다. 세 곳에서 각각 빼면 같은 몫이 세 번 반영된다.
+       큰 화면에서는 이 바닥값이 그대로 카드 높이가 된다. 지도판의 제 높이가
+       화면보다 훨씬 커서 카드는 늘 바닥까지 눌리기 때문이다 — 즉 이 한 줄이
+       「카드 몇 px, 지도 몇 px」을 그대로 정한다. 그래서 화면 높이에 걸어 둔다.
+       작은 폰(568)에서는 96px로 이름과 첫 줄만, 큰 폰(844)에서는 126px로 접힌
+       여섯 항목이 다 보이는 높이가 된다. 화면이 커지면 카드도 같이 커진다. */
+    min-height: min(126px, 17dvh);
+    max-height: 34dvh;
     padding: 8px 10px;
     overflow-y: auto;
     overscroll-behavior: contain;
     box-shadow:
       0 -2px 0 rgb(8 10 6 / 55%),
       0 -14px 26px rgb(0 0 0 / 45%);
+  }
+
+  /* 아무 부대도 안 고른 카드는 자리를 차지하지 않는다. 「부대를 선택하세요」 한
+     줄에 104px을 내주면 320×568 화면의 18%가 상시로 나간다 — 게다가 그것이
+     매 턴 처음 돌아오는 기본 상태다. 예전에는 카드가 지도 위에 떠 있어서 높이를
+     0으로 먹었으므로 이 규칙이 넓은 화면에만 있어도 됐다. 지금은 줄에 서 있으니
+     좁은 화면에도 같은 규칙이 필요하다. */
+  .unit-card:not(:has(.unit-stats)) {
+    display: none;
   }
 
   /* 부대 정보는 열아홉 줄이다. 그걸 다 펴면 지도 절반이 가려진다.
@@ -4176,25 +4235,47 @@ h1 {
      접혔을 때는 그림을 손톱만큼 줄이고 여섯 항목을 한 줄로 흘려서 100px 안에
      담는다. 글자 크기는 한 곳도 건드리지 않았다 — 줄어든 것은 그림과 빈 자리와
      표의 세로줄뿐이다. 누르면 예전 그대로의 표가 펴진다. */
+  /* 접힌 카드에서는 그림을 뺀다. 그 그림은 방금 손가락으로 짚은 그 칸에 이미
+     서 있다 — 카드가 다시 보여 주는 것은 「무엇을 골랐는가」의 확인일 뿐이고,
+     그 확인은 부대 이름 한 줄로 끝난다.
+     실측 근거: 320px 폭에서 이 그림 줄이 64px이다(이름이 두 줄로 접히면서
+     같이 커진다). 접힌 카드가 내놓을 수 있는 높이 전체가 84~108px이므로,
+     그림을 두면 숫자가 한 줄도 안 보인다 — 매 턴 봐야 하는 전투력·사기·행동·
+     보급이 전부 카드 안 스크롤 아래로 들어간다. 그림과 숫자 중 하나만 남길 수
+     있다면 숫자다.
+     이 규칙은 폭이 얼마든 같이 간다. 누르면 펴지는 카드에는 그림이 그대로 있다. */
   .unit-card:not(.expanded) .unit-card-visual {
-    grid-template-columns: 40px 1fr;
-    gap: 9px;
-    margin-bottom: 7px;
+    grid-template-columns: 1fr auto;
+    gap: 0 8px;
+    margin-bottom: 6px;
   }
 
   .unit-card:not(.expanded) .unit-card-image {
-    width: 40px;
-    height: 32px;
-    border-width: 2px;
+    display: none;
   }
 
-  .unit-card:not(.expanded) .unit-card-image .unit-icon {
-    width: 32px;
-    height: 26px;
+  /* 접힌 카드의 부대 이름은 한 줄로 못박고, 넘치면 끝을 「…」로 자른다.
+     320px 폭에서 「연합군 M1 개런드 소총분대」가 두 줄로 접히면 이름 줄만
+     62px이 된다. 카드 전체가 97px, 안쪽 여백이 22px이므로 숫자에 남는 자리가
+     13px — 21px짜리 한 줄이 통째로 안 들어간다. 한 줄로 고정하면 24px이
+     돌아와서 전투력·사기·행동이 온전히 보인다.
+     이름을 자르는 대신 잃는 것은 없다. 방금 손가락으로 짚은 그 부대이고,
+     전체 이름은 카드를 누르면 펴지는 쪽에 그대로 있다. 얻는 것은 카드 높이가
+     이름 길이와 무관해지는 것이다 — 영어판처럼 이름이 길어져도 같은 높이다. */
+  .unit-card:not(.expanded) h2 .name-short {
+    display: inline;
+  }
+
+  .unit-card:not(.expanded) h2 .name-full {
+    display: none;
   }
 
   .unit-card:not(.expanded) h2 {
+    min-width: 0;
+    overflow: hidden;
     padding-bottom: 3px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* 접힌 상태에서는 맞은편 장군 칸도 접는다. 접힌 카드는 100px 안에 들어가야
@@ -4217,21 +4298,36 @@ h1 {
     border-bottom: 0;
   }
 
-  .unit-card:has(.unit-stats)::after {
-    display: block;
-    margin-top: 6px;
+  /* 「누르면 펴진다」는 표시는 부대 이름과 같은 줄, 오른쪽 끝에 둔다.
+     카드 안 내용으로 두면 두 가지가 같이 망가진다. 흘러가게 두면 카드가
+     조금만 눌려도 스크롤 아래로 사라지고, 바닥에 붙박아 두면 이번에는 그
+     띠가 항목 첫 줄을 덮는다 — 320×568 실측에서 카드가 97px일 때 이름
+     38px과 안쪽 여백 22px을 빼고 남는 37px 위에 띠 28px이 얹혀서,
+     전투력·사기가 한 자도 안 보이고 그 아래 줄만 띠 밑으로 비어져 나왔다.
+     이름 줄에 얹으면 세로를 한 픽셀도 더 쓰지 않는다. 그 줄은 이름 하나뿐이라
+     오른쪽이 늘 비어 있고, 카드가 몇 px이든 이름 줄은 항상 맨 위에 있으므로
+     스크롤과도 무관하다. 남는 높이는 전부 숫자가 쓴다. */
+  .unit-card:has(.unit-stats) .unit-card-visual::after {
+    align-self: end;
+    padding-bottom: 6px;
     color: var(--engrave-dim);
     font-size: 13px;
     font-weight: 800;
-    text-align: right;
+    white-space: nowrap;
     content: "자세히 ▾";
   }
 
-  .unit-card:not(.expanded):has(.unit-stats)::after {
-    margin-top: 3px;
+  /* 펴진 카드는 이름 줄이 「그림 | 이름」 두 칸이다. 표시 칸을 하나 더 연다 —
+     안 그러면 이 표시가 아래로 밀려나 한 줄을 새로 차지한다. */
+  .unit-card.expanded .unit-card-visual:has(.unit-card-image) {
+    grid-template-columns: 72px 1fr auto;
   }
 
-  .unit-card.expanded::after {
+  .unit-card:not(.expanded) .unit-card-visual::after {
+    padding-bottom: 3px;
+  }
+
+  .unit-card.expanded .unit-card-visual::after {
     content: "접기 ▴";
   }
 
@@ -4368,6 +4464,26 @@ h1 {
   .unit {
     border-radius: 6px;
     font-size: 13px;
+  }
+
+  /* 칸 위에 얹히는 배지의 글자 하한 12px.
+     넓은 화면에서는 8~9px로 충분히 읽히지만, 폰에서는 두 가지가 겹쳐서 안 읽힌다 —
+     판이 rotateX로 누워 있어 세로가 절반쯤(cos58° ≈ 0.53) 눌리고, 화면 자체가
+     작다. 8px가 눌리면 4px로 보인다.
+     배지 상자도 같이 키운다. 글자만 키우면 상자를 넘쳐서 숫자 두 자리가 잘린다.
+     이 규칙은 지도와 무관하게 폰이면 언제나 걸린다. */
+  .hp,
+  .stack-count {
+    min-width: 20px;
+    height: 18px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .supply-flag {
+    width: 19px;
+    height: 19px;
+    font-size: 12px;
   }
 
   /* 좁은 화면에서는 판이 36deg만 눕는다. 되늘리는 양도 같이 줄인다(1/cos36° ≈ 1.24). */
@@ -5042,8 +5158,16 @@ body {
   }
 
   .battlefield-wrap .unit-card h2 {
-    margin: 0 0 6px;
+    margin: 0;
     font-size: 15px;
+  }
+
+  /* 제목 아래 여백은 껍데기가 정한다. h2 에 걸어 두면 그림 있는 카드에서만
+     사라진다 — 초상화 66px 과 제목이 한 줄에 가운데로 놓여서 h2 의 마진이
+     그 줄 안에 먹히고 밖으로 안 나온다. 그래서 지형 카드는 18px, 부대 카드는
+     12px 이었다. 껍데기로 옮기면 그림이 있든 없든 6px 하나로 같다. */
+  .battlefield-wrap .unit-card-visual {
+    margin-bottom: 6px;
   }
 
   /* 좁은 쪽지라 한 줄에 한 항목이다. 글자 크기는 그대로다. */
@@ -5612,8 +5736,10 @@ body {
    손에 들고 보는 화면에서는 숫자가 작으면 계기가 아니라 글줄이 된다.
    이름표는 그대로 두고 숫자만 19px에서 23px로 키운다. */
 @media (max-width: 860px) {
+  /* 글자는 한 픽셀도 줄이지 않는다. 줄이는 것은 글자 위아래의 빈 자리뿐이다.
+     계기 띠는 폰에서 두 줄로 접히므로 한 칸에서 7px을 덜면 지도가 14px 넓어진다. */
   .hud-stat {
-    padding: 7px 10px 5px;
+    padding: 3px 10px 2px;
   }
 
   .hud-stat span {
@@ -6447,6 +6573,68 @@ body {
   .operation-dialog-actions button {
     flex: 1 1 0;
   }
+}
+
+/* ── 음악 손잡이 ────────────────────────────────────────────────────────
+   화면 오른쪽 아래에 고정한다. 위쪽은 명령서 제목줄·기밀 도장·상황판이 이미
+   쓰고 있고, 왼쪽 아래는 좁은 화면에서 전투 기록이 올라오는 자리다.
+   결과 보고(2000)보다 위에 둔다 — 보고를 읽는 동안에도 끌 수 있어야 한다. */
+.music-toggle {
+  position: fixed;
+  right: clamp(10px, 2.4vw, 20px);
+  bottom: clamp(10px, 2.4vw, 20px);
+  z-index: 2400;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid rgba(214, 226, 208, 0.34);
+  border-radius: 50%;
+  background: rgba(18, 26, 20, 0.82);
+  color: #d6e2d0;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.music-toggle:hover,
+.music-toggle:focus-visible {
+  border-color: rgba(226, 196, 106, 0.7);
+  background: rgba(26, 36, 26, 0.92);
+  color: #e8d79a;
+}
+
+.music-toggle svg {
+  width: 24px;
+  height: 24px;
+}
+
+.music-toggle-horn {
+  fill: currentColor;
+  stroke: none;
+}
+
+.music-toggle-wave,
+.music-toggle-slash {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+}
+
+/* 켜져 있을 때는 빗금이 없고, 꺼져 있을 때는 소리 물결 대신 빗금이 선다.
+   물결과 빗금을 같이 두면 「소리가 나는데 그어져 있는」 그림이 되어 헷갈린다. */
+.music-toggle[data-state="on"] .music-toggle-slash,
+.music-toggle[data-state="off"] .music-toggle-wave {
+  display: none;
+}
+
+.music-toggle[data-state="off"] {
+  color: #9aa79a;
+  border-color: rgba(214, 226, 208, 0.2);
 }
 
 /* ══════════════════════════════════════════════════════════════════

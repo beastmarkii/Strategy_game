@@ -25,9 +25,11 @@ let strainedSupplyRange = 9;
 let strainedSupplyMoralePenalty = 15;
 let isolatedSupplyMoralePenalty = 35;
 let isolatedAttritionDamage = 1;
-let cutSupplyMoralePenalty = 25;
-let collapseGraceTurns = 4;
-let collapseMaxDamage = 4;
+// 보급선이 끊긴 부대는 더 빨리, 더 아프게 무너진다. 임팔처럼 뒤를 끊어 이기는 판이
+// 성립하려면 끊긴 쪽이 실제로 아파야 한다. 셋 다 수치 편집 창에서 되돌릴 수 있다.
+let cutSupplyMoralePenalty = 30;
+let collapseGraceTurns = 3;
+let collapseMaxDamage = 5;
 let hqSupplyRange = 3;
 let hqRecoveryRange = 1;
 let hqOutOfRangeGraceTurns = 1;
@@ -40,19 +42,16 @@ let objectiveHoldTurns = 2;
 // 목표는 고정값이 아니라 하한이다 — 실제 목표는 플레이어가 지은 만큼 따라 올라간다.
 let enemyDepotGoal = 2;
 let enemyEngineerLimit = 3;
-// 적의 전투 정원은 땅에서 나온다. 거점 하나가 몇 개 부대를 먹여 살리는가.
-// 예전 적 정원은 그냥 여섯 기 고정이었고, 그래서 적은 일곱 턴이면 정원을 채운 뒤
-// 보급품을 쌓아만 뒀다 — 14턴 실측에서 34를 깔고 앉아 아무것도 사지 않았다.
-// 정원을 지도에 묶으면 그 저축이 사라진다. 거점을 더 먹으면 더 큰 군을 굴리고,
-// 거점을 잃으면 군이 줄어든다. 보급 거점을 다투는 이유가 생산 숫자 하나에서
-// "몇 개 부대를 세울 수 있는가"로 바뀐다.
-// 아군에게는 이 정원이 걸리지 않는다. 아군을 막는 것은 보급품뿐이다(forceLimitFor).
-let forcePerBase = 6;
-// 공병대가 세운 보급창고 몫. 원래 거점보다 작다 — 창고는 전선을 늘리는 물건이지
-// 사단을 통째로 앉히는 자리가 아니다.
-let forcePerDepot = 3;
-// 이만큼 쌓이면 적은 격턴 제한을 풀고 매 턴 부른다. 격턴은 자원이 빠듯할 때의
-// 절약책이지, 창고가 늘어난 뒤에도 지킬 규칙이 아니다.
+// 적 전용 전투 정원은 없앴다. 예전에는 적한테만 「거점 수 × 기지당 정원」이라는
+// 상한이 있었고 아군에는 아무 상한도 없었다. 같은 판에서 두 편이 다른 규칙으로
+// 부대를 세웠다는 뜻이다 — 아군이 보급품 있는 만큼 한 턴에 셋을 세울 때, 적은
+// 정원에 걸려 이틀에 하나였다.
+// 지금은 양쪽의 문이 같다: 보급품과 사령부 지휘 범위 안의 빈 칸.
+// 땅을 잃으면 여전히 군을 잃는다 — 거점이 줄면 수입이 줄고, 수입이 줄면 못 뽑는다.
+// 상한이라는 두 번째 문을 따로 달지 않아도 같은 결론에 닿고, 문이 하나면 화면에
+// 설명할 것도 하나다. 적이 어디까지 세울지는 이제 상한이 아니라 목표다
+// (enemyForceTarget) — 아군 전투 부대 수를 난이도 배율만큼 따라간다.
+// 이만큼 쌓이면 적은 모자란 병종만 채우는 대신 값비싼 쪽으로도 채운다.
 let enemyRecruitSurplus = 24;
 // 창고 공사는 3일이 걸리고 그동안 공병대는 움직이지 못한다. 이 거리 안에 적이
 // 있으면 안전한 자리가 아니다 — AI는 아예 짓지 않고, 플레이어에게는 경고만 한다.
@@ -105,41 +104,37 @@ let hqPanicRange = 3;
 //   startUnits   작전 개시 시점에 적 전선에 더 서 있는(또는 빠지는) 부대 수
 //   income       적 거점이 뽑아내는 보급품의 배율
 //   startSupply  적이 1일차에 쥐고 시작하는 보급품
-//   force        적이 세울 수 있는 전투 부대 정원의 배율
-//   recruitEvery 적이 예비대를 부르는 주기(1이면 매 턴, 3이면 사흘에 한 번)
-// 왜 이 다섯인가: 적을 세게 만드는 방법은 "한 대가 더 아프게 때린다"와
+//   force        적이 아군 전투 부대 수의 몇 배까지 따라 세우는가
+// 왜 이 넷인가: 적을 세게 만드는 방법은 "한 대가 더 아프게 때린다"와
 // "한 대 더 온다" 두 가지뿐인데, 앞의 것은 무엇에 맞았는지 화면으로 알 수 없다.
 // 뒤의 것은 지도에 그대로 보인다. 그래서 전부 머릿수와 보급으로만 조인다.
 const difficultyLevels = [
   {
     id: "green",
     name: "신병",
-    brief: "적 전선이 한 부대 얇고, 예비대는 사흘에 한 번 온다.",
+    brief: "적 전선이 한 부대 얇고, 예비대도 아군보다 얇게 선다.",
     startUnits: -1,
     income: 0.75,
     startSupply: 6,
     force: 0.85,
-    recruitEvery: 3,
   },
   {
     id: "regular",
     name: "정규",
-    brief: "지금까지의 그 전선. 예비대는 이틀에 한 번 온다.",
+    brief: "지금까지의 그 전선. 적 예비대는 아군과 같은 수로 선다.",
     startUnits: 0,
     income: 1,
     startSupply: 8,
     force: 1,
-    recruitEvery: 2,
   },
   {
     id: "veteran",
     name: "노련",
-    brief: "적이 두 부대 더 서서 시작하고, 예비대가 매일 온다.",
+    brief: "적이 두 부대 더 서서 시작하고, 예비대를 아군보다 조금 더 세운다.",
     startUnits: 2,
     income: 1.35,
     startSupply: 12,
     force: 1.25,
-    recruitEvery: 1,
   },
   {
     id: "elite",
@@ -149,7 +144,6 @@ const difficultyLevels = [
     income: 1.7,
     startSupply: 18,
     force: 1.5,
-    recruitEvery: 1,
   },
 ];
 const defaultDifficultyId = "regular";
@@ -205,6 +199,14 @@ let baseLossGraceTurns = 3;
 // 보급창고에는 붙지 않았다. 같은 "보급 거점"인데 시나리오가 그린 것에만 엄폐가 있고
 // 내가 지은 것에는 없는 셈이었다. 이제 거점이면 출신을 안 따진다.
 let baseDefenseBonus = 3;
+// 능선이 막아 주는 방향에서 때리면 그만큼 덜 들어간다. 지금까지 「방어방향 북쪽」은
+// 지도와 정보칸에 글자로만 떠 있었고 피해 계산에는 한 푼도 안 들어갔다 — 화면이
+// 거짓말을 하고 있었던 것이고, 그걸 읽고 우회한 사람만 손해를 봤다.
+// 이 값은 지형 엄폐(coverAt)에 넣지 않고 전투 계산에서만 따로 뺀다. 엄폐에 섞으면
+// AI가 자리를 고를 때 쓰는 다섯 군데가 전부 "누가 어느 쪽에서 오는가"를 모르는 채
+// 방향값을 읽게 되어, 아무도 안 오는 방향의 능선을 명당으로 착각한다.
+// 0으로 두면 예전처럼 글자만 뜨고 계산에는 안 들어간다.
+let ridgeFacingDefense = 2;
 // 내가 가진 보급 거점 위에 선 부대가 턴마다 회복하는 병력. 거점을 "생산 숫자가
 // 붙은 칸"에서 "부대를 다시 세우는 자리"로 만든다. 0으로 두면 이 규칙이 꺼진다.
 let baseRepairRate = 1;
@@ -329,8 +331,6 @@ const defaultBalance = {
     objectiveHoldTurns,
     enemyDepotGoal,
     enemyEngineerLimit,
-    forcePerBase,
-    forcePerDepot,
     enemyRecruitSurplus,
     enemyDefenseRadius,
     deployRange,
@@ -352,6 +352,7 @@ const defaultBalance = {
     // 하필 거점 규칙만 통째로 빠져 있었다.
     baseLossGraceTurns,
     baseDefenseBonus,
+    ridgeFacingDefense,
     baseRepairRate,
     baseEfficiencyRepair,
     enemyBaseSeekRange,
@@ -448,8 +449,6 @@ const ruleEditorFields = [
   ["objectiveHoldTurns", "목표 장악 유지 턴", 1, 10, 1],
   ["enemyDepotGoal", "적 보급창고 최소 목표 (0=안 지음)", 0, 12, 1],
   ["enemyEngineerLimit", "적 공병대 한도", 0, 6, 1],
-  ["forcePerBase", "보급 기지당 전투 정원", 0, 20, 1],
-  ["forcePerDepot", "보급창고당 전투 정원", 0, 20, 1],
   ["enemyRecruitSurplus", "적 증원 가속 보급품", 0, 200, 2],
   ["enemyDefenseRadius", "적 방어 출격 반경", 0, 10, 1],
   ["deployRange", "배치 조정 반경", 0, 10, 1],
@@ -468,6 +467,7 @@ const ruleEditorFields = [
   ["enemyForwardDefense", "적 전방 방어 거리", 0, 6, 1],
   ["baseLossGraceTurns", "거점 상실 패배 유예 턴 (0=즉시)", 0, 20, 1],
   ["baseDefenseBonus", "거점 안 부대 방어 버프", 0, 8, 1],
+  ["ridgeFacingDefense", "능선 정면 방어 보정", 0, 8, 1],
   ["baseRepairRate", "거점 위 재편성 회복 (0=끔)", 0, 5, 1],
   ["baseEfficiencyRepair", "거점 효율 턴당 복구 (0=끔)", 0, 0.5, 0.05],
   ["enemyBaseSeekRange", "적 중립 거점 확보 반경 (0=안 감)", 0, 20, 1],
@@ -634,6 +634,200 @@ const localePacks = {
 
 const activeLocale = detectLocale();
 const activePack = localePacks[activeLocale];
+
+/* ─── 낱말장 ───────────────────────────────────────────────────────────────
+   게임 안의 글자는 한국어가 원본이다. 코드 주석도 한국어고, 새 기능을 붙일
+   때 손이 먼저 가는 말도 한국어다. 그러니 원본을 딴 이름표(예: MSG_ATTACK)로
+   바꿔 놓으면, 코드를 읽을 때 그 자리에 무슨 말이 나오는지 다시 찾아봐야 한다.
+
+   그래서 한국어 문장 자체를 열쇠로 쓴다. t("보급 두절")이라고 적으면 코드에는
+   한국어가 그대로 남고, 영어를 고른 사람에게만 영어가 나간다. 낱말장에 없는
+   말은 한국어 그대로 나간다 — 빠뜨려도 화면이 비지는 않는다.
+
+   숫자나 부대 이름처럼 그때그때 달라지는 것은 {이름}으로 자리만 비워 둔다.
+   한국어와 영어는 말 순서가 다르므로(「적 3대대를 격파했다」 / 「destroyed the
+   3rd Battalion」) 자리를 비워 두어야 각 말이 제 순서로 설 수 있다.
+
+   중국어·일본어 자리는 아직 비어 있다. 비어 있으면 영어로 대신 내보낸다 —
+   한국어보다는 읽을 수 있는 사람이 많다.
+   ────────────────────────────────────────────────────────────────────────── */
+// prettier-ignore
+const uiDict = {
+  en: {
+    "총력전": "Total War",
+    "도하 돌파": "River Crossing",
+    "교차로 사수": "Hold the Crossroads",
+    "사령부 사냥": "Headquarters Hunt",
+    "고립 사령부 구조": "Break Out the HQ",
+    "보급선 개통": "Open the Supply Line",
+    "엘 알라메인": "El Alamein",
+    "천왕성": "Uranus",
+    "바그라티온": "Bagration",
+    "코브라": "Cobra",
+    "마켓가든": "Market Garden",
+    "임팔·코히마": "Imphal–Kohima",
+    "낫질": "Sickle Cut",
+    "메르쿠어": "Mercury",
+    "싱가포르": "Singapore",
+    "가잘라": "Gazala",
+    "하르코프": "Kharkov",
+    "성채": "Citadel",
+    "노르망디 내륙. 양측 모두 상대 후방의 간선 출구를 노린다.": "Inland Normandy. Both sides are after the highway exit behind the other's lines.",
+    "강 하나가 전선을 갈랐다. 도하 지점은 북·중·남 셋뿐이고, 시간은 공격 측 편이 아니다.": "One river splits the front. There are only three crossings — north, centre, south — and time is not on the attacker's side.",
+    "산울타리 지대의 두 교차로. 동군이 밀고 들어오고, 서군은 증원이 올 때까지 버텨야 한다.": "Two crossroads in hedgerow country. East pushes in; West has to hold until reinforcements arrive.",
+    "양측 모두 대대 사령부를 하나씩만 데리고 나왔다. 사령부가 죽으면 증원도 보급도 끝이다.": "Each side brought exactly one battalion HQ. Lose it and both reinforcements and supply stop.",
+    "포위망 한가운데 사령부 하나가 남았다. 사령부는 추격자보다 느리다 — 호위를 붙여 걸어서 빼낸다.": "One HQ is left inside the pocket. It is slower than its pursuers — give it an escort and walk it out.",
+    "강이 전선을 둘로 갈랐다. 성한 다리는 북·중·남 셋뿐이고, 강폭이 두 칸이라 새로 놓으려면 공병대가 두 칸을 이어 붙여야 한다.": "A river splits the front in two. Only three bridges are intact — north, centre, south — and the water is two tiles wide, so a new crossing means engineers laying two spans.",
+    "북은 바다, 남은 소금 늪. 옆으로 돌 길이 없어 정면으로만 뚫는 회랑이다.": "Sea to the north, salt marsh to the south. There is no way around — this corridor is forced from the front or not at all.",
+    "돈 강이 판을 세로로 가른다. 건널 곳은 칼라치 다리 하나뿐이다.": "The Don cuts the board from top to bottom. The only way across is the bridge at Kalach.",
+    "늪과 숲 사이로 난 간선 셋. 남북에서 동시에 집게를 닫아야 자루가 된다.": "Three highways threading marsh and forest. The pocket closes only if both pincers, north and south, shut together.",
+    "보카주 울타리가 사방을 막는다. 남으로 뚫린 길은 가운데 회랑 하나뿐이다.": "Bocage hedgerows block every direction. The only road south is the single corridor down the middle.",
+    "물길 셋을 가로지르는 외길. 다리 셋이 다 서 있어야 북쪽 교두보가 산다.": "One road across three waterways. The northern bridgehead lives only while all three bridges stand.",
+    "산에 둘러싸인 진지 하나. 포위된 쪽이 남쪽 길을 다시 열어야 산다.": "A single position ringed by mountains. The side inside survives only by reopening the road south.",
+    "아무도 기갑이 못 지난다고 한 숲 뒤에서 나온다. 강 하나만 건너면 해안까지 뚫린다.": "The armour comes out of the forest everyone said armour could not cross. One river, and the road to the coast is open.",
+    "비행장을 둘러싸고 흩어져 내렸다. 강바닥에 급조한 보급소 하나로는 여드레를 못 버틴다.": "They came down scattered all around the airfield. One dump improvised in a dry riverbed will not last eight days.",
+    "해협에 다리가 하나도 없다. 건너려면 공병이 놓아야 하고, 그 공병이 표적이다.": "Not one bridge spans the strait. Crossing means engineers build one — and those engineers are the target.",
+    "사막에 그은 선의 남쪽 끝은 늘 열려 있다. 돌아 들어간 쪽이 먼저 보급을 잃는다.": "The southern end of a line drawn in the desert is always open. Whoever goes around it loses their supply first.",
+    "너무 멀리 나온 쪽이 도시 안에 앉아 있고, 예비대는 아직 손도 대지 않았다.": "The side that ran too far ahead is sitting inside the city, and the reserves have not been touched yet.",
+    "능선 하나를 두고 정면으로 민다. 미는 쪽이 지치는 날, 다른 쪽 명령이 열린다.": "A head-on push for one ridge. The day the attacker tires, the other side's orders come open.",
+    "상대 후방 간선 출구를 점령해 유지하라.": "Take the highway exit behind the enemy line and hold it.",
+    "기한 안에 강을 건너 동쪽 출구를 확보하라. 못 하면 공격 실패다.": "Cross the river and secure the eastern exit before the deadline. Fail and the attack has failed.",
+    "기한이 끝날 때까지 두 교차로를 내주지 마라.": "Give up neither crossroads before the deadline expires.",
+    "적 대대 사령부를 격파하라. 내 사령부를 잃으면 그것으로 끝이다.": "Destroy the enemy battalion HQ. If you lose your own, it is over.",
+    "고립된 사령부를 탈출 지점까지 데려가라. 잃으면 즉시 패배다. 사령부는 인접 아군이 있는 동안만 직접 피격을 면한다 — 엄호를 끊기지 마라.": "Walk the cut-off HQ to the escape point. Lose it and you lose at once. It is spared direct fire only while a friendly unit stands beside it — never let the escort break.",
+    "동안의 화물역까지 보급선을 개통하고 유지하라. 부대를 세우는 것으로는 끝나지 않는다.": "Open a supply line to the freight yard on the east bank and keep it open. Parking a unit there is not enough.",
+    "연합군은 동쪽 능선을 점령하라. 추축군은 통로를 여는 공병대를 없애라.": "Allies: take the eastern ridge. Axis: destroy the engineers opening the lane.",
+    "연합군은 칼라치 다리를 사흘 잡아라. 추축군은 서쪽 탈출로를 열어라.": "Allies: hold the Kalach bridge for three days. Axis: open the escape route west.",
+    "연합군은 동쪽 거점 둘을 모두 점령하라. 추축군은 서군 사령부를 격멸하라.": "Allies: take both eastern bases. Axis: wipe out the western battalion HQ.",
+    "연합군은 남쪽 출구까지 내려가라. 추축군은 회랑을 이틀 끊어라.": "Allies: get down to the southern exit. Axis: cut the corridor for two days.",
+    "연합군은 아른헴 교두보까지 보급선을 사흘 이어라. 추축군은 회랑을 끊어라.": "Allies: run a supply line to the Arnhem bridgehead for three days. Axis: cut the corridor.",
+    "연합군은 남쪽 도로까지 보급선을 사흘 이어라. 추축군은 임팔 진지를 점령하라.": "Allies: run a supply line to the southern road for three days. Axis: take the Imphal position.",
+    "추축군은 서쪽 해안까지 내달려라. 연합군은 그 기갑을 모두 격파하라.": "Axis: race to the western coast. Allies: destroy every one of those armoured units.",
+    "추축군은 말레메 비행장을 이틀 잡아라. 연합군은 강하부대를 모두 쓸어라.": "Axis: hold Maleme airfield for two days. Allies: sweep away every paratroop unit.",
+    "추축군은 저수지를 사흘 잡아라. 연합군은 공병대를 모두 격파하라.": "Axis: hold the reservoir for three days. Allies: destroy every engineer unit.",
+    "연합군은 비르하케임을 닷새 잡고 적 사령부까지 격멸하라. 추축군은 토브룩을 점령하라.": "Allies: hold Bir Hakeim for five days and destroy the enemy battalion HQ. Axis: take Tobruk.",
+    "추축군은 하르코프를 되찾아라. 연합군은 동쪽 진출선까지 더 나아가라.": "Axis: retake Kharkov. Allies: push on to the eastern start line.",
+    "추축군은 올호바트카 능선을 점령하라. 연합군은 여드레를 버틴 뒤 동군 후방 거점을 잡아라.": "Axis: take the Olkhovatka ridge. Allies: survive eight days, then take the eastern rear base.",
+    "돌파 목표": "Breakthrough Point",
+    "도하 출구": "Crossing Exit",
+    "북 교차로": "North Crossroads",
+    "남 교차로": "South Crossroads",
+    "대대 사령부": "Battalion HQ",
+    "탈출 지점": "Escape Point",
+    "고립 사령부": "Cut-off HQ",
+    "화물역": "Freight Yard",
+    "동쪽 능선": "Eastern Ridge",
+    "공병대": "Engineers",
+    "칼라치 다리": "Kalach Bridge",
+    "서쪽 탈출로": "Western Escape Route",
+    "북쪽 집게": "North Pincer",
+    "남쪽 집게": "South Pincer",
+    "남쪽 출구": "Southern Exit",
+    "회랑 절단점": "Corridor Cut Point",
+    "아른헴 교두보": "Arnhem Bridgehead",
+    "남쪽 도로": "Southern Road",
+    "임팔 진지": "Imphal Position",
+    "기갑부대": "Armoured Units",
+    "서쪽 해안": "Western Coast",
+    "강하부대": "Paratroops",
+    "말레메 비행장": "Maleme Airfield",
+    "저수지": "Reservoir",
+    "비르하케임": "Bir Hakeim",
+    "토브룩 요새": "Tobruk Fortress",
+    "동쪽 진출선": "Eastern Start Line",
+    "동군 후방 거점": "Eastern Rear Base",
+    "올호바트카 능선": "Olkhovatka Ridge",
+    "미국": "United States",
+    "영국": "United Kingdom",
+    "소련": "Soviet Union",
+    "프랑스": "France",
+    "뉴질랜드": "New Zealand",
+    "독일": "Germany",
+    "일본": "Japan",
+    "대장": "General",
+    "원수": "Field Marshal",
+    "중장": "Lieutenant General",
+    "소장": "Major General",
+    "준장": "Brigadier General",
+    "상급대장": "Colonel General",
+    "기갑 돌파": "Armoured Breakthrough",
+    "신중한 준비": "Methodical Preparation",
+    "연합 지휘": "Coalition Command",
+    "보병 운용": "Infantry Handling",
+    "대규모 공세": "Mass Offensive",
+    "기동 포위": "Mobile Encirclement",
+    "악지 작전": "Bad-Ground Operations",
+    "분산 배치": "Dispersed Deployment",
+    "요새 방비": "Fortress Defence",
+    "끈질긴 방어": "Stubborn Defence",
+    "기갑 반격": "Armoured Counterattack",
+    "전차 집중": "Massed Armour",
+    "방어전": "Defensive Battle",
+    "기동 방어": "Mobile Defence",
+    "작전 기동": "Operational Manoeuvre",
+    "참모의 계산": "Staff Calculation",
+    "공수 작전": "Airborne Operation",
+    "정글 기동": "Jungle Manoeuvre",
+    "무보급 강행": "Advance Without Supply",
+    "작전 「{name}」 개시 · {side} {commander} 지휘": "Operation “{name}” begins · {side} · {commander} commanding",
+    "작전 「{name}」 — {summary}": "Operation “{name}” — {summary}",
+    "지정 부대만 인정": "designated unit only",
+    " / {side} {label} · 유지 {held}/{need}턴{only}": " / {side} {label} · held {held}/{need} turns{only}",
+    "{label} ({x}, {y}) 지점": "{label} at ({x}, {y})",
+    "{n}일차부터": "from day {n}",
+    "둘 다 달성": "both required",
+    "목표": "Objective",
+    "지정 부대가 ": "with the designated unit, ",
+    "{label} ({x}, {y}) {who}{need}턴 유지{note}": "Hold {label} ({x}, {y}) {who}for {need} turns{note}",
+    "{label} ({x}, {y}) 보급선 개통 {need}턴 유지{note}": "Open a supply line to {label} ({x}, {y}) and hold it {need} turns{note}",
+    "적": "enemy",
+    "아군": "friendly",
+    "{whose} {label} 격파{note}": "Destroy the {whose} {label}{note}",
+    "{label} 사수": "Hold {label} at all costs",
+    "{label}{은} 오늘 막 도착해 아직 편성 중입니다. 내일부터 움직이고 쏩니다.": "{label} arrived only today and is still forming up. It moves and fires from tomorrow.",
+    "{enemy} {target} 격파했습니다.": "The {enemy} {target} has been destroyed.",
+    "{enemy}이 아군 {target} 격파했습니다.": "The {enemy} destroyed our {target}.",
+    "{where}까지 보급선을 개통했습니다.": "A supply line is open all the way to {where}.",
+    "{enemy}이 {where}까지 보급선을 개통했습니다.": "The {enemy} opened a supply line all the way to {where}.",
+    "{where}을 확보해 작전 목표를 달성했습니다.": "{where} secured — the operation's objective is met.",
+    "{enemy}이 {where}을 확보했습니다.": "The {enemy} has secured {where}.",
+    "사수해야 할 {target} 잃었습니다.": "{target}, which had to be held, is lost.",
+    "{enemy}의 {target} 무너뜨렸습니다.": "The {enemy}'s {target} has fallen.",
+    " 사수 시 승리": " — hold to the end and you win",
+    " 안에 달성 실패 시 패배": " — fail to finish inside it and you lose",
+    "작전 기한 {limit}턴{tail}": "Deadline {limit} turns{tail}",
+    "작전 기한 없음": "No deadline",
+    "아군: {goal}": "Ours: {goal}",
+    "적: {goal}": "Theirs: {goal}",
+    "작전 기한이 끝날 때까지 전선을 지켜냈습니다.": "The line held until the deadline ran out.",
+    "작전 기한 안에 목표를 달성하지 못했습니다.": "The objective was not met inside the deadline.",
+    "작전 기한이 끝나 전선이 교착되었습니다.": "The deadline ran out with the front deadlocked.",
+    "작전 기한 {left}턴 남음": "{left} turns left on the deadline",
+    "{enemy} 전선이 붕괴되었습니다.": "The {enemy} front has collapsed.",
+    "{player} 교두보를 상실했습니다.": "The {player} bridgehead is lost.",
+    "{side} › 보급 거점 전부 상실 · {grace}턴 내 탈환 못하면 전선 붕괴": "{side} › every supply base lost · retake one within {grace} turns or the front collapses",
+    "승리": "Victory",
+    "패배": "Defeat",
+    "무승부": "Draw",
+    "승 리": "VICTORY",
+    "패 배": "DEFEAT",
+    "작전 {days}일 · 적 격파·탈취 {kills} · 아군 손실 {losses}": "Day {days} · enemy destroyed/taken {kills} · own losses {losses}",
+  },
+  zh: {},
+  ja: {},
+};
+
+function fillSlots(line, vars) {
+  if (!vars) return line;
+  return line.replace(/\{(\w+)\}/g, (whole, key) => (key in vars ? String(vars[key]) : whole));
+}
+
+function t(ko, vars) {
+  if (activeLocale === "ko") return fillSlots(ko, vars);
+  const pack = uiDict[activeLocale];
+  const line = (pack && pack[ko]) || uiDict.en[ko] || ko;
+  return fillSlots(line, vars);
+}
 
 const commanders = [
   { id: "patton", side: "Allies", name: "George S. Patton", nation: "미국", rank: "대장", trait: "기갑 돌파", morale: 6, attack: 2, defense: -1, move: 2, supply: 0, stackMorale: 4 },
@@ -950,23 +1144,29 @@ function fitBoardToPhone() {
   boardEl.style.marginBottom = "0px";
 
   const room = stage.clientHeight;
-  if (room > 120) {
+  let grow = 1;
+  // 무대가 이보다 낮으면 키우기를 건너뛴다. 문지방을 숫자로 박아 두면,
+  // 무대 바닥(styles.css의 .map-stage min-height)을 조금만 내려도 그 아래로
+  // 들어가 키우기가 통째로 안 돌고 판이 기본 크기로 남는다 — 세로를 아끼려다
+  // 지도만 더 작아진다. 그래서 최소 칸 두 줄에서 끌어 쓴다. 칸 크기를 바꾸면
+  // 이 문지방도 같이 따라온다.
+  if (room > MIN_TOUCH_TILE * 2) {
     // 판을 키우면 눕힌 높이가 키운 배율만큼만 커지지 않는다 — 원근 때문에 앞쪽이
     // 더 크게 벌어져서 계산보다 늘 더 높아진다. 그래서 한 번에 맞히지 않고,
     // 재고 고치기를 몇 번 되풀이해 무대 높이에 붙인다. 0.97은 마지막 한두 픽셀이
     // 잘려 나가지 않게 두는 여유다.
-    let grow = 1;
     for (let pass = 0; pass < 5; pass += 1) {
       battlefieldWrapEl.style.setProperty("--map-layout-width", `${(grow * 100).toFixed(1)}%`);
       const { tilted } = measureBoardBox();
       if (tilted.height < 40) break;
       const ratio = (room * 0.97) / tilted.height;
       if (Math.abs(ratio - 1) < 0.02) break;
-      const next = clamp(grow * ratio, 1, 2);
+      const next = clamp(grow * ratio, PHONE_MAP_GROW_MIN, PHONE_MAP_GROW_MAX);
       if (next === grow) break;
       grow = next;
     }
   }
+  growForTouchableTiles(grow);
 
   // 키운 뒤에 눕힌 판의 위아래 빈 자리를 걷어내고, 아군이 있는 쪽을 보여 준다.
   requestAnimationFrame(() => {
@@ -975,11 +1175,40 @@ function fitBoardToPhone() {
   });
 }
 
+// 손가락으로 짚을 수 있는 최소 칸 크기. 아래로는 못 내려간다.
+//
+// 화면 높이에 맞추는 계산만 두면 세로줄이 많은 지도(20×16 같은)에서 한 칸이
+// 18px까지 내려간다. 그 크기는 눌러도 옆 칸이 잡힌다. 그래서 높이에 맞춘 결과가
+// 이 값을 밑돌면 그 값을 버리고 칸 크기 쪽을 택한다 — 대신 넘친 세로는 스크롤로
+// 본다(styles.css의 .map-stage overflow-y).
+//
+// 이 규칙은 어느 지도에서 시작하든 똑같이 걸린다. 지도마다 배율을 따로 적어 두면
+// 지도를 하나 더 만들 때마다 그 값을 또 정해야 하므로, 칸 크기 한 줄로 정한다.
+const MIN_TOUCH_TILE = 44;
+const PHONE_MAP_GROW_MIN = 1;
+const PHONE_MAP_GROW_MAX = 3.5;
+
+// offsetWidth로 잰다. getBoundingClientRect는 눕힌 각도가 섞여 들어와서 뒷줄
+// 칸이 앞줄보다 좁게 나온다 — 그 값으로 맞추면 앞줄이 필요 이상으로 커진다.
+function growForTouchableTiles(grow) {
+  const tile = boardEl?.querySelector(".tile");
+  if (!tile) return;
+  const width = tile.offsetWidth;
+  if (!(width > 0) || width >= MIN_TOUCH_TILE) return;
+  const next = clamp(grow * (MIN_TOUCH_TILE / width), PHONE_MAP_GROW_MIN, PHONE_MAP_GROW_MAX);
+  if (next === grow) return;
+  battlefieldWrapEl.style.setProperty("--map-layout-width", `${(next * 100).toFixed(1)}%`);
+}
+
 // 빈 자리를 걷어내고도 화면보다 길면, 판을 그만큼 줄여서 스크롤을 없앤다.
 // 글자는 건드리지 않는다 — 줄이는 것은 지도판 하나뿐이다.
 function fitBoardToScreen() {
   if (!boardEl || !battlefieldWrapEl) return;
-  if (window.innerWidth <= 860) {
+  // 좁은 화면인지 재는 자는 isPhoneLayout 하나뿐이다. 여기서 innerWidth를 따로
+  // 보면 안 된다 — 데스크톱 브라우저의 세로 스크롤막대는 innerWidth에는 들어가고
+  // CSS 폭에는 안 들어가서, 막대 폭만큼의 구간에서 화면은 폰 배치인데 판만 넓은
+  // 화면 계산으로 맞춰진다. 그 구간에서 판이 세로로 어긋난다.
+  if (isPhoneLayout()) {
     fitBoardToPhone();
     return;
   }
@@ -1040,9 +1269,16 @@ function fitBoardToScreen() {
 // 부대 카드는 지도 오른쪽 위 모서리에 얹힌다. 그런데 지도가 시작하는 높이는
 // 고정이 아니다 — 범례를 접고 펴거나 임무 문구가 두 줄이 되면 지도가 오르내린다.
 // 그래서 지도판이 실제로 시작하는 자리를 재서 카드에게 알려 준다(styles.css).
+// 좁은 화면인가. styles.css의 폰 블록과 같은 경계(861px)를 쓴다 — 두 곳이 다른
+// 숫자를 들면 자바스크립트가 계산한 자리를 CSS가 무시하는 상태가 조용히 생긴다.
+// 켤 때 한 번 재고 마는 것이 아니라 부를 때마다 잰다. 폰을 눕히면 넘어가기 때문이다.
+function isPhoneLayout() {
+  return !window.matchMedia("(min-width: 861px)").matches;
+}
+
 function placeUnitCard() {
   const stage = document.querySelector("#mapStage");
-  if (!stage || !battlefieldWrapEl) return;
+  if (!stage || !battlefieldWrapEl || isPhoneLayout()) return;
   // 판이 무대 안에서 가운데에 놓이므로, 무대가 시작하는 자리가 아니라 판이
   // 실제로 그려지기 시작하는 자리를 잡아야 카드가 지도 모서리에 붙는다.
   let top = stage.offsetTop;
@@ -1064,7 +1300,7 @@ function placeUnitCard() {
 // 따로 있어서, 창으로 재면 지도의 오른쪽 끝이 '가운데'로 계산되어 정작 가려지는
 // 자리에서 안 옮겨진다.
 function placeCardAwayFromUnit() {
-  if (!battlefieldWrapEl) return;
+  if (!battlefieldWrapEl || isPhoneLayout()) return;
   const focused = selectedUnit() ?? inspectedUnit();
   let flip = false;
   const element = focused ? findUnitElement(focused.id) : null;
@@ -1120,6 +1356,8 @@ const soundBank = {
   taunt: voiceLines("", "taunt"),            // 연합군, 적 부대
   axisSelect: voiceLines("axis_", "select"), // 추축군, 내 부대
   axisTaunt: voiceLines("axis_", "taunt"),   // 추축군, 적 부대
+  jaSelect: voiceLines("ja_", "select"),     // 일본군 지휘관 밑, 내 부대
+  jaTaunt: voiceLines("ja_", "taunt"),       // 일본군 지휘관 밑, 적 부대
   // 이동은 병종이 정한다. 공병은 삽과 곡괭이를 지고 걷고, 자주포는 전차보다
   // 얇은 궤도로 빠르게 굴러간다. 국적은 보지 않는다 — 궤도가 굴러가는 소리에
   // 국적은 없고, 나누면 파일만 두 배가 되고 아무도 차이를 못 듣는다.
@@ -1176,7 +1414,7 @@ const soundBank = {
 // 사람이라 무전 처리를 안 걸었고(post_audio.py의 build_plain), 그래서 같은
 // 숫자를 주면 무전 목소리보다 오히려 얌전하게 들린다. 앞으로 당겨 놓는다.
 const soundLevels = { select: 1, taunt: 1, move: 0.42, attack: 0.7, destroy: 0.85, notice: 0.95, ui: 0.3, build: 0.6, commander: 1.35 };
-const noticeSounds = ["work_complete", "unit_ready", "axis_work_complete", "axis_unit_ready"];
+const noticeSounds = ["work_complete", "unit_ready", "axis_work_complete", "axis_unit_ready", "ja_work_complete", "ja_unit_ready"];
 const uiSounds = ["ui_click", "map_tap", "hatch_open"];
 
 const sampleData = new Map();
@@ -1185,18 +1423,41 @@ const samplePending = new Map();
 const lastVariantPick = new Map();
 const channelSources = new Map();
 
-// 한 판에 쓰이는 무전은 네 벌 중 두 벌뿐이다 — 내 진영의 보고와, 상대 진영의 쏘아붙임.
-// 나머지 두 벌은 진영을 바꿔 잡아야 나오므로 미리 받아 둘 이유가 없다. 목소리 한 벌이
-// 열여덟 개라, 다 받으면 첫 화면에서 쓸데없이 두 배를 내려받는다.
-function selectVoiceBanks(playerSide) {
-  return playerSide === "axis" ? ["axisSelect", "taunt"] : ["select", "axisTaunt"];
+// 말은 진영이 아니라 그 부대를 이끄는 지휘관의 나라가 정한다. 야마시타를 골라 놓고
+// 부대가 독일어로 되받으면, 내가 고른 장군이 그 순간 남의 군대 사람이 된다.
+// 아직 말 한 벌이 없는 나라(소련·영국·프랑스·뉴질랜드)는 그 진영의 말로 물러선다 —
+// 없는 파일을 부르면 아무 소리도 안 나기 때문이다.
+const voiceLangByNation = { 독일: "axis", 일본: "ja" };
+const voiceBankByLang = {
+  us: { select: "select", taunt: "taunt" },
+  axis: { select: "axisSelect", taunt: "axisTaunt" },
+  ja: { select: "jaSelect", taunt: "jaTaunt" },
+};
+
+// 판이 아직 안 깔린 자리(첫 화면의 미리 받기)에서도 불리므로, 명부와 진영을 밖에서
+// 넘겨받을 수 있게 열어 둔다. 안 넘기면 지금 판의 것을 본다.
+function voiceLangFor(owner, roster = state?.commanders, playerSide = state?.playerSide ?? "allies") {
+  const nation = roster?.[owner === "player" ? "player" : "enemy"]?.nation;
+  if (voiceLangByNation[nation]) return voiceLangByNation[nation];
+  const side = owner === "player" ? playerSide : playerSide === "axis" ? "allies" : "axis";
+  return side === "axis" ? "axis" : "us";
+}
+
+// 한 판에 쓰이는 무전은 여섯 벌 중 두 벌뿐이다 — 내 쪽의 보고와, 상대 쪽의 쏘아붙임.
+// 나머지는 다른 장군을 골라야 나오므로 미리 받아 둘 이유가 없다. 목소리 한 벌이
+// 열여덟 개라, 다 받으면 첫 화면에서 쓸데없이 세 배를 내려받는다.
+function selectVoiceBanks(playerSide = state?.playerSide ?? "allies", roster = state?.commanders) {
+  return [
+    voiceBankByLang[voiceLangFor("player", roster, playerSide)].select,
+    voiceBankByLang[voiceLangFor("enemy", roster, playerSide)].taunt,
+  ];
 }
 
 // 사격음은 무전과 달리 두 벌 다 필요하다. 한 판에서 내 부대도 쏘고 적 부대도 쏘므로,
 // 미제 총소리와 독일제 총소리가 같은 판에서 번갈아 난다.
-function allSoundNames(playerSide = state?.playerSide ?? "allies") {
+function allSoundNames(playerSide = state?.playerSide ?? "allies", roster = state?.commanders) {
   const names = new Set([...noticeSounds, ...uiSounds]);
-  const wanted = new Set([...selectVoiceBanks(playerSide), "move", "build", "attack", "axisAttack", "destroy"]);
+  const wanted = new Set([...selectVoiceBanks(playerSide, roster), "move", "build", "attack", "axisAttack", "destroy"]);
   Object.entries(soundBank).forEach(([bank, group]) => {
     if (!wanted.has(bank)) return;
     Object.values(group).forEach((list) => list.forEach((name) => names.add(name)));
@@ -1207,8 +1468,8 @@ function allSoundNames(playerSide = state?.playerSide ?? "allies") {
 // 파일은 첫 클릭 전에 미리 받아 둔다. 브라우저는 사용자가 화면을 건드리기 전에는
 // 소리를 내주지 않지만, 내려받는 데는 그런 제약이 없다. 이걸 안 해두면 첫 클릭에서만
 // 대답이 늦게 온다.
-function prefetchSounds(playerSide) {
-  allSoundNames(playerSide).forEach((name) => {
+function prefetchSounds(playerSide, roster) {
+  allSoundNames(playerSide, roster).forEach((name) => {
     if (sampleData.has(name)) return;
     fetch(`${audioBasePath}${name}.mp3`)
       .then((response) => (response.ok ? response.arrayBuffer() : null))
@@ -1331,18 +1592,17 @@ function playMapTapSound() {
 
 // 어느 소리표를 볼 것인가.
 //
-//   무전 응답 — 말은 부대가 선 진영이 정하고(독일군은 독일어), 말투는 그 부대가
-//               내 것인지 적 것인지가 정한다(보고냐 쏘아붙임이냐). 네 갈래.
-//   사격     — 진영만 본다. 내 것이든 적 것이든 독일군 총은 독일군 총소리다.
+//   무전 응답 — 말은 그 부대를 이끄는 지휘관의 나라가 정하고(일본 장군 밑이면
+//               일본어), 말투는 그 부대가 내 것인지 적 것인지가 정한다.
+//   사격     — 진영만 본다. 총은 장비다 — 지휘관이 바뀌어도 그 부대가 든 것은
+//               여전히 그 군대의 소총이고, MG42는 누가 지휘하든 MG42 소리를 낸다.
 //   나머지   — 이동과 파괴에는 국적이 없다. 표가 하나뿐이다.
 function soundBankFor(unit, action) {
-  const german = sideKeyForUnit(unit) === "axis";
   if (action === "select") {
-    const foe = unit?.owner !== "player";
-    if (german) return foe ? "axisTaunt" : "axisSelect";
-    return foe ? "taunt" : "select";
+    const owner = unit?.owner === "player" ? "player" : "enemy";
+    return voiceBankByLang[voiceLangFor(owner)][owner === "player" ? "select" : "taunt"];
   }
-  if (action === "attack") return german ? "axisAttack" : "attack";
+  if (action === "attack") return sideKeyForUnit(unit) === "axis" ? "axisAttack" : "attack";
   return action;
 }
 
@@ -1369,8 +1629,10 @@ function playDestroySound(unit) {
 // 무전으로 넘어오는 알림. 내 쪽 소식만 들린다 — 적의 공사 완료를 우리 무전병이
 // 알려줄 리 없다.
 function playNoticeSound(name) {
-  // 알림은 내 쪽 소식이다. 추축군을 잡고 두는 판이면 내 무전병도 독일어를 쓴다.
-  const prefix = (state?.playerSide ?? "allies") === "axis" ? "axis_" : "";
+  // 알림은 내 쪽 소식이다. 내 무전병은 내 장군과 같은 말을 쓴다 —
+  // 야마시타 밑에서 공사 완료를 독일어로 알릴 이유가 없다.
+  const lang = voiceLangFor("player");
+  const prefix = lang === "axis" ? "axis_" : lang === "ja" ? "ja_" : "";
   playSample(`${prefix}${name}`, { level: soundLevels.notice, channel: "voice" });
 }
 
@@ -1391,6 +1653,22 @@ let musicStarted = false;
 let musicLastContactTurn = -99;
 // 명령서가 열려 있는 동안 전투 음악을 눌러 둔다. musicSuppress 참고.
 let musicSuppressed = false;
+// 사람이 직접 끈 상태. 위의 것들과 달리 이건 게임 사정이 아니라 사람의 뜻이라,
+// 판이 바뀌어도 안 풀리고 다음에 켤 때까지 이 기계에 적혀 남는다.
+let musicMuted = false;
+// 탭을 넘겼거나 폰을 덮었다. audioSleep 참고.
+let audioAsleep = false;
+
+// 지금 음악을 낼 수 있는가. 끈 사람의 뜻과 화면을 떠난 사정, 둘 중 하나라도
+// 걸리면 안 낸다. 트는 자리마다 따로 따지면 언젠가 한 자리를 빠뜨리고,
+// 빠뜨린 그 자리가 곧 "껐는데 소리가 난다"가 된다.
+function musicAllowed() {
+  return !musicMuted && !audioAsleep;
+}
+
+function musicPlayEl(el) {
+  if (el && musicAllowed()) el.play().catch(() => {});
+}
 // 굽는 단계에서 이미 효과음보다 7dB 낮게 잡아 두었다(-24 LUFS). 여기서는 그 위에
 // 한 번 더 낮춘다 — 음악은 들리는 것이 아니라 꺼 보고서야 허전한 것이어야 한다.
 const musicLevel = 0.75;
@@ -1453,7 +1731,7 @@ function musicStart() {
     // 시각에 닿아야 반영되는데, 시작하는 이 순간에는 아직 닿기 전이라 첫 몇
     // 밀리초 동안 평시곡이 0으로 남는 일이 생긴다.
     gain.gain.value = !musicSuppressed && mood === "calm" ? musicLevel : 0;
-    el.play().catch(() => {});
+    musicPlayEl(el);
   });
 }
 
@@ -1509,7 +1787,7 @@ function musicPauseTracks() {
 // 떨어진 play()를 거절하므로, 닫기 단추의 처리 중에 곧바로 부른다.
 function musicResumeTracks() {
   musicTracks.forEach(({ el }) => {
-    if (el.paused) el.play().catch(() => {});
+    if (el.paused) musicPlayEl(el);
   });
 }
 
@@ -1563,7 +1841,7 @@ function briefingMusicPlay() {
   // 전투곡이 다 빠질 때까지 0에 머물렀다가 올라온다.
   level.setValueAtTime(level.value, now + briefingEnterDelay);
   level.linearRampToValueAtTime(briefingLevel, now + briefingEnterDelay + briefingFadeSeconds);
-  briefingTrack.el.play().catch(() => {});
+  musicPlayEl(briefingTrack.el);
 }
 
 function briefingMusicStop() {
@@ -1649,13 +1927,150 @@ function musicNudge() {
   // 명령서가 열려 있는 동안에는 전투곡을 건드리지 않는다. 여기서 밀어 버리면
   // 방금 세워 둔 것이 되살아나서, 명령서 안을 누를 때마다 곡이 겹친다.
   if (briefingOpen) {
-    if (briefingTrack?.el.paused) briefingTrack.el.play().catch(() => {});
+    if (briefingTrack?.el.paused) musicPlayEl(briefingTrack.el);
     return;
   }
+  // 판정이 찍힌 화면에서는 아무것도 되살리지 않는다. finishGame이 전투곡을 세워
+  // 두는데, 결과 화면에서 「완료」를 누르는 그 손길이 곧 여기를 지나므로 세운 것이
+  // 그 자리에서 다시 돈다. 크기가 0이라 안 들릴 뿐이고, 값이 한 번이라도 어긋나면
+  // 다 끝난 판에 교전곡이 붙는다. 세워 둔 것은 세워 둔 채로 넘긴다.
+  if (state?.gameOver) return;
   musicStart();
   musicResumeTracks();
   musicUpdate();
 }
+
+// ── 화면을 떠나면 소리도 떠난다 ──────────────────────────────────────
+//
+// 탭을 넘기거나 폰에서 다른 앱으로 가도 브라우저는 이 페이지를 멈추지 않는다.
+// <audio>는 그대로 돌아서, 창을 다 닫은 것처럼 보여도 소리만 남는다 — 실제로
+// "브라우저를 다 껐는데 음악이 계속 난다"는 말을 들었다. 그리고 그 상태에서
+// 게임을 다시 열면, 뒤에 남아 있던 곡 위에 새 곡이 얹혀 둘이 겹친다.
+// 여태 겹침을 이 파일 안에서만 찾았던 것이 잘못이었다. 겹치는 두 곡은 한 판이
+// 아니라 두 판에서 나오고 있었다.
+//
+// 그래서 화면에서 사라지면 소리도 사라지게 한다. 크기를 0으로 눌러 두는 것이
+// 아니라 아예 세우고 오디오 시계까지 멈춘다 — 눌러 두기만 하면 어딘가에서 값이
+// 되살아났을 때 다시 새어 나온다. 소리를 내는 판은 언제나 지금 보고 있는 판
+// 하나뿐이다.
+// 지금 나고 있는 곡을 전부 세운다.
+function musicSilence() {
+  musicPauseTracks();
+  try {
+    briefingTrack?.el.pause();
+  } catch (error) {
+    // 아직 틀지도 않은 것을 멈추려 한 것뿐이다.
+  }
+}
+
+// 지금 화면에 맞는 한 곡만 되돌린다. 명령서가 떠 있으면 명령서 곡, 판이 돌고
+// 있으면 전투 곡 — 둘을 같이 밀면 그게 곧 겹침이다.
+function musicRestore() {
+  if (!musicAllowed()) return;
+  if (briefingOpen) musicPlayEl(briefingTrack?.el);
+  else if (musicStarted && !musicSuppressed) musicResumeTracks();
+}
+
+function audioSleep() {
+  if (audioAsleep) return;
+  audioAsleep = true;
+  musicSilence();
+  audioContext?.suspend?.()?.catch?.(() => {});
+}
+
+function audioWake() {
+  if (!audioAsleep) return;
+  audioAsleep = false;
+  audioContext?.resume?.()?.catch?.(() => {});
+  musicRestore();
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) audioSleep();
+  else audioWake();
+});
+// 폰에서는 앱을 밀어 치울 때 unload가 안 올 수도 있다. pagehide는 온다.
+window.addEventListener("pagehide", audioSleep);
+window.addEventListener("pageshow", audioWake);
+
+// 창 두 개를 나란히 띄우면 둘 다 '보이는' 판이라 위의 잣대로는 안 걸러진다.
+// 그때는 나중에 켠 쪽이 소리를 가져가고 먼저 켠 쪽이 입을 다문다 — 사람이
+// 지금 손대고 있는 판은 방금 연 그 판이기 때문이다.
+const audioFloor = (() => {
+  try {
+    return new BroadcastChannel("frontline-audio");
+  } catch (error) {
+    return null;
+  }
+})();
+if (audioFloor) {
+  audioFloor.addEventListener("message", (event) => {
+    if (event.data === "mine") audioSleep();
+  });
+  const claimFloor = () => {
+    audioFloor.postMessage("mine");
+    audioWake();
+  };
+  claimFloor();
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) claimFloor();
+  });
+}
+
+// -- 음악 손잡이 -------------------------------------------------------
+//
+// 여태 소리를 끄는 방법이 브라우저 탭의 작은 스피커 표시뿐이었다. 그건 게임이
+// 준 손잡이가 아니라 브라우저가 준 손잡이라, 폰에서는 아예 없다시피 하다.
+// 화면 어디에 있든 한 번에 닿아야 하므로 판 위에 얹지 않고 화면에 고정한다 --
+// 명령서가 떠 있든 결과 보고가 떠 있든 같은 자리에 같은 단추가 있다.
+//
+// 끄는 것은 음악뿐이다. 무전 음성과 총소리는 그대로 둔다 -- 그것들은 배경이
+// 아니라 방금 내린 명령에 대한 대답이라, 안 들리면 명령이 먹혔는지를 모른다.
+const MUSIC_MUTE_KEY = "frontline.music.muted";
+
+function readMusicMuted() {
+  try {
+    return localStorage.getItem(MUSIC_MUTE_KEY) === "1";
+  } catch (error) {
+    return false;
+  }
+}
+
+function writeMusicMuted(on) {
+  try {
+    localStorage.setItem(MUSIC_MUTE_KEY, on ? "1" : "0");
+  } catch (error) {
+    // 저장이 막힌 기계다. 이번 판만 기억한다.
+  }
+}
+
+const musicToggleEl = document.querySelector("#musicToggle");
+
+function syncMusicToggle() {
+  if (!musicToggleEl) return;
+  musicToggleEl.dataset.state = musicMuted ? "off" : "on";
+  musicToggleEl.setAttribute("aria-pressed", musicMuted ? "true" : "false");
+  const label = musicMuted ? t("음악 켜기") : t("음악 끄기");
+  musicToggleEl.setAttribute("aria-label", label);
+  musicToggleEl.title = label;
+}
+
+function setMusicMuted(on) {
+  musicMuted = on;
+  writeMusicMuted(on);
+  if (on) musicSilence();
+  else musicRestore();
+  syncMusicToggle();
+}
+
+musicMuted = readMusicMuted();
+syncMusicToggle();
+musicToggleEl?.addEventListener("click", (event) => {
+  // 이 단추를 누른 것은 음악을 끄겠다는 뜻이지 판을 건드리겠다는 뜻이 아니다.
+  // 막지 않으면 아래 깔린 칸이 같이 눌린다.
+  event.stopPropagation();
+  setMusicMuted(!musicMuted);
+});
 
 ["pointerdown", "keydown"].forEach((type) => document.addEventListener(type, musicNudge));
 
@@ -1832,7 +2247,10 @@ function openNewOperationSetup() {
   resetOperationStages();
   renderOperationDifficultyChoices();
   renderResumeNotice();
-  if (operationCancelEl) operationCancelEl.hidden = !operationCommenced;
+  // 취소는 "보던 판으로 돌아간다"는 뜻이다. 판정이 찍힌 판에는 돌아갈 것이 없다 —
+  // 눌러 봐야 승패가 난 지도를 다시 보여 주고, 그 위에 전투곡까지 다시 얹힌다.
+  // 그래서 시작한 판이 있고 그 판이 아직 안 끝났을 때만 내민다.
+  if (operationCancelEl) operationCancelEl.hidden = !operationCommenced || !!state?.gameOver;
   if (operationModalEl) operationModalEl.hidden = false;
   // 명령서가 올라온 순간 아래에 깔린 것들을 물린다. 게임을 켤 때는 판이 먼저
   // 그려지고(render → 띠가 뜬다) 명령서가 그 다음에 오므로, 여기서 다시 묻지
@@ -1854,13 +2272,19 @@ function selectedOperationScenarioId() {
 // retired가 붙은 작전은 목록에서 빠진다. 파일에서 지우는 것이 아니라 접어 두는 것이라,
 // 나중에 그 지도를 다시 쓰고 싶으면 그 한 줄만 지우면 그대로 돌아온다.
 //
-// 진영으로 감추지는 않는다. 열두 작전 모두 양쪽에 할 일이 따로 있으므로 어느 쪽을
-// 잡아도 한 판이 되고, 감추면 열두 판이 여섯 판으로 줄어든다. 대신 내 군이 주도한
-// 작전을 위로 올려 둔다.
+// 내 군이 주도한 작전만 건다. 열두 작전 중 여섯이 남는다.
+//
+// 열두 개를 모두 보이면 고를 것이 많아 보이지만, 실제로는 "내가 미는 판"과 "내가
+// 막는 판"이 한 줄에 섞여 나와 무엇을 고르는지가 흐려진다. 주도한 쪽만 남기면
+// 연합군 여섯 · 추축군 여섯으로 정확히 갈린다(scenarios.js의 lead 값 기준).
+//
+// 어느 쪽 lead도 아닌 작전이 생기거나 한쪽이 통째로 접히면 목록이 비어 버리므로,
+// 걸러서 남는 것이 없을 때만 전체를 되돌려 준다.
 function scenariosForSide(side) {
   const live = scenarios.filter((scenario) => !scenario.retired);
   const pool = live.length ? live : scenarios;
-  return pool.slice().sort((a, b) => (a.lead === side ? 0 : 1) - (b.lead === side ? 0 : 1));
+  const led = pool.filter((scenario) => scenario.lead === side);
+  return led.length ? led.slice() : pool.slice();
 }
 
 // 이 작전에서 먼저 움직인 쪽. 카드에 붙여 두면 "내가 미는 판인지 막는 판인지"를
@@ -1891,9 +2315,9 @@ function renderOperationScenarioChoices(side) {
       <label class="scenario-choice">
         <input type="radio" name="operationScenario" value="${scenario.id}" />
         <span class="scenario-choice-body">
-          <span class="scenario-choice-head"><strong>${scenario.name}</strong>${badge}</span>
+          <span class="scenario-choice-head"><strong>${t(scenario.name)}</strong>${badge}</span>
           <span class="scenario-choice-meta">${meta}</span>
-          <span class="scenario-choice-goal">${scenario.objectiveBrief}</span>
+          <span class="scenario-choice-goal">${t(scenario.objectiveBrief)}</span>
         </span>
       </label>
     `;
@@ -1941,7 +2365,9 @@ function renderOperationDifficultyChoices() {
     .map((level) => {
       const force = level.startUnits > 0 ? `개시 병력 +${level.startUnits}` : level.startUnits < 0 ? `개시 병력 ${level.startUnits}` : "개시 병력 그대로";
       const income = `보급 ×${level.income}`;
-      const cadence = level.recruitEvery === 1 ? "증원 매일" : `증원 ${level.recruitEvery}일마다`;
+      // 예비대가 아군을 어떻게 따라오는지가 이제 적 병력이 정해지는 유일한 방식이라
+      // 칸에 그대로 적는다. 1이면 아군과 같은 수, 1.5면 아군의 한 배 반이다.
+      const cadence = level.force === 1 ? "예비대 아군과 같이" : `예비대 아군의 ×${level.force}`;
       return `
       <label class="difficulty-choice">
         <input type="radio" name="operationDifficulty" value="${level.id}" ${level.id === selectedId ? "checked" : ""} />
@@ -1970,9 +2396,20 @@ function sideKeyForUnit(ownerOrUnit) {
   return owner === "player" ? playerSide : opponentSide(playerSide);
 }
 
-function defaultCommanderForSide(side) {
+// 적 참모부에도 그 전장의 사람이 앉는다. 임팔의 일본군을 롬멜이 지휘하면
+// 적 부대가 독일어로 되받는다 — 내가 고른 장군만 고쳐서는 반쪽이다.
+function defaultCommanderForSide(side, scenarioId) {
+  const fitted = scenarioId ? commandersForOperation(side, scenarioId)[0] : null;
+  if (fitted) return fitted;
   const preferred = side === "axis" ? "rommel" : "patton";
   return commanders.find((commander) => commander.id === preferred) ?? commanders.find((commander) => commander.side === commanderSideName(side));
+}
+
+// 이 작전에서 그 자리에 실제로 서 있던 군대의 나라. 장군 명부를 세우는 순서에만
+// 쓴다 — 규칙이 아니라 지도에 딸린 사실이라 scenarios.js에 적는다.
+function operationArmyNation(side, scenarioId) {
+  const scenario = findScenario(scenarioId);
+  return scenario?.[side === "axis" ? "east" : "west"]?.army ?? null;
 }
 
 // 이 작전의 명령서에 이름을 올릴 장군들. 그 군의 상설 명부 전부에, 이 작전에만
@@ -1984,7 +2421,13 @@ function commandersForOperation(side, scenarioId) {
   const roster = commanders.filter((commander) => commander.side === commanderSide);
   const guests = roster.filter((commander) => commander.only?.includes(scenarioId));
   const standing = roster.filter((commander) => !commander.only);
-  return [...guests, ...standing];
+  // 그 전장에서 실제로 싸운 나라의 장군이 먼저 선다. 임팔 명부의 맨 앞이 롬멜이면
+  // 고르는 사람은 매번 아래로 훑어 내려가야 한다. 아무도 명부에서 빠지지 않는다 —
+  // 야마시타를 크레타에 데려가는 것은 여전히 되고, 그때는 부대가 일본어를 쓴다.
+  const army = operationArmyNation(side, scenarioId);
+  const fitting = army ? standing.filter((commander) => commander.nation === army) : [];
+  const rest = standing.filter((commander) => !fitting.includes(commander));
+  return [...guests, ...fitting, ...rest];
 }
 
 // 미리 골라 두지 않는다. 이 칸은 문이 열리고 나서 사람이 직접 고르는 칸이라,
@@ -2004,7 +2447,7 @@ function renderOperationCommanderChoices(side, scenarioId) {
         />
         <span class="commander-choice-body">
           <strong>${commander.name}</strong>
-          <span>${commander.nation} ${commander.rank} / ${commander.trait}</span>
+          <span>${t(commander.nation)} ${t(commander.rank)} / ${t(commander.trait)}</span>
           <span>${commanderStatSummary(commander)}</span>
         </span>
       </label>
@@ -2195,7 +2638,7 @@ function restoreSavedOperation() {
     const { commanderIds, ...rest } = saved.state;
     const playerSide = rest.playerSide === "axis" ? "axis" : "allies";
     const aiSide = playerSide === "axis" ? "allies" : "axis";
-    const findCommander = (id, side) => commanders.find((commander) => commander.id === id) ?? defaultCommanderForSide(side);
+    const findCommander = (id, side) => commanders.find((commander) => commander.id === id) ?? defaultCommanderForSide(side, scenario.id);
     state = {
       ...rest,
       deployZones: {
@@ -2207,7 +2650,7 @@ function restoreSavedOperation() {
         enemy: findCommander(commanderIds?.enemy, aiSide),
       },
     };
-    prefetchSounds(playerSide);
+    prefetchSounds(playerSide, state.commanders);
     bannerEl.classList.remove("show");
     bannerEl.textContent = "";
     hideResultScreen();
@@ -2247,7 +2690,12 @@ resumeOperationEl?.addEventListener("click", () => {
     return;
   }
   operationCommenced = true;
-  addLog("중단된 작전 › 지휘 재개", "order");
+  // 여기서 무전 기록에 한 줄 적지 않는다. 기록은 저장본 안에 들어 있는 물건이라,
+  // 되살릴 때마다 한 줄씩 얹으면 그 줄이 다음 저장본에 그대로 실린다. 켰다 껐다를
+  // 몇 번 하면 열넉 줄이 전부 「지휘 재개」로 차서 진짜 전투 기록이 밀려 나간다.
+  // 게다가 새로고침으로 되살리는 길(맨 아래 restoreSavedOperation)은 이 줄을 안
+  // 적으므로, 같은 저장본인데 어느 길로 들어왔느냐에 따라 기록이 달라졌다.
+  // 재개했다는 사실은 명령서의 「중단된 작전」 안내가 이미 보여 준다.
   render();
   closeNewOperationSetup();
 });
@@ -2494,7 +2942,8 @@ coachNextEl?.addEventListener("click", () => {
 coachSkipEl?.addEventListener("click", coachFinish);
 
 showCoachEl?.addEventListener("click", () => {
-  closeCommandPanel?.();
+  // 안내를 가리지 않으려고 접는 것이다. 사람이 지휘칸을 닫은 것이 아니다.
+  setCommandPanel(true, { byUser: false });
   coachStart(true);
 });
 
@@ -2674,9 +3123,6 @@ function startGame(config = {}) {
   enemyPlan = new Map();
   const playerSide = config.playerSide ?? state?.playerSide ?? "allies";
   const aiSide = playerSide === "axis" ? "allies" : "axis";
-  // 어느 진영을 잡는지가 여기서 정해진다. 첫 화면에서는 연합군 몫만 미리 받아 두었으므로,
-  // 추축군을 골랐다면 이제부터 쓸 무전을 마저 받는다(이미 받아 둔 것은 건너뛴다).
-  prefetchSounds(playerSide);
   // 음악도 진영을 따라간다. 연합군으로 두다가 추축군으로 새 판을 열면 장조가
   // 단조로 바뀐다. 여기는 "작전 개시"를 누른 손길 안이라 다시 트는 것이 허락된다.
   // 새 판은 언제나 평시로 시작한다 — 지난 판의 접전을 물려받지 않는다.
@@ -2686,9 +3132,13 @@ function startGame(config = {}) {
     musicTeardown();
     musicStart();
   }
-  const playerCommander = commanders.find((commander) => commander.id === config.playerCommanderId && commander.side === commanderSideName(playerSide)) ?? defaultCommanderForSide(playerSide);
-  const aiCommander = defaultCommanderForSide(aiSide);
   const scenario = findScenario(config.scenarioId ?? state?.scenarioId ?? defaultScenarioId);
+  const playerCommander = commanders.find((commander) => commander.id === config.playerCommanderId && commander.side === commanderSideName(playerSide)) ?? defaultCommanderForSide(playerSide, scenario.id);
+  const aiCommander = defaultCommanderForSide(aiSide, scenario.id);
+  // 무전은 장군이 정해진 다음에 받는다. 어느 진영인지만 알아서는 어느 말을 쓸지
+  // 모른다 — 같은 추축군이라도 야마시타 밑이면 일본어가 필요하다.
+  // (첫 화면에서 이미 받아 둔 것은 건너뛴다.)
+  prefetchSounds(playerSide, { player: playerCommander, enemy: aiCommander });
   const scenarioChanged = state?.scenarioId !== scenario.id;
   applyScenario(scenario);
   // 시나리오의 기한은 "시작값"이다. 작전을 바꿔 고를 때만 실어준다.
@@ -2765,8 +3215,15 @@ function startGame(config = {}) {
   // 첫날도 날짜부터 찍는다. 가장 먼저 넣어야 기록의 맨 아래에 깔린다.
   logDayLine();
   addLog(`${sideName("player")} › 작전 개시 · 지휘 ${state.commanders.player.name}`);
-  addChronicle(`작전 「${scenario.name}」 개시 · ${sideName("player")} ${state.commanders.player.name} 지휘`, "start");
-  addLog(`작전 「${scenario.name}」 — ${scenario.summary}`);
+  addChronicle(
+    t("작전 「{name}」 개시 · {side} {commander} 지휘", {
+      name: t(scenario.name),
+      side: sideName("player"),
+      commander: state.commanders.player.name,
+    }),
+    "start"
+  );
+  addLog(t("작전 「{name}」 — {summary}", { name: t(scenario.name), summary: t(scenario.summary) }));
   addLog(missionBriefText());
   // 맞은편 장군 이름은 여기서 안 알려 준다. 개전 전문에 이름을 박아 두면 사령부를
   // 찾아낼 이유가 없어진다 — 적 대대사령부를 눌러야 누구인지 알게 해 두었다.
@@ -2786,6 +3243,20 @@ function startGame(config = {}) {
 // 연합군을 고르면 west, 추축군을 고르면 east를 잡는다. 지도는 그대로고 서는 자리만 바뀐다.
 function scenarioSideKey(playerSide) {
   return playerSide === "axis" ? "east" : "west";
+}
+
+// 이 작전에서 아예 편성할 수 없는 병종. 시작 배치에 없는 것과 끝까지 못 사는 것은
+// 다른 이야기다 — 크레타의 강하부대에게 전차를 파는 순간 「하늘로 온 부대는 그것들을
+// 데려오지 못한다」는 이 판의 전제가 통째로 무너진다. 숫자가 아니라 규칙이라
+// 편집 창이 아니라 시나리오에 적는다(scenarios.js의 noRecruit).
+function recruitBanFor(owner) {
+  const playerKey = scenarioSideKey(state?.playerSide ?? "allies");
+  const key = owner === "player" ? playerKey : playerKey === "west" ? "east" : "west";
+  return activeScenario?.[key]?.noRecruit ?? [];
+}
+
+function canRecruitType(owner, type) {
+  return !recruitBanFor(owner).includes(type);
 }
 
 function timeoutOutcomeFor(timeoutWinner, playerSide) {
@@ -3427,7 +3898,7 @@ function render() {
       const hillDirection = hillDefenseDirection(x, y);
       if (hillDirection) {
         cell.classList.add("ridge-shield", `ridge-${hillDirection}`);
-        cell.title += ` / 방어방향 ${ridgeDirectionLabel(hillDirection)}`;
+        cell.title += ` / 방어방향 ${ridgeDirectionLabel(hillDirection)}${ridgeFacingDefense ? ` 정면 +${ridgeFacingDefense}` : ""}`;
       }
       // 교량과 부교는 그림이 달라야 한다. 하나는 돌기둥에 얹힌 트러스 다리고
       // 하나는 물에 띄운 널판이다 — 생김새가 같으면 어느 쪽이 한 방에 끊기는지
@@ -3620,8 +4091,13 @@ function renderObjective(cell, objective) {
   const need = objectiveHoldRequirement(objective);
   cell.classList.add("objective", `objective-${objective.owner}`);
   if (objective.held > 0) cell.classList.add("objective-held");
-  const only = objective.byTag ? " · 지정 부대만 인정" : "";
-  cell.title += ` / ${sideName(objective.owner)} ${objective.label} · 유지 ${objective.held}/${need}턴${only}`;
+  cell.title += t(" / {side} {label} · 유지 {held}/{need}턴{only}", {
+    side: sideName(objective.owner),
+    label: t(objective.label),
+    held: objective.held,
+    need,
+    only: objectiveNoteText(objective, { byTag: true }),
+  });
 
   const flag = document.createElement("span");
   flag.className = `objective-flag ${objective.owner}`;
@@ -3630,7 +4106,7 @@ function renderObjective(cell, objective) {
 
   const badge = document.createElement("span");
   badge.className = `objective-badge ${objective.owner}`;
-  badge.textContent = objective.held > 0 ? `${objective.held}/${need}` : "목표";
+  badge.textContent = objective.held > 0 ? `${objective.held}/${need}` : t("목표");
   cell.appendChild(badge);
 }
 
@@ -4401,8 +4877,6 @@ function balanceSnapshot() {
       objectiveHoldTurns,
       enemyDepotGoal,
       enemyEngineerLimit,
-      forcePerBase,
-      forcePerDepot,
       enemyRecruitSurplus,
       enemyDefenseRadius,
       deployRange,
@@ -4421,6 +4895,7 @@ function balanceSnapshot() {
       enemyForwardDefense,
       baseLossGraceTurns,
       baseDefenseBonus,
+      ridgeFacingDefense,
       baseRepairRate,
       baseEfficiencyRepair,
       enemyBaseSeekRange,
@@ -4456,8 +4931,6 @@ function ruleValue(key) {
     objectiveHoldTurns,
     enemyDepotGoal,
     enemyEngineerLimit,
-    forcePerBase,
-    forcePerDepot,
     enemyRecruitSurplus,
     enemyDefenseRadius,
     deployRange,
@@ -4476,6 +4949,7 @@ function ruleValue(key) {
     enemyForwardDefense,
     baseLossGraceTurns,
     baseDefenseBonus,
+    ridgeFacingDefense,
     baseRepairRate,
     baseEfficiencyRepair,
     enemyBaseSeekRange,
@@ -4510,8 +4984,6 @@ function setRuleValue(key, value) {
   if (key === "objectiveHoldTurns") objectiveHoldTurns = value;
   if (key === "enemyDepotGoal") enemyDepotGoal = value;
   if (key === "enemyEngineerLimit") enemyEngineerLimit = value;
-  if (key === "forcePerBase") forcePerBase = value;
-  if (key === "forcePerDepot") forcePerDepot = value;
   if (key === "enemyRecruitSurplus") enemyRecruitSurplus = value;
   if (key === "enemyDefenseRadius") enemyDefenseRadius = value;
   if (key === "deployRange") deployRange = value;
@@ -4537,6 +5009,7 @@ function setRuleValue(key, value) {
   if (key === "enemyForwardDefense") enemyForwardDefense = value;
   if (key === "baseLossGraceTurns") baseLossGraceTurns = value;
   if (key === "baseDefenseBonus") baseDefenseBonus = value;
+  if (key === "ridgeFacingDefense") ridgeFacingDefense = value;
   if (key === "baseRepairRate") baseRepairRate = value;
   if (key === "baseEfficiencyRepair") baseEfficiencyRepair = value;
   if (key === "enemyBaseSeekRange") enemyBaseSeekRange = value;
@@ -4561,7 +5034,7 @@ function updatePanel() {
   if (phaseLabelEl) phaseLabelEl.textContent = phaseDisplayName();
   if (resourceLabelEl) resourceLabelEl.textContent = formatNumber(state.resources);
   if (baseLabelEl) baseLabelEl.textContent = formatNumber(projectedIncome("player"));
-  if (forceLabelEl) forceLabelEl.textContent = forceDisplay("player");
+  if (forceLabelEl) forceLabelEl.textContent = `${combatCountFor("player")}`;
   updateOperationHud();
   renderSelectedCard();
   renderCommanderList();
@@ -4622,7 +5095,7 @@ function updateOperationHud() {
   if (hudPhaseLabelEl) hudPhaseLabelEl.textContent = phaseName;
   if (hudResourceLabelEl) hudResourceLabelEl.textContent = formatNumber(state.resources);
   if (hudBaseLabelEl) hudBaseLabelEl.textContent = formatNumber(projectedIncome("player"));
-  if (hudForceLabelEl) hudForceLabelEl.textContent = forceDisplay("player");
+  if (hudForceLabelEl) hudForceLabelEl.textContent = `${combatCountFor("player")}`;
   // 경보칸은 두 얼굴이다. 실제로 경보가 떴을 때는 노란 불이 들어와야 하고,
   // 아무 일도 없을 때는 "전장 이상 없음" 한 줄이 화면 34px을 차지한다.
   // 휴대폰에서는 그 34px이 지도 두 칸 반이라, 조용할 때는 칸째로 접는다
@@ -4656,6 +5129,9 @@ function operationAlerts() {
   objectivesFor("enemy")
     .filter((objective) => objective.held > 0)
     .forEach((objective) => parts.push(`후방 피탈 ${objective.held}/${objectiveHoldRequirement(objective)}`));
+  // 사령부가 포위되면 보급품이 아무리 쌓여도 증원이 안 나온다. 이건 단추가
+  // 고장 난 것이 아니라 판이 그렇게 된 것이고, 말해 주지 않으면 구별할 방법이 없다.
+  if (recruitEncircled("player")) parts.push("사령부 포위 · 증원 불가");
   if (isolated) parts.push(`고립 ${isolated}`);
   if (collapsing) parts.push(`붕괴 ${collapsing}`);
   if (cut.length - collapsing > 0) parts.push(`보급 두절 ${cut.length - collapsing}`);
@@ -4675,22 +5151,36 @@ function syncCommandPanelState() {
     button.textContent = collapsed ? "열기" : "닫기";
   }
   const scrim = document.querySelector("#panelScrim");
-  if (scrim) scrim.hidden = collapsed || window.innerWidth > 860;
+  // 좁은 화면인지 재는 자는 하나뿐이다. 여기만 innerWidth를 따로 보면 경계가
+  // 하나 더 생기고, 두 값이 어긋나는 폭에서 막만 안 뜨는 상태가 조용히 생긴다.
+  if (scrim) scrim.hidden = collapsed || !isPhoneLayout();
+}
+
+// 사람이 지휘칸을 한 번이라도 직접 여닫았는가. 폰을 눕히고 세우는 것은 화면
+// 모양이 바뀐 것이지 사람의 뜻이 바뀐 것이 아니다. 닫아 둔 칸이 회전 한 번에
+// 혼자 열리면 그건 게임이 사람 말을 덮어쓴 것이다.
+let commandPanelTouched = false;
+
+// 여닫는 곳은 여기 하나다. 사람이 누른 것인지 기계가 정리한 것인지를 받아서
+// 구분한다 — 안내를 보여 주려고 지휘칸을 접는 것은 기계의 사정이지 사람의 뜻이
+// 아니다. 그것까지 뜻으로 세면 안내를 한 번 열어 본 것만으로 그 판 내내 화면
+// 모양에 맞춰 주는 동작이 죽는다.
+function setCommandPanel(collapsed, { byUser = true } = {}) {
+  if (byUser) commandPanelTouched = true;
+  document.body.classList.toggle("command-collapsed", collapsed);
+  syncCommandPanelState();
 }
 
 function toggleCommandPanel() {
-  document.body.classList.toggle("command-collapsed");
-  syncCommandPanelState();
+  setCommandPanel(!document.body.classList.contains("command-collapsed"));
 }
 
 function openCommandPanel() {
-  document.body.classList.remove("command-collapsed");
-  syncCommandPanelState();
+  setCommandPanel(false);
 }
 
 function closeCommandPanel() {
-  document.body.classList.add("command-collapsed");
-  syncCommandPanelState();
+  setCommandPanel(true);
 }
 
 function toggleEditorPanel() {
@@ -4715,6 +5205,16 @@ function syncRecruitButtonCosts() {
   });
 }
 
+// 어느 단추가 어느 병종인가. 편성 금지를 단추에 비추려면 이 짝이 한 군데 있어야 한다.
+const recruitButtonTypes = {
+  "#recruitInfantry": "infantry",
+  "#recruitArmor": "armor",
+  "#recruitArtillery": "artillery",
+  "#recruitSpArtillery": "spArtillery",
+  "#recruitEngineer": "engineer",
+  "#recruitBattalionHQ": "battalionHQ",
+};
+
 function updateActionPanel() {
   const selected = selectedUnit();
   const isOwnReady = selected?.owner === "player" && state.phase === "player" && !state.gameOver;
@@ -4722,7 +5222,7 @@ function updateActionPanel() {
   const isEngineer = isOwnReady && selected.type === "engineer" && !selected.acted;
   const isArtillery = isOwnReady && selected.type === "artillery" && !selected.acted;
   const groups = {
-    hq: ["#recruitInfantry", "#recruitArmor", "#recruitArtillery", "#recruitSpArtillery", "#recruitEngineer", "#recruitBattalionHQ"],
+    hq: Object.keys(recruitButtonTypes),
     hqMenus: ["#armyCommandMenu", "#navyCommandMenu", "#airCommandMenu", "#aiCommandMenu"],
     engineer: ["#buildBridge", "#buildDepot", "#buildRail"],
     artillery: ["#toggleTow"],
@@ -4734,7 +5234,9 @@ function updateActionPanel() {
   });
 
   groups.hqMenus.forEach((selector) => setActionVisible(selector, isHQ));
-  if (isHQ) groups.hq.forEach((selector) => setActionVisible(selector, true));
+  // 이 작전에서 못 데려오는 병종은 단추째 내린다. 눌러 보고 나서 안 된다고 듣는 것보다
+  // 처음부터 없는 편이 지휘관에게 정직하다.
+  if (isHQ) groups.hq.forEach((selector) => setActionVisible(selector, canRecruitType("player", recruitButtonTypes[selector])));
   if (isEngineer) groups.engineer.forEach((selector) => setActionVisible(selector, true));
   if (isArtillery) groups.artillery.forEach((selector) => setActionVisible(selector, true));
 
@@ -4821,10 +5323,16 @@ function renderUnitCardVisual(unit, spec) {
   const visual = image
     ? `<span class="unit-card-image" style="background-image: url('${image}')"></span>`
     : `<span class="unit-card-image icon-only"><span class="unit-icon ${unit.type} ${unit.owner} ${sideKeyForUnit(unit)}"></span></span>`;
+  // 이름을 두 벌 심어 두고 접힘/펼침에 따라 CSS가 하나만 보여 준다.
+  // 접힌 카드의 이름은 한 줄로 잘리는데, 한국어 부대 이름은 병종이 늘 끝에 있어서
+  // 그대로 자르면 하필 병종이 지워진다 — 「추축군 leFH 18 105mm …」가 되어
+  // 견인 야포인지 자주포인지 구별할 수 없다. 둘은 규칙이 다르다(야포는 움직인 턴에
+  // 못 쏘고, 자주포는 고지에 못 들어간다). 짧은 이름은 병종을 앞으로 당겨 둔 이름이라
+  // 잘릴 일이 없고, 언어팩마다 따로 있어서 영어판에서도 같은 규칙이 통한다.
   return `
     <div class="unit-card-visual">
       ${visual}
-      <h2>${sideUnitLabel(unit)}</h2>
+      <h2><span class="name-short">${sideUnitLabel(unit, undefined, { short: true })}</span><span class="name-full">${sideUnitLabel(unit)}</span></h2>
     </div>
   `;
 }
@@ -4848,7 +5356,7 @@ function renderEnemyCommanderStrip(unit) {
       <span class="unit-card-commander-body">
         <span class="commander-tag">적군 지휘</span>
         <strong>${commander.name}</strong>
-        <span>${commander.nation} ${commander.rank} · ${commander.trait}</span>
+        <span>${t(commander.nation)} ${t(commander.rank)} · ${t(commander.trait)}</span>
         <span>${commanderStatSummary(commander)}</span>
       </span>
     </div>
@@ -4884,17 +5392,21 @@ function renderSelectedCard() {
       ${getBaseAt(unit.x, unit.y) && baseDefenseBonus ? `<span>거점 엄폐 <strong>+${baseDefenseBonus}</strong></span>` : ""}
       <span>지형 특성 <strong>${terrainTraitText(unit.x, unit.y)}</strong></span>
       <span class="key">전투력 <strong>${unit.hp}/${spec.hp}</strong></span>
-      <span class="key">기동력 <strong>${effectiveMove(unit)}</strong></span>
-      <span class="key">사거리 <strong>${spec.range}</strong></span>
       ${spec.defense ? `<span>부대 방어 <strong>+${spec.defense}</strong></span>` : ""}
       <span class="key">사기 <strong>${effectiveMorale(unit)}%</strong></span>
+      <!-- 접힌 카드는 좁은 폰에서 이 여섯 줄 중 앞의 서너 개만 보여 준다(나머지는
+           카드 안에서 굴러간다). 그래서 매 턴 바뀌는 것을 앞에 둔다 — 전투력·사기·
+           행동·보급은 턴마다 달라지고, 기동력·사거리는 병종을 알면 늘 같은 값이다.
+           화면이 몇 px이든 이 순서면 먼저 보이는 것이 먼저 알아야 할 것이 된다. -->
+      <span class="key">행동 <strong>${unit.justArrived ? "편성 중 / 내일부터" : unit.acted ? "완료" : unit.moved ? "이동 완료 / 공격 가능" : "가능"}</strong></span>
+      <span class="key">보급 <strong>${supply.label}</strong></span>
+      <span class="key">기동력 <strong>${effectiveMove(unit)}</strong></span>
+      <span class="key">사거리 <strong>${spec.range}</strong></span>
       <span>중첩 <strong>${stack.length}/${maxStackSize}</strong></span>
       ${unit.owner === "player" ? `<span>지휘관 <strong>${commanderFor(unit.owner).name.split(" ").at(-1)}</strong></span>` : ""}
       ${unit.owner === "player" && commanderFor(unit.owner).move ? `<span>장군 이동 <strong>${signedStat(commanderFor(unit.owner).move)}</strong></span>` : ""}
       ${unit.owner === "player" && commanderFor(unit.owner).supply ? `<span>장군 보급 <strong>${signedStat(commanderFor(unit.owner).supply)}</strong></span>` : ""}
       ${unit.type === "artillery" ? `<span>상태 <strong>${unit.towed ? "견인" : "전개"}</strong></span>` : ""}
-      <span class="key">행동 <strong>${unit.justArrived ? "편성 중 / 내일부터" : unit.acted ? "완료" : unit.moved ? "이동 완료 / 공격 가능" : "가능"}</strong></span>
-      <span class="key">보급 <strong>${supply.label}</strong></span>
       <span>보급선 <strong>${formatSupplyDistance(supply)}</strong></span>
       <span>소모 <strong>${spec.supplyUse}/턴</strong></span>
       ${(unit.hqOutTurns ?? 0) ? `<span>두절 지속 <strong>${unit.hqOutTurns}턴</strong></span>` : ""}
@@ -4920,17 +5432,34 @@ function renderTileCard(x, y) {
   ].filter(Boolean);
   const moveCost = movementCostForTile(x, y);
   const objective = objectiveAt(x, y);
+  // 부대 카드와 같은 껍데기를 쓴다. 「누르면 펴진다」는 표시가 이 껍데기에 붙어
+  // 있어서, 한쪽만 안 감싸면 그 카드에서만 표시가 사라진다 — 눌러서 펴지는 기능은
+  // 살아 있는데 펴진다는 것을 알 방법이 없는 상태가 된다. 폰에서는 범례도 접혀
+  // 있어서, 지형을 읽을 다른 자리가 없다.
+  //
+  // key가 붙은 줄만 접힌 카드에 남는다. 지형 카드에는 그 표시가 한 줄도 없어서
+  // 접으면 제목만 남는 빈 상자였다. 매 턴 판단에 쓰는 셋(지형·이동 비용·방어
+  // 보정)과, 떠 있을 때는 그것이 곧 승패인 작전 목표 두 줄에 붙인다.
+  //
+  // 작전 목표 두 줄을 맨 앞에 둔다. 접힌 카드는 줄을 흘려 넣고 넘친 만큼을
+  // 잘라내므로, 뒤에 두면 승패를 정하는 「유지 0/3턴」이 가장 먼저 사라진다.
+  // 목표 이름은 한 줄을 통째로 먹어서 목표 칸에서만 줄 수가 늘어난다.
+  // 앞에 오는 순서 기준은 부대 카드와 같다 — 매 턴 바뀌는 값이 먼저다.
+  // 지형·이동 비용·방어 보정은 한 판 내내 안 바뀌고, 유지 턴수는 매 턴 바뀐다.
   selectedCardEl.innerHTML = `
-    <h2>${displayTileName(x, y)} (${x}, ${y})</h2>
+    <div class="unit-card-visual"><h2>${displayTileName(x, y)} (${x}, ${y})</h2></div>
     <div class="unit-stats">
-      <span>지형 <strong>${terrainDescription(tile)}</strong></span>
-      <span>이동 비용 <strong>${Number.isFinite(moveCost) ? formatNumber(moveCost) : "통과 불가"}</strong></span>
-      <span>방어 보정 <strong>${coverAt(x, y) >= 0 ? "+" : ""}${coverAt(x, y)}</strong></span>
+      ${objective ? `<span class="key">작전 목표 <strong>${sideName(objective.owner)} ${objective.label}</strong></span>` : ""}
+      ${objective ? `<span class="key">${objective.kind === "supply" ? "개통" : "장악"} 유지 <strong>${objectiveOpen(objective) ? `${objective.held}/${objectiveHoldRequirement(objective)}턴` : t("{n}일차부터", { n: objective.fromTurn })}</strong>${objectiveNoteText(objective, { byTag: true, fromTurn: false })}</span>` : ""}
+      ${objective?.kind === "supply" ? `<span>보급선 <strong>${objectiveSupplyText(objective)}</strong></span>` : ""}
+      <span class="key">지형 <strong>${terrainDescription(tile)}</strong></span>
+      <span class="key">이동 비용 <strong>${Number.isFinite(moveCost) ? formatNumber(moveCost) : "통과 불가"}</strong></span>
+      <span class="key">방어 보정 <strong>${coverAt(x, y) >= 0 ? "+" : ""}${coverAt(x, y)}</strong></span>
       ${deck ? `<span>다리 위 노출 <strong>-${bridgeExposure}</strong></span>` : ""}
       ${base && baseDefenseBonus ? `<span>거점 엄폐 <strong>+${baseDefenseBonus}</strong></span>` : ""}
       <span>고도 <strong>${formatElevation(tile.elevation)}</strong></span>
       <span>포격 엄폐 <strong>${tile.artilleryCover ? `-${tile.artilleryCover}` : "없음"}</strong></span>
-      ${hillDirection ? `<span>방어방향 <strong>${ridgeDirectionLabel(hillDirection)}</strong></span>` : ""}
+      ${hillDirection ? `<span>방어방향 <strong>${ridgeDirectionLabel(hillDirection)}</strong>${ridgeFacingDefense ? ` 정면 <strong>+${ridgeFacingDefense}</strong>` : ""}</span>` : ""}
       <span>특성 <strong>${terrainTraitText(x, y)}</strong></span>
       <span>개량 <strong>${improvements.length ? improvements.join(", ") : "없음"}</strong></span>
       ${base ? `<span>소유 <strong>${sideName(base.owner)}</strong></span>` : ""}
@@ -4938,9 +5467,6 @@ function renderTileCard(x, y) {
       ${base ? `<span>효율 <strong>${Math.round(base.efficiency * 100)}%</strong></span>` : ""}
       ${base ? `<span>보급권 <strong>${baseCoverageText(base)}</strong></span>` : ""}
       ${construction ? `<span>공사 <strong>${constructionName(construction.type)} ${construction.remaining}턴</strong></span>` : ""}
-      ${objective ? `<span>작전 목표 <strong>${sideName(objective.owner)} ${objective.label}</strong></span>` : ""}
-      ${objective ? `<span>${objective.kind === "supply" ? "개통" : "장악"} 유지 <strong>${objective.held}/${objectiveHoldRequirement(objective)}턴</strong></span>` : ""}
-      ${objective?.kind === "supply" ? `<span>보급선 <strong>${objectiveSupplyText(objective)}</strong></span>` : ""}
     </div>
   `;
 }
@@ -5003,7 +5529,7 @@ function renderCommanderList() {
         <span class="commander-entry-body">
           <span class="commander-tag">아군 지휘</span>
           <strong>${commander.name}</strong>
-          <span>${commander.nation} ${commander.rank} · ${commander.trait}</span>
+          <span>${t(commander.nation)} ${t(commander.rank)} · ${t(commander.trait)}</span>
         </span>
       </article>
     </div>
@@ -5293,15 +5819,22 @@ function recruit(type) {
     return;
   }
   const spec = unitTypes[type];
+  // 단추는 이미 내려가 있다. 그래도 규칙은 화면이 아니라 여기서 지킨다 —
+  // 화면만 막으면 저장 파일을 손대거나 단추를 되살린 판에서 그대로 뚫린다.
+  if (!canRecruitType("player", type)) {
+    addLog(`증원 불가 › ${spec.label} · 이 작전의 편성 대상 아님`);
+    render();
+    return;
+  }
   if (state.resources < spec.cost) return;
   if (type === "battalionHQ" && remainingBattalionHQ("player") <= 0) {
     addLog("증원 불가 › 배속된 대대사령부 전부 투입됨");
     render();
     return;
   }
-  // 아군 편성을 막는 것은 이제 보급품 하나뿐이다(forceLimitFor 참고).
-  // 남는 문은 자리다 — 사령부가 부대를 낳을 수 있는 곳은 제 칸과 둘레 여덟 칸,
-  // 그마저 겹쳐 세울 수 있는 만큼까지다. 그래서 "보급품이 있는 만큼"이라 해도
+  // 아군 편성을 막는 것은 보급품 하나뿐이다. 적도 같다(enemyForceTarget 참고).
+  // 남는 문은 자리다 — 사령부가 부대를 낳을 수 있는 곳은 지휘 범위 안의 빈 칸뿐이고,
+  // 겹쳐 세울 수는 없다(findHQSpawn 참고). 그래서 "보급품이 있는 만큼"이라 해도
   // 한 턴에 한 사령부가 토해 낼 수 있는 양에는 여전히 끝이 있다.
   const spawn = findHQSpawn(hq, type);
   if (!spawn) {
@@ -5645,6 +6178,18 @@ function showTurnCard() {
 }
 
 function advanceConstructions(owner) {
+  // 삽을 든 사람이 없으면 공사도 없다. 예전에는 시공하던 공병대가 죽어도 공사가
+  // 혼자 굴러가 완공됐다 — 공병대를 잡는 것이 아무 의미가 없었다는 뜻이다.
+  // 다리가 끊기면서 그 위에 있던 공병대가 통째로 물에 빠지는 경우가 생겨 더 자주
+  // 드러난다. 시공자가 판에서 사라진 공사는 여기서 접는다.
+  const abandoned = state.constructions.filter(
+    (construction) => construction.owner === owner && !state.units.some((unit) => unit.id === construction.builderId),
+  );
+  abandoned.forEach((construction) =>
+    addLog(`${sideName(construction.owner)} ${constructionName(construction.type)} › 시공 부대 소실 · 공사 중단`),
+  );
+  if (abandoned.length) state.constructions = state.constructions.filter((construction) => !abandoned.includes(construction));
+
   state.constructions
     .filter((construction) => construction.owner === owner)
     .forEach((construction) => {
@@ -5698,48 +6243,61 @@ function isCombatUnit(unit) {
 // 낳을 수 있는 자리는 제 칸과 둘레 여덟 칸뿐이라, 한 턴에 나올 수 있는 양에는
 // 여전히 끝이 있다.
 //
-// 적을 막는 것은 정원이고, 그 정원은 지도에서 나온다. 원래 있던 보급 기지가
-// 기지당 forcePerBase, 공병대가 세운 보급창고가 창고당 forcePerDepot. 정원이
-// 없던 시절의 적은 여섯 기를 채운 뒤 보급품을 쌓아만 뒀다. 정원을 지도에 묶으면
-// 그 저축이 사라지고, 거점을 전부 잃은 쪽은 정원이 0이라 증원이 끊긴다 —
-// baseLossGraceTurns의 붕괴 유예와 같은 방향이다. 땅을 잃으면 군도 잃는다.
+// 이제 두 진영이 같은 문으로 병력을 낸다.
 //
-// 난이도가 곱해지는 곳이 바로 이 정원이다. 화면에 그대로 뜨는 숫자라 올림으로
-// 맞춘다 — 「6 / 7.5」 같은 정원은 읽는 사람에게 아무 뜻이 없다.
-function forceLimitFor(owner) {
-  if (owner === "player") return Infinity;
-  const bases = state.bases.filter((base) => base.owner === owner);
-  const depots = bases.filter((base) => base.builtByEngineer).length;
-  const supplyBases = bases.length - depots;
-  const limit = supplyBases * forcePerBase + depots * forcePerDepot;
-  return owner === "enemy" ? Math.ceil(limit * currentDifficulty().force) : limit;
+// 아군도 적도 막는 것은 보급품과 자리 둘뿐이다. 적한테만 걸려 있던 「거점 수 ×
+// 기지당 정원」은 없앴다. 그 상한이 있던 동안 적은 이틀에 하나씩 여섯 기까지만
+// 세웠고, 아군은 보급품이 있는 만큼 한 턴에 셋도 세웠다 — 같은 판에서 두 편이
+// 다른 규칙으로 싸운 것이다.
+//
+// 땅을 잃으면 여전히 군을 잃는다. 거점이 줄면 수입이 줄고, 수입이 줄면 못 뽑는다.
+// 상한이라는 두 번째 문이 없어도 결론은 같은 곳에 닿는다 —
+// baseLossGraceTurns의 붕괴 유예와 같은 방향이다.
+//
+// 대신 적에게는 목표가 있다. 아군 전투 부대 수를 난이도 배율만큼 따라간다.
+// 이 방식은 enemyDepotTarget·desiredEnemyEngineers가 이미 쓰고 있는 것과 같다 —
+// 적의 규모를 지도 크기나 고정 숫자가 아니라 플레이어가 실제로 세운 것에 맞춘다.
+// 그래서 어느 지도에서든 손볼 값이 없다. 아군이 얇게 가면 적도 얇고, 아군이
+// 부풀리면 적도 따라 부푼다. 최소 1은 깔아 둔다 — 아군 전투 부대가 0이 되는
+// 순간(사령부만 남은 판) 적 증원이 통째로 죽으면 판이 굳는다.
+function enemyForceTarget() {
+  return Math.max(1, Math.round(combatCountFor("player") * currentDifficulty().force));
 }
 
 function combatCountFor(owner) {
   return state.units.filter((unit) => unit.owner === owner && isCombatUnit(unit)).length;
 }
 
-// 정원은 화면에 있어야 규칙이다. 안 보이면 그냥 버튼이 안 눌리는 버그로 읽힌다.
-// 정원이 없는 쪽은 분모를 지운다. 「4 / Infinity」는 숫자가 아니라 사고다.
-function forceDisplay(owner) {
-  const limit = forceLimitFor(owner);
-  if (!Number.isFinite(limit)) return `${combatCountFor(owner)}`;
-  return `${combatCountFor(owner)} / ${limit}`;
+// 사령부는 서 있는데 부대를 놓을 자리가 없다 — 지휘 범위 안이 통째로 막혔다는 뜻이다.
+// 적이 둘러쌌든 제 부대로 꽉 찼든 결과는 같다: 증원이 안 나온다.
+//
+// 새 규칙을 만드는 것이 아니라 이미 일어나던 일에 이름을 붙이는 것이다. findSpawn이
+// 자리를 못 찾으면 예전에도 증원은 없었고, 다만 화면에 아무 말이 없어서 사람은
+// 단추가 고장 난 줄 알았다. 지도와 무관하게 돌아간다 — 재는 자가 findSpawn 하나뿐이라
+// 지휘 범위를 바꾸든 다리를 놓든 같이 움직인다.
+function recruitableTypes(owner) {
+  return Object.keys(unitTypes).filter((type) => canRecruitType(owner, type));
+}
+
+function recruitEncircled(owner) {
+  if (!battalionHQs(owner).length) return false;
+  return !recruitableTypes(owner).some((type) => findSpawn(owner, type));
 }
 
 // 지금 무엇이 모자란가. 편성비에서 가장 크게 벌어진 병종을 부른다.
 // 여유가 있으면 같은 값일 때 비싼 쪽을 고른다 — 보급품 137을 깔고 앉아
 // 3원짜리 보병만 부르던 것이 후반이 무너지던 이유였다.
-function enemyRecruitChoice(combat, limit, flush) {
+function enemyRecruitChoice(combat, target, flush) {
   const mix = enemyForceMix[enemyPosture()] ?? enemyForceMix.attack;
   let best = null;
   Object.entries(mix).forEach(([type, share]) => {
+    if (!canRecruitType("enemy", type)) return;
     const cost = unitTypes[type]?.cost ?? Infinity;
     if (state.enemyResources < cost) return;
     if (!findSpawn("enemy", type)) return;
     const have = combat.filter((unit) => unit.type === type).length;
-    const shortfall = share * limit - have;
-    // 여유가 없으면 모자란 병종만 본다. 여유가 있으면 정원이 빈 만큼은 채운다.
+    const shortfall = share * target - have;
+    // 여유가 없으면 모자란 병종만 본다. 여유가 있으면 목표가 빈 만큼은 채운다.
     if (shortfall <= 0 && !flush) return;
     const score = shortfall * 10 + (flush ? cost : 0);
     if (!best || score > best.score) best = { type, score };
@@ -5748,8 +6306,6 @@ function enemyRecruitChoice(combat, limit, flush) {
 }
 
 function maybeEnemyRecruit() {
-  // 격턴 제한은 자원이 빠듯할 때의 절약책이다. 창고가 늘어 보급품이 쌓이는데도
-  // 이 제한을 지키면 적은 돈을 쌓아두고 굶는다.
   // 사령부가 없으면 증원도 없다. 플레이어와 같은 규칙이다. 한 번만 적어 준다 —
   // 매 턴 적으면 로그가 같은 문장으로 도배된다.
   if (!battalionHQs("enemy").length) {
@@ -5761,33 +6317,63 @@ function maybeEnemyRecruit() {
   }
   state.enemyRecruitHalted = false;
 
-  // 증원 주기는 난이도가 정한다. 「정규」가 예전의 격턴이고, 위로 올라가면 매 턴,
-  // 아래로 내려가면 사흘에 한 번이다. 보급품이 넘치면(flush) 주기와 상관없이 부른다.
-  const flush = state.enemyResources >= enemyRecruitSurplus;
-  const recruitEvery = Math.max(1, currentDifficulty().recruitEvery);
-  if (!flush && state.turn % recruitEvery !== 0) return;
-
-  // 공병대를 먼저 본다. 경제를 키우는 부대가 전투 정원에 밀려 영영 안 나오면
+  // 공병대를 먼저 본다. 경제를 키우는 부대가 전투 부대에 밀려 영영 안 나오면
   // 적 생산은 첫 턴 그대로 굳는다.
   if (maybeEnemyRecruitEngineer()) return;
 
-  const combat = state.units.filter((unit) => unit.owner === "enemy" && isCombatUnit(unit));
-  const limit = forceLimitFor("enemy");
-  if (combat.length >= limit) return;
+  // 예전에는 여기서 「이틀에 한 번」 같은 주기를 봤다. 그 주기가 없어졌다 —
+  // 아군은 보급품이 있는 만큼 한 턴에 여러 기를 세우는데 적만 하루 걸러 하나면
+  // 두 편이 다른 규칙으로 싸운다. 이제 적도 한 턴 안에서 돌면서, 아군과 똑같이
+  // 보급품이 떨어지거나 사령부 둘레에 빈 칸이 없을 때 멈춘다.
+  const target = enemyForceTarget();
+  const mix = enemyForceMix[enemyPosture()] ?? enemyForceMix.attack;
+  const cheapest = Math.min(...Object.keys(mix).map((key) => unitTypes[key]?.cost ?? Infinity));
+  let placed = 0;
+  let blockedByMoney = false;
+  let blockedBySpace = false;
+  // 사령부 지휘 범위 안의 빈 칸은 한 줌이라 실제로는 몇 바퀴면 끝난다. 그래도
+  // 상한을 박아 둔다 — 조건 하나가 틀어져도 판이 멈추지는 않게.
+  for (let guard = 0; guard < 32; guard += 1) {
+    const combat = state.units.filter((unit) => unit.owner === "enemy" && isCombatUnit(unit));
+    if (combat.length >= target) break;
+    const flush = state.enemyResources >= enemyRecruitSurplus;
+    const type = enemyRecruitChoice(combat, target, flush);
+    if (!type) {
+      // 고를 것이 없는 이유가 돈인지 자리인지를 갈라 둔다. 둘은 사람이 할 수 있는
+      // 대응이 다르다 — 돈이면 거점을 더 먹어야 하고, 자리면 포위를 풀어야 한다.
+      if (state.enemyResources < cheapest) blockedByMoney = true;
+      else blockedBySpace = true;
+      break;
+    }
+    const spawn = findSpawn("enemy", type);
+    if (!spawn) {
+      blockedBySpace = true;
+      break;
+    }
+    state.enemyResources -= unitTypes[type].cost;
+    state.units.push(deployReinforcement("enemy", type, spawn.x, spawn.y));
+    addLog(`${sideUnitLabel("enemy", type)} 예비대 투입`);
+    placed += 1;
+  }
 
-  const type = enemyRecruitChoice(combat, limit, flush);
-  if (!type) {
-    // 고를 것이 없는 이유가 돈이면 그렇게 적는다. 자리가 없어서라면 조용히 넘긴다.
-    const mix = enemyForceMix[enemyPosture()] ?? enemyForceMix.attack;
-    const cheapest = Math.min(...Object.keys(mix).map((key) => unitTypes[key]?.cost ?? Infinity));
-    if (state.enemyResources < cheapest) addLog(`${sideName("enemy")} › 보급 부족 · 예비대 투입 지연`);
+  // 막힌 이유는 한 턴에 한 줄만 적는다. 한 기마다 적으면 로그가 같은 문장으로 덮인다.
+  const encircled = recruitEncircled("enemy");
+  if (!encircled) state.enemyEncircleNoted = false;
+  if (placed) return;
+  if (blockedByMoney) {
+    addLog(`${sideName("enemy")} › 보급 부족 · 예비대 투입 지연`);
     return;
   }
-  const spawn = findSpawn("enemy", type);
-  if (!spawn) return;
-  state.enemyResources -= unitTypes[type].cost;
-  state.units.push(deployReinforcement("enemy", type, spawn.x, spawn.y));
-  addLog(`${sideUnitLabel("enemy", type)} 예비대 투입`);
+  if (!blockedBySpace) return;
+  if (!encircled) {
+    addLog(`${sideName("enemy")} › 전개 공간 없음 · 예비대 투입 지연`);
+    return;
+  }
+  // 포위는 풀리기 전까지 계속되는 상태다. 상태는 한 번만 알린다.
+  if (!state.enemyEncircleNoted) {
+    state.enemyEncircleNoted = true;
+    addLog(`${sideName("enemy")} › 사령부 포위 · 증원 불가`);
+  }
 }
 
 // 짓는 중인 것까지 함께 센다. 완성된 것만 세면 같은 목표를 두 번 세우게 된다.
@@ -5830,6 +6416,7 @@ function desiredEnemyEngineers() {
 }
 
 function maybeEnemyRecruitEngineer() {
+  if (!canRecruitType("enemy", "engineer")) return false;
   const target = enemyDepotTarget();
   if (target <= 0) return false;
   const engineers = state.units.filter((unit) => unit.owner === "enemy" && unit.type === "engineer").length;
@@ -5999,7 +6586,10 @@ function combatDamage(attacker, defender) {
   const commanderAttack = isCombatUnit(attacker) ? commander.attack : 0;
   // 엄폐는 지형만이 아니라 거점에서도 온다. 셋(지형·거점·부대)이 각각 따로 빠지므로
   // 거점 위의 대대 사령부는 3 + 3이 겹쳐 정면으로는 좀처럼 뚫리지 않는다.
-  const rawDamage = attackerSpec.attack + heightModifier + commanderAttack + directArtilleryVulnerability + defenderSupplyPenalty - coverAt(defender.x, defender.y) - defenderArmor - artilleryPenalty;
+  // 능선 방어방향은 여기서만 빠진다. 미리보기도 자살 공격 판정도 이 함수를 거치므로
+  // 화면에 뜨는 숫자와 실제로 들어가는 피해가 저절로 같아진다.
+  const ridgeFacing = ridgeFacingBonus(attacker, defender);
+  const rawDamage = attackerSpec.attack + heightModifier + commanderAttack + directArtilleryVulnerability + defenderSupplyPenalty - coverAt(defender.x, defender.y) - defenderArmor - artilleryPenalty - ridgeFacing;
   const moraleAdjusted = rawDamage * (effectiveMorale(attacker) / 100);
   return Math.max(1, Math.round(moraleAdjusted));
 }
@@ -6289,7 +6879,7 @@ function missionRoleFor(unit) {
   const mine = missionObjectives().filter((objective) => objective.owner === unit.owner);
   // 사수 대상(protect)의 이름이 그 부대의 이름이다. 탈출 지점 이름을 부대에 붙이면 헷갈린다.
   const named = mine.find((objective) => objective.tag === unit.tag) ?? mine.find((objective) => objective.byTag === unit.tag);
-  return named ? named.label : "";
+  return named ? t(named.label) : "";
 }
 
 function objectiveHoldRequirement(objective) {
@@ -6298,7 +6888,7 @@ function objectiveHoldRequirement(objective) {
 
 // 좌표 뒤에 조사를 바로 붙이면 "(4, 12)을"처럼 읽히는 대로 틀린다. "지점"으로 끊고 붙인다.
 function objectiveName(objective) {
-  return `${objective.label} (${objective.x}, ${objective.y}) 지점`;
+  return t("{label} ({x}, {y}) 지점", { label: t(objective.label), x: objective.x, y: objective.y });
 }
 
 // 타일 하나에는 한쪽 부대만 설 수 있으므로(canMoveTo) 점유 = 장악이다.
@@ -6379,12 +6969,27 @@ function failedObjective() {
   );
 }
 
-// 목표 줄 뒤에 붙는 단서. 둘 다 "이 목표 하나만 봐서는 알 수 없는 것"이라
-// 명령서에 반드시 적혀야 한다 — 언제부터 유효한지, 혼자로 되는지.
-function objectiveNoteText(objective) {
+// 목표 줄 뒤에 붙는 단서. 셋 다 "이 목표 하나만 봐서는 알 수 없는 것"이라
+// 명령서에 반드시 적혀야 한다 — 언제부터 유효한지, 혼자로 되는지, 아무 부대나 되는지.
+//
+// 명령서 말고 지형 카드와 지도 툴팁도 이 함수를 부른다. 안 부르면 아직 열리지
+// 않은 목표가 카드에서 살아 있는 목표와 똑같이 보인다 — 「유지 0/2턴」이 붙어
+// 있는데 그 칸에 부대를 올려도 숫자가 영영 0이다(유지는 열린 목표만 센다).
+// 폰에서는 명령서가 접힌 명령 패널 뒤에 있어서, 카드가 안 알려 주면 확인할
+// 자리가 아예 없다.
+//
+// byTag는 명령서에서만 문장 안쪽에("지정 부대가 3턴 유지") 들어가므로 부르는
+// 쪽이 켠다. 켜지 않으면 명령서에서 같은 말이 두 번 나온다.
+//
+// fromTurn을 끄는 쪽은 지형 카드다. 카드는 아직 안 열린 목표에서 유지 숫자
+// 자체를 "4일차부터"로 바꾼다 — 안 열린 목표의 0/2턴은 셀 수 없는 숫자라 없는
+// 편이 낫고, 뒤에 단서로 덧붙이면 320px 카드에서 줄이 하나 늘어 지형이 밀려난다.
+// 같은 자리를 쓰면서 더 정확해진다.
+function objectiveNoteText(objective, options = {}) {
   const notes = [];
-  if (objective.fromTurn) notes.push(`${objective.fromTurn}일차부터`);
-  if (objective.group) notes.push("둘 다 달성");
+  if (objective.fromTurn && options.fromTurn !== false) notes.push(t("{n}일차부터", { n: objective.fromTurn }));
+  if (objective.group) notes.push(t("둘 다 달성"));
+  if (options.byTag && objective.byTag) notes.push(t("지정 부대만 인정"));
   return notes.length ? ` · ${notes.join(" · ")}` : "";
 }
 
@@ -6392,23 +6997,44 @@ function objectiveGoalText(objective) {
   const note = objectiveNoteText(objective);
   if (objective.kind === "seize") {
     const need = objectiveHoldRequirement(objective);
-    const who = objective.byTag ? "지정 부대가 " : "";
-    return `${objective.label} (${objective.x}, ${objective.y}) ${who}${need}턴 유지${note}`;
+    const who = objective.byTag ? t("지정 부대가 ") : "";
+    return t("{label} ({x}, {y}) {who}{need}턴 유지{note}", {
+      label: t(objective.label),
+      x: objective.x,
+      y: objective.y,
+      who,
+      need,
+      note,
+    });
   }
   // 개통 목표는 "가라"가 아니라 "이어라"다. 무엇을 해야 하는지가 이름에 드러나야
   // 플레이어가 부대 대신 공병대를 먼저 움직인다.
   if (objective.kind === "supply") {
-    return `${objective.label} (${objective.x}, ${objective.y}) 보급선 개통 ${objectiveHoldRequirement(objective)}턴 유지${note}`;
+    return t("{label} ({x}, {y}) 보급선 개통 {need}턴 유지{note}", {
+      label: t(objective.label),
+      x: objective.x,
+      y: objective.y,
+      need: objectiveHoldRequirement(objective),
+      note,
+    });
   }
   // 격파 목표의 이름은 "무엇을"만 적는다. "누구 것을"은 목표 주인이 정하므로 여기서 붙인다.
-  if (objective.kind === "destroy") return `${objective.owner === "player" ? "적" : "아군"} ${objective.label} 격파${note}`;
-  if (objective.kind === "protect") return `${objective.label} 사수`;
-  return objective.label;
+  if (objective.kind === "destroy") {
+    return t("{whose} {label} 격파{note}", {
+      whose: objective.owner === "player" ? t("적") : t("아군"),
+      label: t(objective.label),
+      note,
+    });
+  }
+  if (objective.kind === "protect") return t("{label} 사수", { label: t(objective.label) });
+  return t(objective.label);
 }
 
 // 목표 이름은 시나리오가 짓는다. 받침을 코드가 모르면 "사령부을 잃었습니다"가 나온다.
 // 한글이 아닌 끝(좌표 괄호 등)은 기존 표기대로 "을"을 쓴다.
+// 한국어가 아닌 판에서는 아무것도 안 붙인다 — "Battalion HQ을"이 되면 안 된다.
 function objectParticle(word) {
+  if (activeLocale !== "ko") return "";
   const code = String(word).trimEnd().slice(-1).charCodeAt(0);
   if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return "을";
   return (code - 0xac00) % 28 === 0 ? "를" : "을";
@@ -6417,6 +7043,7 @@ function objectParticle(word) {
 // "이/가"도 마찬가지다. 다리가 두 종류(교량/부교)가 되면서 한쪽은 받침이 있고
 // 한쪽은 없어졌다 — 어느 쪽으로 못 박아도 절반은 "부교이 무너졌습니다"가 된다.
 function subjectParticle(word) {
+  if (activeLocale !== "ko") return "";
   const code = String(word).trimEnd().slice(-1).charCodeAt(0);
   if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return "이";
   return (code - 0xac00) % 28 === 0 ? "가" : "이";
@@ -6425,6 +7052,7 @@ function subjectParticle(word) {
 // 같은 이유로 "은/는"도 코드가 골라야 한다. 부대 이름은 편성마다 달라서
 // ("M7 프리스트 자주포", "셔먼 전차") 한쪽으로 못 박으면 반드시 틀린 쪽이 나온다.
 function topicParticle(word) {
+  if (activeLocale !== "ko") return "";
   const code = String(word).trimEnd().slice(-1).charCodeAt(0);
   if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return "은";
   return (code - 0xac00) % 28 === 0 ? "는" : "은";
@@ -6434,33 +7062,36 @@ function topicParticle(word) {
 // 조용하면 플레이어는 뽑은 부대가 사라졌거나 버튼이 고장 났다고 생각한다.
 function formingNotice(unit) {
   const label = unitLabel(unit);
-  return `${label}${topicParticle(label)} 오늘 막 도착해 아직 편성 중입니다. 내일부터 움직이고 쏩니다.`;
+  return t("{label}{은} 오늘 막 도착해 아직 편성 중입니다. 내일부터 움직이고 쏩니다.", {
+    label,
+    "은": topicParticle(label),
+  });
 }
 
 function completionMessage(objective) {
   if (objective.kind === "destroy") {
-    const target = `${objective.label}${objectParticle(objective.label)}`;
+    const target = `${t(objective.label)}${objectParticle(objective.label)}`;
     return objective.owner === "player"
-      ? `승리: ${sideName("enemy")} ${target} 격파했습니다.`
-      : `패배: ${sideName("enemy")}이 아군 ${target} 격파했습니다.`;
+      ? { verdict: "win", reason: t("{enemy} {target} 격파했습니다.", { enemy: sideName("enemy"), target }) }
+      : { verdict: "lose", reason: t("{enemy}이 아군 {target} 격파했습니다.", { enemy: sideName("enemy"), target }) };
   }
   const where = objectiveName(objective);
   if (objective.kind === "supply") {
     return objective.owner === "player"
-      ? `승리: ${where}까지 보급선을 개통했습니다.`
-      : `패배: ${sideName("enemy")}이 ${where}까지 보급선을 개통했습니다.`;
+      ? { verdict: "win", reason: t("{where}까지 보급선을 개통했습니다.", { where }) }
+      : { verdict: "lose", reason: t("{enemy}이 {where}까지 보급선을 개통했습니다.", { enemy: sideName("enemy"), where }) };
   }
   // 점령 목표가 늘 "적 후방 돌파"인 건 아니다(탈출 지점, 교차로…). 목표 이름이 상황을 말하게 둔다.
   return objective.owner === "player"
-    ? `승리: ${where}을 확보해 작전 목표를 달성했습니다.`
-    : `패배: ${sideName("enemy")}이 ${where}을 확보했습니다.`;
+    ? { verdict: "win", reason: t("{where}을 확보해 작전 목표를 달성했습니다.", { where }) }
+    : { verdict: "lose", reason: t("{enemy}이 {where}을 확보했습니다.", { enemy: sideName("enemy"), where }) };
 }
 
 function failureMessage(objective) {
-  const target = `${objective.label}${objectParticle(objective.label)}`;
+  const target = `${t(objective.label)}${objectParticle(objective.label)}`;
   return objective.owner === "player"
-    ? `패배: 사수해야 할 ${target} 잃었습니다.`
-    : `승리: ${sideName("enemy")}의 ${target} 무너뜨렸습니다.`;
+    ? { verdict: "lose", reason: t("사수해야 할 {target} 잃었습니다.", { target }) }
+    : { verdict: "win", reason: t("{enemy}의 {target} 무너뜨렸습니다.", { enemy: sideName("enemy"), target }) };
 }
 
 function missionTurnLimit() {
@@ -6475,18 +7106,21 @@ function turnsRemaining() {
 function missionBriefText() {
   const limit = missionTurnLimit();
   const outcome = state.mission?.timeoutOutcome ?? "draw";
-  const deadlineTail = outcome === "playerWin" ? " 사수 시 승리" : outcome === "playerLose" ? " 안에 달성 실패 시 패배" : "";
-  const deadline = Number.isFinite(limit) ? `작전 기한 ${limit}턴${deadlineTail}` : "작전 기한 없음";
-  const mine = objectivesFor("player").map((objective) => `아군: ${objectiveGoalText(objective)}`);
-  const theirs = objectivesFor("enemy").map((objective) => `적: ${objectiveGoalText(objective)}`);
+  const deadlineTail =
+    outcome === "playerWin" ? t(" 사수 시 승리") : outcome === "playerLose" ? t(" 안에 달성 실패 시 패배") : "";
+  const deadline = Number.isFinite(limit)
+    ? t("작전 기한 {limit}턴{tail}", { limit, tail: deadlineTail })
+    : t("작전 기한 없음");
+  const mine = objectivesFor("player").map((objective) => t("아군: {goal}", { goal: objectiveGoalText(objective) }));
+  const theirs = objectivesFor("enemy").map((objective) => t("적: {goal}", { goal: objectiveGoalText(objective) }));
   return [deadline, ...mine, ...theirs].join(" · ");
 }
 
 function timeoutMessage() {
   const outcome = state.mission?.timeoutOutcome ?? "draw";
-  if (outcome === "playerWin") return "승리: 작전 기한이 끝날 때까지 전선을 지켜냈습니다.";
-  if (outcome === "playerLose") return "패배: 작전 기한 안에 목표를 달성하지 못했습니다.";
-  return "무승부: 작전 기한이 끝나 전선이 교착되었습니다.";
+  if (outcome === "playerWin") return { verdict: "win", reason: t("작전 기한이 끝날 때까지 전선을 지켜냈습니다.") };
+  if (outcome === "playerLose") return { verdict: "lose", reason: t("작전 기한 안에 목표를 달성하지 못했습니다.") };
+  return { verdict: "draw", reason: t("작전 기한이 끝나 전선이 교착되었습니다.") };
 }
 
 // 턴이 오른 직후에 부른다. 기한이 지났으면 true를 돌려주고 호출부가 턴 진행을 멈춘다.
@@ -6499,7 +7133,7 @@ function resolveTurnLimit() {
     return true;
   }
   const left = turnsRemaining();
-  if (left === 5 || left === 3 || left === 1) addLog(`작전 기한 ${left}턴 남음`);
+  if (left === 5 || left === 3 || left === 1) addLog(t("작전 기한 {left}턴 남음", { left }));
   return false;
 }
 
@@ -6523,8 +7157,11 @@ function checkVictory() {
   const playerCollapsed = baseLossCollapsed("player");
   const enemyCollapsed = baseLossCollapsed("enemy");
 
-  if (!enemyUnits || enemyCollapsed) finishGame("승리: 추축군 전선이 붕괴되었습니다.");
-  else if (!playerUnits || playerCollapsed) finishGame("패배: 연합군 교두보를 상실했습니다.");
+  if (!enemyUnits || enemyCollapsed) {
+    finishGame({ verdict: "win", reason: t("{enemy} 전선이 붕괴되었습니다.", { enemy: sideName("enemy") }) });
+  } else if (!playerUnits || playerCollapsed) {
+    finishGame({ verdict: "lose", reason: t("{player} 교두보를 상실했습니다.", { player: sideName("player") }) });
+  }
 }
 
 // 거점을 전부 잃었는가, 그리고 그 상태가 유예 턴을 넘겼는가.
@@ -6539,20 +7176,46 @@ function baseLossCollapsed(owner) {
   if (state.baseLossSince[owner] == null) {
     state.baseLossSince[owner] = state.turn;
     if (baseLossGraceTurns > 0) {
-      addLog(`${sideName(owner)} › 보급 거점 전부 상실 · ${baseLossGraceTurns}턴 내 탈환 못하면 전선 붕괴`);
+      addLog(
+        t("{side} › 보급 거점 전부 상실 · {grace}턴 내 탈환 못하면 전선 붕괴", {
+          side: sideName(owner),
+          grace: baseLossGraceTurns,
+        })
+      );
     }
   }
   return state.turn - state.baseLossSince[owner] >= baseLossGraceTurns;
 }
 
-function finishGame(message) {
+/* 판정(win/lose/draw)과 이유를 따로 받는다.
+
+   전에는 "승리: …" 한 줄만 넘기고, 화면 쪽에서 앞 두 글자를 잘라 판정을
+   알아냈다. 한국어로만 쓸 때는 맞는 말이었지만, 영어판에서는 그 두 글자가
+   "Victory"가 되므로 어느 것과도 안 맞아 이긴 판이 무승부로 찍힌다.
+   말은 나라마다 달라도 이긴 것은 이긴 것이다 — 판정은 글자에서 알아낼 것이
+   아니라 만드는 쪽이 말해 주는 것이다. */
+function finishGame(outcome) {
   state.gameOver = true;
+  // 판정이 찍혔으면 전투곡도 끝난다. 여기서 안 끊으면 승패 화면이 떠 있는 내내
+  // 교전곡이 계속 돌아서, 다 끝난 판인데 아직 싸우는 중인 것처럼 들린다.
+  // 끊는 방법은 명령서로 넘어갈 때와 똑같다 — 0.45초에 걸쳐 빼고, 다 빠진 다음에
+  // 세운다. 세운 것이 다시 돌지 않게 막는 것은 musicNudge의 gameOver 문이다.
+  // 다시 트는 것은 다음 판의 「작전 개시」가 맡는다(briefingMusicStop).
+  musicSuppress(true, musicDuckSeconds);
+  window.setTimeout(musicPauseTracks, musicDuckSeconds * 1000 + 60);
   // 끝난 작전은 이어할 것이 없다. 남겨 두면 다음에 켤 때 이미 승패가 난 판을
   // 「중단된 작전」이라고 내밀게 된다.
   clearSavedOperation();
+  const message = `${verdictWord(outcome.verdict)}: ${outcome.reason}`;
   addLog(message);
   addChronicle(message, "end");
-  showResultScreen(message);
+  showResultScreen(outcome);
+}
+
+function verdictWord(verdict) {
+  if (verdict === "win") return t("승리");
+  if (verdict === "lose") return t("패배");
+  return t("무승부");
 }
 
 // ── 작전 종료 보고 ────────────────────────────────────────────────
@@ -6562,27 +7225,31 @@ function finishGame(message) {
 let chronicleTimer = null;
 let chronicleCursor = 0;
 
-function verdictOf(message) {
-  if (message.startsWith("승리")) return { key: "win", word: "승 리" };
-  if (message.startsWith("패배")) return { key: "lose", word: "패 배" };
-  return { key: "draw", word: "무승부" };
+// 커다랗게 찍는 판정 글자. 한국어는 두 글자 사이를 벌려 도장처럼 보이게 하지만
+// 영어에는 그 관습이 없으므로 낱말장에서 그냥 한 낱말로 받는다.
+function verdictBanner(verdict) {
+  if (verdict === "win") return t("승 리");
+  if (verdict === "lose") return t("패 배");
+  return t("무승부");
 }
 
-function showResultScreen(message) {
+function showResultScreen(outcome) {
   if (!resultScreenEl) return;
-  const verdict = verdictOf(message);
-  const reason = message.replace(/^(승리|패배|무승부)\s*[::]\s*/, "");
   const chronicle = state.chronicle ?? [];
   const kills = chronicle.filter((entry) => entry.kind === "kill").length;
   const losses = chronicle.filter((entry) => entry.kind === "loss").length;
 
-  resultScreenEl.dataset.verdict = verdict.key;
-  if (resultVerdictEl) resultVerdictEl.textContent = verdict.word;
-  if (resultReasonEl) resultReasonEl.textContent = reason;
+  resultScreenEl.dataset.verdict = outcome.verdict;
+  if (resultVerdictEl) resultVerdictEl.textContent = verdictBanner(outcome.verdict);
+  if (resultReasonEl) resultReasonEl.textContent = outcome.reason;
   // 셋 다 "얼마나 걸렸고 무엇을 주고받았는가"다. 이긴 판과 진 판을 비교할 수 있는
   // 최소한의 숫자이자, 아래 이력을 다 읽지 않아도 남는 한 줄이다.
   if (resultTallyEl) {
-    resultTallyEl.textContent = `작전 ${state.turn}일 · 적 격파·탈취 ${kills} · 아군 손실 ${losses}`;
+    resultTallyEl.textContent = t("작전 {days}일 · 적 격파·탈취 {kills} · 아군 손실 {losses}", {
+      days: state.turn,
+      kills,
+      losses,
+    });
   }
   if (resultLogEl) resultLogEl.innerHTML = "";
   chronicleCursor = 0;
@@ -7663,7 +8330,8 @@ function enemyAxes() {
 
 // 지킬 칸 앞의 자리. 어느 쪽이 앞인지는 나침반이 아니라 적이 정한다.
 function defenseAnchor(owner, post) {
-  // key는 화면에 찍히는 이름(label)과 달리 계획을 잇는 손잡이다. 전방 자리는 적이
+  // key는 계획을 잇는 손잡이고, label은 그 계획을 사람이 읽을 때 쓰는 이름이다.
+  // 둘 다 화면에는 안 나간다 — 번역 대상이 아니다. 전방 자리는 적이
   // 움직이면 좌표가 흔들리므로, 흔들리지 않는 초소 좌표로 이름을 붙인다. 그래야
   // 같은 초소를 맡은 부대가 매 턴 "다른 축선"으로 읽히지 않는다.
   const base = { x: post.x, y: post.y, label: "초소", key: `초소:${post.x},${post.y}` };
@@ -8828,10 +9496,66 @@ function findSpawn(owner, type) {
   return null;
 }
 
+// 증원은 아무도 없는 칸에 나온다. 사령부 지휘 범위 안에서 가장 가까운 빈 칸이다.
+//
+// 겹치기를 막는 이유: canOccupy는 같은 병종이면 세 겹까지 허락한다. 그 규칙으로
+// 증원을 뽑으면 사령부 옆 한 칸에 소총 셋이 쌓이고, 그 한 칸이 길목을 통째로
+// 막는 벽이 된다. 뚫는 쪽은 셋을 다 없애야 지나가는데 쌓는 쪽은 한 칸 값만 낸다.
+// 겹치기 자체는 남긴다 — 이미 판에 있는 부대가 걸어 들어가 겹치는 것은 이동을 써서
+// 하는 판단이다. 아무것도 안 하고 사령부 옆에 쌓아 올리는 쪽만 막는다.
+//
+// 둘레 네 칸만 보면 안 되는 이유: neighbors는 상하좌우 넷뿐이다. 하르코프 서군
+// 전방 사령부는 그 넷 중 셋이 하천·지도 밖이라 빈 칸이 하나밖에 없고, 그 하나는
+// 자기 보급 거점이다 — 게임이 매 턴 수리해 주는 칸이라 부대를 세우라고 권하는
+// 자리다. 권한 대로 세우면 그 사령부의 증원이 영영 막힌다. 난수가 없으므로
+// 그 상태는 저절로 풀리지 않는다. 임팔·싱가포르·마켓가든은 사령부가 하나뿐인데
+// 빈 칸이 둘씩이라, 그 둘이 차면 그 진영의 증원이 통째로 멈춘다.
+//
+// 그래서 한 겹씩 넓혀 나가며 처음 만나는 빈 칸에 세운다. 끝은 사령부 지휘
+// 범위다 — 지휘가 닿지 않는 곳에 부대를 내려놓지는 않는다.
+//
+// 넓힐 때 "지나갈 수 있는 칸인가"를 같이 본다. 도착 칸만 보면 안 되는 이유:
+// neighbors는 지도 안이기만 하면 다 돌려주므로 하천 칸을 밟고 그 너머까지
+// 퍼진다. 마켓가든은 가로줄 셋이 통째로 하천이고 다리는 x=9 세 곳뿐인데,
+// 도착 칸만 보면 증원이 그 다리를 안 쓰고 강 건너에 생겼다 — 시나리오의 전제가
+// 통째로 무너진다. 적이 선 칸도 마찬가지다. 걸어서는 못 지나가는 차단선인데
+// 증원은 그 너머에 나왔다. 그래서 통과 조건을 이동과 같은 자로 잰다.
+// 다리를 놓으면 그 순간부터 다리 너머가 후보가 되는 것도 여기서 같이 따라온다.
+//
+// 지도가 무엇이든, 지휘 범위를 편집기에서 몇으로 바꾸든 이 규칙으로 같이 움직인다.
+// 다만 지휘 범위 0은 예외다. 편집기의 「지휘」 최저 눈금이 0인데, 그대로 쓰면
+// 링이 사령부 제 칸 하나뿐이고 그 칸에는 사령부가 서 있어 영원히 빈 칸이 없다 —
+// 손잡이 하나를 끝까지 내린 것만으로 양측 증원이 통째로 죽는다. 바닥을 1로 깐다.
 function findHQSpawn(hq, type) {
   const probe = { owner: hq.owner, type };
-  const candidates = [hq, ...neighbors(hq.x, hq.y)];
-  return candidates.find((spot) => canOccupy(probe, spot.x, spot.y));
+  const reach = Math.max(1, unitTypes.battalionHQ.commandRange ?? 1);
+  const seen = new Set([`${hq.x},${hq.y}`]);
+  let ring = [hq];
+  for (let step = 0; step <= reach; step += 1) {
+    const hit = ring.find((spot) => !getUnitsAt(spot.x, spot.y).length && canOccupy(probe, spot.x, spot.y));
+    if (hit) return hit;
+    const next = [];
+    ring.forEach((spot) =>
+      neighbors(spot.x, spot.y).forEach((point) => {
+        const key = `${point.x},${point.y}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        // 못 밟는 땅과 적이 선 칸은 여기서 멈춘다. 그 칸 자체도 후보가 아니고,
+        // 그 너머로도 안 퍼진다.
+        //
+        // 재는 자는 도착 판정과 같은 것을 쓴다. 통행비만 보는 자(traversalCostForUnit)는
+        // 병종별 금지를 모른다 — 전차와 자주포는 고지에 못 오르는데 그 자는 오를 수
+        // 있다고 답한다. 임팔 (8,6) 거점은 사방이 전부 고지라, 그 자로 재면 전차가
+        // 그 칸에 배치되고 어느 방향으로도 영영 못 나온다.
+        if (!canEnterTerrain(probe, point.x, point.y)) return;
+        if (getUnitsAt(point.x, point.y).some((unit) => unit.owner !== hq.owner)) return;
+        next.push(point);
+      }),
+    );
+    if (!next.length) return null;
+    ring = next;
+  }
+  return null;
 }
 
 function effectiveMorale(unit) {
@@ -8987,12 +9711,26 @@ function collapseDeck(deck) {
   // 다리 위에 서 있던 부대는 다리와 함께 물로 간다. 다리가 사라진 자리는 하천이고,
   // 하천에는 육상 부대가 설 수 없다 — 살려 두면 건널 수도 나올 수도 없는 유령이 된다.
   // 그래서 "다리 위에서 턴을 끝내지 마라"가 이 게임의 규칙이 된다.
-  const rider = state.units.find((unit) => unit.x === deck.x && unit.y === deck.y);
-  if (!rider) return;
-  window.setTimeout(() => playDestroySound(rider), 260);
-  state.units = state.units.filter((unit) => unit.id !== rider.id);
-  addLog(`${sideUnitLabel(rider)} 다리와 함께 수몰`);
-  addChronicle(`${sideUnitLabel(rider)} › 다리와 함께 수몰`, rider.owner === "enemy" ? "kill" : "loss");
+  //
+  // 한 칸에는 같은 병종이 셋까지 겹친다. find는 그중 하나만 집어내므로, 셋이 얹힌
+  // 다리가 끊기면 하나만 빠지고 둘은 물 위에 그대로 남았다 — 하천에는 설 수 없는
+  // 부대가 하천 칸에 서서, 나올 수도 없고 건널 수도 없는 상태가 되었다.
+  // 그래서 그 칸에 있는 것을 전부 걷어낸다. 겹치기 상한이 몇으로 바뀌든 이 줄은
+  // 그대로 맞는다.
+  const riders = state.units.filter((unit) => unit.x === deck.x && unit.y === deck.y);
+  if (!riders.length) return;
+  const sunk = new Set(riders.map((unit) => unit.id));
+  state.units = state.units.filter((unit) => !sunk.has(unit.id));
+  // 소리는 겹쳐 울리면 한 번 크게 난 것으로 들린다. 조금씩 밀어 셋이 빠졌음을 귀로도 안다.
+  riders.forEach((rider, index) => window.setTimeout(() => playDestroySound(rider), 260 + index * 140));
+  // 무전 기록은 열넉 줄이 전부다. 수몰 셋을 세 줄로 적으면 붕괴 한 번에 그 전 턴이
+  // 통째로 밀려나서, 무슨 일이 있었는지 되짚을 근거가 사라진다. 한 사건은 한 줄이다.
+  // 이력(240줄)은 넉넉하므로 거기에는 부대별로 남긴다 — 끝나고 몰아서 읽는 곳이다.
+  const rest = riders.length > 1 ? ` 외 ${riders.length - 1}` : "";
+  addLog(`${sideUnitLabel(riders[0])}${rest} 다리와 함께 수몰`);
+  riders.forEach((rider) =>
+    addChronicle(`${sideUnitLabel(rider)} › 다리와 함께 수몰`, rider.owner === "enemy" ? "kill" : "loss"),
+  );
 }
 
 function getTerrainKey(x, y) {
@@ -9009,6 +9747,25 @@ function tileAt(x, y) {
 // 다리 위는 난간뿐인 널판이다. 파고들 흙도 숨을 나무도 없이 물 위에 떠 있으므로
 // 개활지(엄폐 0)보다도 맞기 쉽다. 여기서 빼기 때문에 전투 계산·피해 예측·AI의
 // 자리 고르기가 전부 같은 숫자를 읽는다.
+// 능선이 어느 쪽을 막고 있고, 때리는 쪽이 그 쪽에서 왔는가.
+//
+// 방향은 두 부대의 좌표 차이가 큰 축으로 정한다. 대각선으로 붙은 경우 세로가
+// 이긴다 — 어느 쪽을 골라도 되지만 하나로 고정해야 같은 판이 같은 결과를 낸다.
+// 이 게임에는 난수가 없고, 그 성질을 여기서도 깨지 않는다.
+//
+// 시나리오는 손대지 않는다. 열두 작전 전부 hillDefense 표를 이미 갖고 있어서
+// 이 함수 하나로 모든 지도에 같이 적용된다.
+function ridgeFacingBonus(attacker, defender) {
+  if (!ridgeFacingDefense) return 0;
+  const facing = hillDefenseDirection(defender.x, defender.y);
+  if (!facing) return 0;
+  const dx = attacker.x - defender.x;
+  const dy = attacker.y - defender.y;
+  if (!dx && !dy) return 0;
+  const from = Math.abs(dy) >= Math.abs(dx) ? (dy < 0 ? "n" : "s") : dx < 0 ? "w" : "e";
+  return from === facing ? ridgeFacingDefense : 0;
+}
+
 function coverAt(x, y) {
   return tileAt(x, y).defense + (getBaseAt(x, y) ? baseDefenseBonus : 0) - (deckAt(x, y) ? bridgeExposure : 0);
 }
@@ -9205,16 +9962,44 @@ function chronicleKill(attacker, victim, options = {}) {
 // 범례는 넓고 높은 화면에서만 펴 둔다. 좁거나 낮은 화면에서는 접힌 채로 두어
 // 그 자리를 지도에 준다. 범례는 처음 한 번 보는 표지, 매 턴 보는 것이 아니다.
 const legendFold = document.getElementById("legendFold");
-const wideScreen = window.matchMedia("(min-width: 861px)").matches;
-if (legendFold) legendFold.open = wideScreen && window.innerHeight > 820;
+if (legendFold) legendFold.open = !isPhoneLayout() && window.innerHeight > 820;
 // 범례를 접고 펴면 지도가 위아래로 움직인다. 지도 모서리에 얹힌 부대 카드도
 // 같이 따라가야 모서리에 붙어 있는 것처럼 보인다.
-legendFold?.addEventListener("toggle", () => scheduleBoardFit());
+// 범례를 사람이 직접 여닫았는가. 우리가 코드로 여닫아도 toggle 소식은 똑같이
+// 오므로, 우리가 건드릴 때는 표시를 세워 두고 그 한 번만 그냥 넘긴다.
+let legendFoldTouched = false;
+let legendFoldAuto = false;
+legendFold?.addEventListener("toggle", () => {
+  if (legendFoldAuto) legendFoldAuto = false;
+  else legendFoldTouched = true;
+  scheduleBoardFit();
+});
 
 // 좁은 화면에서 지휘칸은 아래에서 올라오는 서랍이다. 처음에는 닫아 두고 전장을
 // 먼저 보여 준다 — 게임을 켜서 맨 처음 봐야 할 것은 증원 목록이 아니라 전선이다.
-if (!wideScreen) document.body.classList.add("command-collapsed");
-syncCommandPanelState();
+//
+// 폰을 눕히면 넓은 화면이 되고, 세우면 다시 좁아진다. 켤 때 한 번 재고 마는
+// 값을 쓰면 그 사이에 돌린 만큼 화면과 어긋난다 — 가로로 켠 뒤 세우면 서랍이
+// 전장을 덮은 채로 뜨고, 세로로 켠 뒤 눕히면 넓은 화면인데 지휘칸이 접혀 있다.
+// 그래서 경계를 넘을 때마다 다시 맞춘다. 카드 자리 계산과 같은 자를 쓴다.
+function applyScreenWidthLayout() {
+  const phone = isPhoneLayout();
+  // 사람이 손댄 적이 없을 때만 화면 모양에 맞춘다. 한 번이라도 직접 여닫았으면
+  // 그 뜻이 위다. 범례도 같다 — 접어 둔 것이 회전 한 번에 다시 펴지지 않는다.
+  // 클래스를 직접 켜고 끄지 않는다. 여닫는 손이 둘이면 setCommandPanel 쪽만
+  // 손봤을 때 이 줄이 조용히 안 따라온다. 화면 폭에 맞춘 정리는 사람의 뜻이 아니다.
+  if (!commandPanelTouched) setCommandPanel(phone, { byUser: false });
+  if (legendFold && !legendFoldTouched) {
+    const want = !phone && window.innerHeight > 820;
+    if (legendFold.open !== want) {
+      legendFoldAuto = true;
+      legendFold.open = want;
+    }
+  }
+  syncCommandPanelState();
+}
+applyScreenWidthLayout();
+window.matchMedia("(min-width: 861px)").addEventListener("change", applyScreenWidthLayout);
 
 loadSavedDefaultBalance();
 // 게임을 켜면 판이 아니라 명령서가 먼저다. 여태는 아무도 고르지 않은 기본 작전이

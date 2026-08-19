@@ -1,0 +1,25 @@
+<script>
+window.confirm = () => true; window.alert = () => {};
+setTimeout(()=>{
+  try{
+    startGame({ side:"west", scenarioId:"cobra" });
+    document.querySelectorAll("#newOperationModal,#storageNotice,#coach,#coachSpot,#resultScreen,.setup-modal,.modal,#operationSetup").forEach(el=>{el.hidden=true;el.style.display="none";});
+    render();
+    if(location.hash==="#obj"){
+      // 작전 목표 칸. 접힌 카드에서 「유지 n/3턴」이 잘리는지 보는 자리다.
+      const o=missionObjectives().find(o=>o.owner==="player"&&Number.isFinite(o.x))||missionObjectives()[0];
+      state.selectedId=null; state.inspectedTile=o?{x:o.x,y:o.y}:null; render();
+    }else if(location.hash==="#tile"){
+      let t=null;
+      for(let y=0;y<40&&!t;y++)for(let x=0;x<40&&!t;x++){
+        if(tileAt(x,y)&&!state.units.some(u=>u.x===x&&u.y===y)) t={x,y};
+      }
+      state.selectedId=null; state.inspectedTile=t; render();
+    }else{
+      const pick=state.units.find(u=>u.owner==="player"&&u.type!=="battalionHQ");
+      if(pick){ state.selectedId=pick.id; render(); }
+    }
+    fitBoardToScreen();
+  }catch(e){}
+},1000);
+</script>

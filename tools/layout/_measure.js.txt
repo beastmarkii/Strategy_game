@@ -1,0 +1,126 @@
+<pre id="probe" style="position:fixed;left:-9999px"></pre>
+<script>
+window.confirm = () => true; window.alert = () => {};
+(function(){
+ const out=[]; const say=(k,v)=>out.push(k+": "+v);
+ setTimeout(()=>{
+  try{
+   const R=(el)=>el?Math.round(el.getBoundingClientRect().height):0;
+   say("cssViewport", document.documentElement.clientWidth+"x"+document.documentElement.clientHeight);
+   startGame({ side:"west", scenarioId:"cobra" });
+   document.querySelectorAll("#newOperationModal,#storageNotice,#coach,#coachSpot,#resultScreen,.setup-modal,.modal,#operationSetup").forEach(el=>{el.hidden=true;el.style.display="none";});
+   render();
+   const card=document.querySelector(".unit-card"), stage=document.querySelector("#mapStage");
+   const wrap=document.querySelector(".battlefield-wrap"), hint=document.getElementById("actionHint");
+   const acts=document.querySelector(".hud-actions");
+   say("emptyCardDisplay", card?getComputedStyle(card).display:"none");
+   const pick=state.units.find(u=>u.owner==="player"&&u.type!=="battalionHQ");
+   if(pick){ state.selectedId=pick.id; render(); }
+   const rows=()=>{
+     const sp=[...document.querySelectorAll(".unit-stats > span")].filter(s=>s.offsetParent!==null);
+     return new Set(sp.map(s=>s.offsetTop)).size;
+   };
+   const report=(tag)=>{
+     say(tag+"StatRows", rows());
+     say(tag+"CardH", R(card)+" (내용 "+(card?card.scrollHeight:0)+")");
+     say(tag+"StageH", stage?stage.clientHeight:0);
+     say(tag+"TileW", document.querySelector(".tile")?.offsetWidth||0);
+     say(tag+"MapRows", stage&&document.querySelector(".tile")?
+        (stage.clientHeight/document.querySelector(".tile").offsetWidth).toFixed(1):"-");
+     say(tag+"HintH", R(hint));
+     say(tag+"HintBottom", Math.round(hint.getBoundingClientRect().bottom)
+        +" / 창 "+window.innerHeight+" / 버튼띠 위 "+(acts?Math.round(acts.getBoundingClientRect().top):"-"));
+   };
+   report("보통");
+   [...document.querySelectorAll(".unit-stats > span.key")].forEach(s=>{
+     if(s.textContent.startsWith("행동")) s.querySelector("strong").textContent="편성 중 / 내일부터";
+     if(s.textContent.startsWith("보급")) s.querySelector("strong").textContent="보급선 이탈";
+   });
+   const al=document.querySelector(".hud-alerts");
+   if(al){ al.hidden=false; al.style.display="flex"; al.textContent="보급 두절 경보 · 사령부 고립 경보"; }
+   fitBoardToScreen();
+   report("최악");
+   // 「자세히 ▾」가 눌린 카드 안에서도 보이는가 — sticky가 하는 일
+   if(card){
+     const av=document.querySelector(".unit-card-visual");
+     const cs=getComputedStyle(av||card,"::after");
+     card.scrollTop = 0;
+     const cr=card.getBoundingClientRect();
+     say("자세히표시", (av?"이름줄":"카드")+" "+cs.content+" / 카드바닥 "+Math.round(cr.bottom)+" / 스크롤여유 "+(card.scrollHeight-card.clientHeight));
+   }
+   if(card){
+     const cb=card.getBoundingClientRect();
+     const vis=[...document.querySelectorAll(".unit-stats > span")].filter(x=>x.offsetParent!==null)
+       .map(x=>{const r=x.getBoundingClientRect();
+         const inCard = r.top>=cb.top && r.bottom<=cb.bottom;
+         const hit = document.elementFromPoint(Math.round(r.left+4), Math.round((r.top+r.bottom)/2));
+         const ontop = hit && (hit===x || x.contains(hit));
+         return (inCard&&ontop?"O ":(inCard?"가림 ":"X "))+x.textContent.trim();});
+     say("보이는항목", vis.join(" | "));
+   }
+   {
+     const vis=card?card.firstElementChild:null;
+     const st=document.querySelector(".unit-stats");
+     const sp=document.querySelector(".unit-stats > span");
+     say("그림줄", vis?Math.round(vis.getBoundingClientRect().height)+" ("+vis.className+")":"-");
+     say("항목줄", sp?Math.round(sp.getBoundingClientRect().height):"-");
+     say("표전체", st?Math.round(st.getBoundingClientRect().height):"-");
+     say("카드패딩", card?getComputedStyle(card).padding:"-");
+   }
+   {
+     const col=document.querySelector(".battlefield-wrap");
+     const list=[...col.children].map(c=>c.className.split(" ")[0]+"="+Math.round(c.getBoundingClientRect().height));
+     say("세로배분", list.join(" | "));
+     say("틀", Math.round(col.getBoundingClientRect().top)+"~"+Math.round(col.getBoundingClientRect().bottom)+" pad "+getComputedStyle(col).padding+" gap "+getComputedStyle(col).gap);
+     const hd=document.querySelector("header")||document.querySelector(".hud");
+     say("머리", hd?Math.round(hd.getBoundingClientRect().height):"-");
+   }
+   {
+     const hud=document.querySelector(".operation-hud");
+     const kids=[...hud.children].map(c=>{const r=c.getBoundingClientRect();
+       return (c.className||c.id)+"="+Math.round(r.height)+"@"+Math.round(r.top);});
+     say("상황판속", kids.join(" | "));
+     say("상황판CSS", "pad "+getComputedStyle(hud).padding+" gap "+getComputedStyle(hud).gap+" 배치 "+getComputedStyle(hud).display+" "+getComputedStyle(hud).gridTemplateColumns);
+     const st=hud.querySelector(".hud-stat");
+     say("칸CSS", "h "+Math.round(st.getBoundingClientRect().height)+" pad "+getComputedStyle(st).padding+" 배치 "+getComputedStyle(st).display+" "+getComputedStyle(st).flexDirection);
+     say("칸글자", getComputedStyle(st.querySelector("span")).fontSize+" / "+getComputedStyle(st.querySelector("strong")).fontSize);
+     // 상황판은 두 얼굴이다. 경보가 없으면 경보줄이 통째로 접히고(.hud-alerts.clear),
+     // 뜨면 한 줄이 더 생긴다. 위쪽 「세로배분」은 경보를 강제로 켠 최악의 판이라
+     // 조용할 때의 실제 높이를 알 수 없다 — 그 값만 보고 상황판이 늘 122px인 줄 알고
+     // 없는 문제를 고치려 든 적이 있다. 그래서 두 상태를 여기서 따로 잰다.
+     const al=hud.querySelector(".hud-alerts");
+     const alerts=operationAlerts();
+     al.style.display=""; al.textContent=alerts.length?alerts.join(" · "):"전장 이상 없음";
+     al.classList.toggle("clear", alerts.length===0);
+     say("상황판조용", Math.round(hud.getBoundingClientRect().height)+" (경보줄 "+getComputedStyle(al).display+")");
+     al.classList.remove("clear"); al.style.display="flex"; al.textContent="보급 두절 경보 · 사령부 고립 경보";
+     say("상황판경보", Math.round(hud.getBoundingClientRect().height));
+   }
+   // 작전 목표 칸의 접힌 지형 카드. 목표 이름이 한 줄을 통째로 먹어서
+   // 평범한 칸보다 줄이 늘어난다 — 넘친 줄은 카드 밖으로 밀려 안 보인다.
+   {
+     // 좌표가 있는 아군 목표. holdTurns 를 안 적은 목표도 기본 유지 턴이 붙어
+     // 카드에는 「유지 0/n턴」이 그려지므로, 여기서 거르면 오히려 실제와 멀어진다.
+     const o=missionObjectives().find(o=>o.owner==="player"&&Number.isFinite(o.x))||missionObjectives()[0];
+     if(o){
+       state.selectedId=null; state.inspectedTile={x:o.x,y:o.y}; render(); fitBoardToScreen();
+       const c=document.querySelector(".unit-card");
+       const cb=c.getBoundingClientRect();
+       say("목표칸", o.label+" ("+o.x+", "+o.y+")");
+       say("목표칸카드", Math.round(cb.height)+" / 내용 "+c.scrollHeight+" / 넘침 "+(c.scrollHeight-c.clientHeight));
+       const vis=[...document.querySelectorAll(".unit-stats > span")].filter(x=>x.offsetParent!==null)
+         .map(x=>{const r=x.getBoundingClientRect();
+           const inCard = r.top>=cb.top && r.bottom<=cb.bottom;
+           const hit = document.elementFromPoint(Math.round(r.left+4), Math.round((r.top+r.bottom)/2));
+           const ontop = hit && (hit===x || x.contains(hit));
+           return (inCard&&ontop?"O ":(inCard?"가림 ":"X "))+x.textContent.trim();});
+       say("목표칸항목", vis.join(" | "));
+     } else say("목표칸", "없음");
+   }
+   say("isPhoneLayout", isPhoneLayout());
+  }catch(e){ out.push("ERROR: "+e.message); }
+  const T=out.join(String.fromCharCode(10));
+  const pe=document.getElementById("probe"); if(pe) pe.textContent=T;
+ },1200);
+})();
+</script>
