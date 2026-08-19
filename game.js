@@ -2289,6 +2289,14 @@ function frontMusicPlay(name) {
   musicPlayEl(el);
 }
 
+// 타이틀 영상에는 음악이 함께 구워져 있다. 그 소리는 오디오 시계를 거치지 않고
+// 영상 자체에서 나므로, 음악 끄기를 누른 뜻이 저기까지 닿게 여기서 맞춰 준다.
+function titleClipSyncSound() {
+  const clip = document.querySelector("#titleIntroClip");
+  if (!clip) return;
+  clip.muted = !musicAllowed();
+}
+
 // 브라우저는 화면에 손이 닿기 전에는 소리를 못 내게 막는다. 타이틀 음악은 그
 // 전에 걸리므로 막힌 채로 끝난다. 첫 손짓에서 한 번 더 걸어 주는 자리다.
 function frontMusicResume() {
@@ -2537,6 +2545,7 @@ function setMusicMuted(on) {
   writeMusicMuted(on);
   if (on) musicSilence();
   else musicRestore();
+  titleClipSyncSound();
   syncMusicToggle();
 }
 
@@ -8107,18 +8116,31 @@ function titleOpen() {
   }
   titleClipSeen = true;
   titleScreenEl.classList.add("intro");
+  titleClipEl.volume = 0.9;
+  // 음악은 영상 안에 들어 있다. 소리를 살린 채로 먼저 걸어 본다 - 허락하는
+  // 기기에서는 들어온 그 순간부터 영상과 음악이 같이 나온다. 거절당하면
+  // 소리만 끄고 다시 건다. 그마저 거절당하면 첫 장면 그림을 잠깐 세워 두고
+  // 넘어간다 - 곧바로 제목으로 튀면 영상을 봤어야 할 사람이 아무것도 못 본다.
+  const clipPlay = (silent) => {
+    try {
+      titleClipEl.muted = silent || !musicAllowed();
+      const started = titleClipEl.play();
+      if (started && started.catch) started.catch(() => {
+        if (!silent) { clipPlay(true); return; }
+        titleClearTimers();
+        titleTimers.push(window.setTimeout(() => titleReveal(calm), 1800));
+      });
+    } catch (error) {
+      if (!silent) { clipPlay(true); return; }
+      titleReveal(calm);
+    }
+  };
   try {
     titleClipEl.currentTime = 0;
-    const started = titleClipEl.play();
-    // 자동 재생을 막는 기기가 있다. 그때는 첫 장면 그림만 잠깐 세워 두고
-    // 넘어간다 - 곧바로 제목으로 튀면 영상을 봤어야 할 사람이 아무것도 못 본다.
-    if (started && started.catch) started.catch(() => {
-      titleClearTimers();
-      titleTimers.push(window.setTimeout(() => titleReveal(calm), 1800));
-    });
   } catch (error) {
-    titleReveal(calm);
+    // 아직 한 조각도 안 받은 영상의 시각을 되돌리려 한 것뿐이다.
   }
+  clipPlay(false);
   // 영상이 뜨지 않거나 끝났다는 신호가 오지 않아도 화면은 넘어가야 한다.
   // 영상 길이는 30초다. 그보다 넉넉히 뒤에 둔다 - 이 시각이 영상보다 앞서면
   // 다 보지도 못한 채 제목이 덮는다.
@@ -8134,6 +8156,9 @@ function titleReveal(instant) {
   try {
     titleClipEl?.pause();
   } catch (error) {}
+  // 영상 안의 음악이 여기서 끝난다. 제목이 뜨는 그 자리에서 같은 곡을
+  // 처음부터 다시 건다 - 영상이 멎고 소리도 같이 멎으면 화면이 죽는다.
+  frontMusicPlay("title");
   titleTimers.push(window.setTimeout(() => {
     titleScreenEl.classList.add("done");
   }, instant ? 40 : 2200));
@@ -8154,7 +8179,15 @@ function titleTap() {
   // 중이라면 소리만 켜고 영상은 그대로 둔다. 건너뛰려면 한 번 더 누르면 된다.
   if (!titleSoundOn) {
     titleSoundOn = true;
+    titleClipSyncSound();
     frontMusicResume();
+    const playing = titleScreenEl.classList.contains("intro");
+    if (playing) {
+      // 영상이 소리 없이 돌고 있었다면 이 손짓으로 소리가 열린다. 그 손짓
+      // 하나로 영상까지 건너뛰지는 않는다 - 건너뛰려면 한 번 더 누르면 된다.
+      try { titleClipEl?.play()?.catch?.(() => {}); } catch (error) {}
+      return;
+    }
     if (!done) return;
   }
   if (!done) { titleReveal(true); return; }
@@ -8184,8 +8217,10 @@ function showTitleScreen() {
   if (!titleScreenEl) return;
   titleScreenEl.hidden = false;
   titleScreenEl.classList.remove("leaving");
+  // titleOpen 안에서 갈린다. 영상을 트는 판이면 음악은 영상 안에 들어 있으므로
+  // 여기서 또 걸지 않는다 - 걸면 같은 곡이 두 겹으로 난다. 영상을 건너뛰는
+  // 판이면 titleOpen이 곧바로 titleReveal로 가고, 곡은 거기서 걸린다.
   titleOpen();
-  frontMusicPlay("title");
 }
 
 // 닫는 일은 반드시 사람이 누른 그 처리 안에서 일어난다. 아이폰은 손길과 떨어진
