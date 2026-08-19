@@ -1,0 +1,48 @@
+<script>
+// 영어판 훑기판. 판을 열고 여러 턴을 돌린 뒤, 화면에 실제로 붙어 있는 글자를
+// 전부 한 곳에 모아 둔다. 밖에서 한글이 남았는지 세기 위한 것이다.
+window.confirm = () => true; window.alert = () => {};
+const pre=document.createElement("pre");
+pre.id="probe"; pre.style.position="fixed"; pre.style.left="-9999px";
+pre.textContent="(아직)";
+document.addEventListener("DOMContentLoaded",()=>document.body.appendChild(pre));
+setTimeout(()=>{
+  try{
+    startGame({ side:"west", scenarioId:"cobra" });
+    document.querySelectorAll("#newOperationModal,#storageNotice,#coach,#coachSpot,.setup-modal,.modal,#operationSetup").forEach(el=>{el.hidden=true;el.style.display="none";});
+    for(let i=0;i<8;i++){ try{ endPlayerTurn(); }catch(e){} }
+    // 부대 하나를 골라 카드와 안내줄을 채운다.
+    const mine = state.units.filter(u=>u.owner==="player");
+    if(mine[0]) state.selectedId = mine[0].id;
+    render();
+    const NL=String.fromCharCode(10);
+    const parts=[];
+    // 화면에 붙은 글자 전부
+    document.querySelectorAll("body *").forEach(el=>{
+      if(el.children.length) return;
+      const s=(el.textContent||"").trim();
+      if(s) parts.push(s);
+      if(el.title) parts.push("[title] "+el.title);
+    });
+    // 기록줄과 이력
+    parts.push("--- 기록 ---");
+    [...document.querySelectorAll("#battleLog p")].forEach(p=>parts.push(p.textContent));
+    (state.chronicle||[]).forEach(c=>parts.push(c.date+" "+c.text));
+    // 규칙이 만드는 안내문도 직접 불러 본다
+    parts.push("--- 규칙 문구 ---");
+    ["사격 진지로 이동"].forEach(()=>{});
+    parts.push(bridgeRefusalReason("player", []));
+    parts.push(supplyCoverLabel("hq","recovery","player"));
+    parts.push(supplyCoverLabel("base","supply","neutral"));
+    parts.push(supplyCoverLabel("base","strained","neutral"));
+    parts.push(supplyCoverLabel("hq","dead","player"));
+    parts.push(phaseDisplayName());
+    parts.push(sideName("neutral"));
+    parts.push(postureVerb(state.units.find(u=>u.owner==="enemy")));
+    parts.push(displayTileName(1,1));
+    pre.textContent=parts.join(NL);
+    if(!pre.isConnected) document.body.appendChild(pre);
+  }catch(e){ pre.textContent="ERR "+e.message+String.fromCharCode(10)+e.stack;
+             if(!pre.isConnected) document.body.appendChild(pre); }
+},1500);
+</script>
