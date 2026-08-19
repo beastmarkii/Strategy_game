@@ -8120,7 +8120,9 @@ function titleOpen() {
     titleReveal(calm);
   }
   // 영상이 뜨지 않거나 끝났다는 신호가 오지 않아도 화면은 넘어가야 한다.
-  titleTimers.push(window.setTimeout(() => titleReveal(calm), 5400));
+  // 영상 길이는 30초다. 그보다 넉넉히 뒤에 둔다 - 이 시각이 영상보다 앞서면
+  // 다 보지도 못한 채 제목이 덮는다.
+  titleTimers.push(window.setTimeout(() => titleReveal(calm), 31000));
 }
 
 function titleReveal(instant) {
