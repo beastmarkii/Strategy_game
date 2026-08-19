@@ -735,9 +735,6 @@ const uiDict = {
     "{cost} · {days}일": "{cost} · {days}d",
     " / 대대 보충 범위": " / battalion recovery range",
     " / 대대 보급 범위": " / battalion supply range",
-    "포": "E",
-    "끊": "X",
-    "불": "!",
     "포병 전개": "Unlimber",
     "트럭 견인": "Limber up",
     "사령부 포위 · 증원 불가": "HQ encircled · no reinforcements",
@@ -4635,10 +4632,14 @@ function renderUnitStack(cell, units) {
 // 배지 글자는 한 칸이다. 타일이 작아지면 두 글자는 읽히지 않는다.
 // 자세한 상태 문구는 이미 툴팁(unitEl.title)과 부대 카드에 있으니,
 // 여기서는 "지금 어느 단계인가"만 구분되면 된다.
+// 말에 따라 바뀌지 않는다. 지도 위 표시는 글이 아니라 기호다 — 한글판에서 「끊」,
+// 영어판에서 「X」로 서로 다르게 뜨면, 같은 판을 두 사람이 볼 때 서로 다른 것을
+// 가리키게 된다. E는 포위(encircled), X는 보급선이 끊긴 것, !는 아직 이어져
+// 있으나 불안한 것이다. 세 단계의 무게 차이가 한눈에 보이는 것이 목적이다.
 function supplyFlagMark(level) {
-  if (level === "isolated") return t("포");
-  if (level === "cut") return t("끊");
-  return t("불");
+  if (level === "isolated") return "E";
+  if (level === "cut") return "X";
+  return "!";
 }
 
 // 한 칸을 지나는 데 걸리는 시간(ms). 걸음 수에 곱해서 전체 이동 시간이 나온다.

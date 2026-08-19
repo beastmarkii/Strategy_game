@@ -15,6 +15,7 @@
 """
 import os
 import pathlib
+import re
 import sys
 import requests
 
@@ -49,11 +50,11 @@ JA_VOICES = {
 LINES = {
     "select": {
         "infantry": ["歩兵分隊、戦闘準備よし。", "命令を待っています。", "陣地についた。"],
-        "armor": ["戦車隊、出撃準備完了。", "エンジンは回っている。", "目標を指示されたし。"],
+        "armor": ["戦車隊、出撃の準備よし。", "エンジンは回っている。", "目標を指示されたし。"],
         "artillery": ["砲兵中隊、射撃準備よし。", "座標を送られたし。", "砲身はまだ冷たい。"],
-        "spArtillery": ["自走砲、移動準備よし。", "撃ってすぐ下がります。", "発射用意。"],
+        "spArtillery": ["自走砲、移動準備よし。", "撃ってすぐ下がります。", "発射の用意よし。"],
         "engineer": ["工兵隊、報告します。", "必要なものを造ります。", "器材は揃っている。"],
-        "battalionHQ": ["大隊指揮所です。", "指揮所、感度良好。", "ご命令を待っています。"],
+        "battalionHQ": ["大隊指揮所です。", "こちら指揮所、感度良好。", "ご命令を待っています。"],
     },
     "taunt": {
         "infantry": ["何の用だ。", "近寄るな！", "引き返せ。"],
@@ -66,7 +67,7 @@ LINES = {
 }
 
 NOTICES = [
-    ("engineer", "ja_work_complete", "作業完了。"),
+    ("engineer", "ja_work_complete", "作業が完了しました。"),
     ("battalionHQ", "ja_unit_ready", "新編部隊、着任しました。"),
 ]
 
@@ -97,6 +98,23 @@ def gen(voice_id, text, dest, mood):
     return True
 
 
+KANA = re.compile(u"[぀-ヿ]")
+
+
+def check_lines(jobs):
+    """가나가 한 글자도 없는 대사를 막는다.
+
+    여러 나라 말을 함께 읽는 모델은 한자만 늘어선 줄을 일본어로 알아보지 못하고
+    중국어로 읽는다. 「戦車隊、出撃準備完了。」가 실제로 중국어로 나왔다.
+    한자는 두 말이 함께 쓰므로, 어느 말인지 알려 주는 것은 가나뿐이다.
+    """
+    bad = [(name, text) for _, name, text, _ in jobs if not KANA.search(text)]
+    if bad:
+        for name, text in bad:
+            note("KANA MISSING " + name + ": " + text)
+        raise SystemExit("가나 없는 대사 " + str(len(bad)) + "개 — 중국어로 읽힌다")
+
+
 def jobs_for():
     out = []
     for kind, table in LINES.items():
@@ -112,6 +130,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     only = set(sys.argv[1:])
     every = jobs_for()
+    check_lines(every)
     jobs = [j for j in every if not only or j[1] in only]
     missing = only - {j[1] for j in every}
     if missing:
