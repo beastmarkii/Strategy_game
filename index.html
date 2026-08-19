@@ -73,7 +73,7 @@
     <meta name="theme-color" content="#202317" />
     <meta name="apple-mobile-web-app-title" content="FRONT COMMAND" />
 
-    <link rel="stylesheet" href="styles.css?v=20260819c" />
+    <link rel="stylesheet" href="styles.css?v=20260820" />
   </head>
   <body>
     <main class="shell">
@@ -446,8 +446,8 @@
            재생을 막는다. -->
       <div class="title-intro" id="titleIntro" aria-hidden="true">
         <video id="titleIntroClip" class="title-intro-clip"
-               src="assets/video/intro.mp4?v=20260819c"
-               poster="assets/video/intro-poster.jpg?v=20260819c"
+               src="assets/video/intro.mp4?v=20260820"
+               poster="assets/video/intro-poster.jpg?v=20260820"
                muted playsinline autoplay preload="auto"></video>
       </div>
       <div class="title-screen-inner">
@@ -459,6 +459,20 @@
         <p class="title-year"><span>1944</span></p>
       </div>
     </div>
+    <!-- 제목을 가리는 일은 여기서 시작한다. game.js는 이 아래에서 읽히고, 그것이
+         다 읽힐 때까지 폰에서는 눈에 띄는 시간이 걸린다. 그동안 제목이 먼저
+         떠 버리면 영상이 나중에 덮는 꼴이 된다. 그래서 화면이 처음 그려지기
+         전에 이 한 줄로 덮어 둔다. 자바스크립트가 아예 죽은 기기에서는 이
+         줄도 안 돌아 제목이 그냥 보인다 - 그것이 맞는 결과다. -->
+    <script>
+      (function () {
+        var s = document.querySelector("#titleScreen");
+        var v = document.querySelector("#titleIntroClip");
+        if (!s || !v) return;
+        s.classList.add("intro");
+        try { var p = v.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+      })();
+    </script>
 
     <!-- 종막. 결과 보고에서 「완료」를 누르면 여태는 곧바로 다음 명령서가 떴다.
          한 판을 끝낸 사람에게 쉬는 자리를 주지 않고 바로 다음 서류를 내민 것이다.
@@ -488,7 +502,7 @@
       </svg>
     </button>
 
-    <script src="scenarios.js?v=20260819c"></script>
-    <script src="game.js?v=20260819c"></script>
+    <script src="scenarios.js?v=20260820"></script>
+    <script src="game.js?v=20260820"></script>
   </body>
 </html>

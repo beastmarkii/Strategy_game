@@ -8085,13 +8085,13 @@ function titleOpen() {
   if (!titleScreenEl) return;
   titleClearTimers();
   titleScreenEl.classList.remove("ready", "done", "instant", "intro");
-  const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-  if (calm) {
-    titleReveal(true);
-    return;
-  }
+  // 기기에서 화면 움직임 줄이기를 켠 사람이 있다. 그 설정이 없애야 할 것은
+  // 글자가 튀어 들어오는 연출이지 전투 장면이 아니다 - 이 장면은 이 게임이
+  // 무엇인지 알리는 자리이고, 누르면 곧바로 건너뛴다. 그래서 영상은 늘 틀고,
+  // 줄이기를 켠 기기에서는 뒤따르는 글자 연출만 순식간에 끝낸다.
+  const calm = !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
   if (titleClipSeen || !titleClipEl) {
-    titleReveal(false);
+    titleReveal(calm);
     return;
   }
   titleClipSeen = true;
@@ -8099,12 +8099,17 @@ function titleOpen() {
   try {
     titleClipEl.currentTime = 0;
     const started = titleClipEl.play();
-    if (started && started.catch) started.catch(() => titleReveal(false));
+    // 자동 재생을 막는 기기가 있다. 그때는 첫 장면 그림만 잠깐 세워 두고
+    // 넘어간다 - 곧바로 제목으로 튀면 영상을 봤어야 할 사람이 아무것도 못 본다.
+    if (started && started.catch) started.catch(() => {
+      titleClearTimers();
+      titleTimers.push(window.setTimeout(() => titleReveal(calm), 1800));
+    });
   } catch (error) {
-    titleReveal(false);
+    titleReveal(calm);
   }
   // 영상이 뜨지 않거나 끝났다는 신호가 오지 않아도 화면은 넘어가야 한다.
-  titleTimers.push(window.setTimeout(() => titleReveal(false), 5400));
+  titleTimers.push(window.setTimeout(() => titleReveal(calm), 5400));
 }
 
 function titleReveal(instant) {
@@ -8142,7 +8147,9 @@ function titleEnter() {
   if (coachRead() !== "done") coachStart();
 }
 
-titleClipEl?.addEventListener("ended", () => titleReveal(false));
+titleClipEl?.addEventListener("ended", () => titleReveal(
+  !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+));
 titleScreenEl?.addEventListener("pointerdown", titleTap);
 // 손이 아니라 자판으로 오는 사람도 있다.
 titleScreenEl?.addEventListener("keydown", (event) => {
