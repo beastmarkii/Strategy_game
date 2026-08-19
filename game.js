@@ -668,6 +668,95 @@ const activePack = localePacks[activeLocale];
 // prettier-ignore
 const uiDict = {
   en: {
+    "보급 두절 › 해당 부대는 매 턴 병력이 녹는다 · 보급선 안으로 후퇴시킬 것": "Supply cut › those units bleed strength every turn · pull them back inside the line",
+    "기한 임박 › {n}턴 남음 · 목표 달성을 최우선으로": "Deadline near › {n} turns left · the objective comes first",
+    "보급 고갈 › 보급은 거점에서 나온다 · 거점을 지키거나 공병대로 보급창고를 세울 것": "Out of supply › supply comes from bases · hold a base, or have engineers build a depot",
+    "적 접촉 › 부대를 고르고 사거리 안의 적을 누르면 사격 · 고지와 숲은 방어에 유리하다": "Contact › pick a unit and tap an enemy in range to fire · high ground and woods favour the defender",
+    "목표 진입 › 장악은 눌러앉아야 오른다 · 상대 턴을 넘기고도 남아 있어야 한 턴이다": "On the objective › holding only counts while you sit on it · you must still be there after their turn",
+    "도하 › 공병대를 물가에 붙이고 「부교 건설」 · 한 도하에 {n}줄까지": "Crossing › put engineers on the bank and build a pontoon · up to {n} spans per crossing",
+    "증원 › 대대사령부를 고른 뒤 편성 · 도착한 부대는 다음 턴부터 움직인다": "Reinforcing › select a battalion HQ, then raise a unit · it moves from the next turn",
+    "작전 개시 › 부대를 눌러 강조된 칸으로 이동 · 지도 밑줄이 왜 안 되는지 알려 준다": "Get moving › tap a unit and move onto a marked tile · the note under the map says why one is blocked",
+    "{staff} 「{name}」 · {brief}": "{staff} “{name}” · {brief}",
+    "보급 두절": "Supply cut",
+    "음악 켜기": "Music on",
+    "음악 끄기": "Music off",
+    "{side} › 작전 개시 · 지휘 {co}": "{side} › operation begins · CO {co}",
+    "{side} 방어선 › 지휘관 미상 · 적 대대사령부 확인 요망": "{side} line › CO unknown · locate the enemy battalion HQ",
+    "공병대 배치 · 다리 1일, 보급창고·철도 수일 소요": "Engineers deployed · bridge 1 day, depot and rail several",
+    "공병대 › 보병보다 빠르고 튼튼 · 전투력은 소총분대의 80%": "Engineers › faster and tougher than infantry · 80% of a rifle squad in a fight",
+    "배치 단계 › 부대를 강조된 칸으로 옮긴 뒤 「배치 완료」 · 조정 반경 {n}칸": "Deployment › move units onto the marked tiles, then press Deploy done · radius {n} tiles",
+    "참모부 › {n}개 부대 배치 조정 ({co} 보급 역량)": "Staff › {n} units repositioned ({co} supply reach)",
+    "현행 수치 › 초기값으로 저장": "Current values › saved as the defaults",
+    "{unit} › ({x},{y}) {foe} 발견 · 정지": "{unit} › ({x},{y}) spotted {foe} · halted",
+    "{unit} › ({x},{y}) 기동": "{unit} › ({x},{y}) moved",
+    "{unit} › ({x},{y}) 기동 · 공격 가능": "{unit} › ({x},{y}) moved · can attack",
+    "배치 완료 › 작전 개시": "Deploy done › operation begins",
+    "경고 › {n}개 부대가 보급 범위 밖에서 개시": "Warning › {n} units start outside supply range",
+    "증원 불가 › 대대사령부를 먼저 선택": "No reinforcement › select a battalion HQ first",
+    "증원 불가 › {unit} · 이 작전의 편성 대상 아님": "No reinforcement › {unit} · not raised in this operation",
+    "증원 불가 › 배속된 대대사령부 전부 투입됨": "No reinforcement › every attached battalion HQ is already committed",
+    "증원 불가 › 대대사령부 주변에 빈 칸 없음": "No reinforcement › no empty tile beside the battalion HQ",
+    "{unit} › 전선 도착 · 편성 중, 내일부터 기동": "{unit} › reached the front · forming up, moves from tomorrow",
+    "야포대 › 견인 연결 · 다음 턴 고속 이동, 포격 불가": "Artillery › hitched · fast move next turn, cannot fire",
+    "야포대 › 포 전개 · 다음 턴부터 포격 가능": "Artillery › unlimbered · can fire from next turn",
+    "공사 불가 › {what}에 보급품 {n} 필요": "Cannot build › {what} needs {n} supply",
+    "공병대 › ({x},{y}) {what} 착공 · {n}일 소요": "Engineers › ({x},{y}) started {what} · {n} days",
+    "경고 › 공사 중 공병대는 이동 불가 · 이 자리는 안전하지 않음": "Warning › engineers cannot move while building · this tile is not safe",
+    "{what} 공사 취소": "{what} construction cancelled",
+    "{side} › 반격 개시": "{side} › counter-attack begins",
+    "{side} 보급 +{n}": "{side} supply +{n}",
+    "보급 +{n}": "Supply +{n}",
+    "{side} {what} › 시공 부대 소실 · 공사 중단": "{side} {what} › builders lost · work stopped",
+    "{side} {what} › 완공까지 {n}일": "{side} {what} › {n} days to completion",
+    "{side} {what} › 완공": "{side} {what} › complete",
+    "{side} › 대대사령부 상실 · 예비대 편성 중단": "{side} › battalion HQ lost · no more reserves",
+    "{unit} 예비대 투입": "{unit} committed from reserve",
+    "{side} › 보급 부족 · 예비대 투입 지연": "{side} › short of supply · reserves delayed",
+    "{side} › 전개 공간 없음 · 예비대 투입 지연": "{side} › no room to deploy · reserves delayed",
+    "{side} › 사령부 포위 · 증원 불가": "{side} › HQ encircled · no reinforcement",
+    "{side} › 공병대 투입 · 후방 보급 공사": "{side} › engineers committed · building supply in the rear",
+    "포격 불가 › 견인 중 · 포를 전개할 것": "Cannot fire › still hitched · unlimber the gun",
+    "포격 무효 › 능선이 사선을 차단": "No effect › the ridge blocks the line of fire",
+    "{unit} 격파": "{unit} destroyed",
+    "{unit} › 사거리 밖 포격 · 반격 없음": "{unit} › fired from beyond reach · no return fire",
+    "{unit} › 반격 · {foe} 피해 {n}": "{unit} › returned fire · {foe} takes {n}",
+    "{unit} 반격에 격파": "{unit} destroyed by return fire",
+    "거점 포격 불가 › 견인 중 · 포를 전개할 것": "Cannot shell the base › still hitched · unlimber the gun",
+    "거점 포격 불가 › 능선 뒤 · 사선 없음": "Cannot shell the base › behind the ridge · no line of fire",
+    "{unit} › ({x},{y}) 보급 거점 타격": "{unit} › ({x},{y}) hit the supply base",
+    "{side} 거점 생산 효율 {n}%로 하락": "{side} base output falls to {n}%",
+    "{unit} 포격 › 보급 시설 피해 누적": "{unit} shelling › damage piling up on the supply works",
+    "{side} › 고립 {n}개 부대 포위 압박 · 각 피해 {dmg}": "{side} › {n} cut-off units under pocket pressure · {dmg} each",
+    "{side} › 보급 두절 {n}개 부대 붕괴 · 총 피해 {dmg}": "{side} › {n} unsupplied units collapsing · {dmg} total",
+    "{unit} 보급 붕괴로 소멸": "{unit} gone — supply collapse",
+    "{side} 대대사령부 › 인접 {n}개 부대 병력 +1": "{side} battalion HQ › {n} adjacent units +1 strength",
+    "{side} › 거점 재편성 {n}개 부대 · 병력 +{hp}": "{side} › {n} units refitted at a base · +{hp} strength",
+    "{side} › 거점 {n}곳 복구 · 생산 효율 상승": "{side} › {n} bases repaired · output rising",
+    "{side} › ({x},{y}) 무혈 접수 · 효율 {n}%": "{side} › ({x},{y}) taken unopposed · {n}% output",
+    "{side} › ({x},{y}) 거점 장악 · 효율 {n}%": "{side} › ({x},{y}) base seized · {n}% output",
+    "{where} 보급선 개통": "supply line open to {where}",
+    "{where} 장악": "{where} held",
+    "{side} › {what} · 유지 {held}/{need}턴": "{side} › {what} · held {held}/{need} turns",
+    "{where} 보급선 차단됨": "supply line to {where} cut",
+    "{where} 장악 상실": "{where} lost",
+    "{side} › {what} · 유지 턴 초기화": "{side} › {what} · hold count reset",
+    "{unit} › ({x},{y}) {what} 포격 · 피해 {n}": "{unit} › ({x},{y}) shelled {what} · {n} damage",
+    "{what} 잔존 · 내구 {hp}/{max}": "{what} still standing · {hp}/{max}",
+    "{unit} › 견인 연결": "{unit} › hitched",
+    "{unit} › 포 전개": "{unit} › unlimbered",
+    "{side} 공병대 › ({x},{y}) 임시 교량 완성": "{side} engineers › ({x},{y}) pontoon bridge complete",
+    "{side} 공병대 › ({x},{y}) 철도 부설 착공": "{side} engineers › ({x},{y}) rail laying started",
+    "{side} 공병대 › ({x},{y}) 보급창고 착공": "{side} engineers › ({x},{y}) depot started",
+    "({x},{y}) {what} 붕괴": "({x},{y}) {what} collapsed",
+    "{unit}{rest} 다리와 함께 수몰": "{unit}{rest} went down with the bridge",
+    " 외 {n}": " +{n} more",
+    "({x},{y}) {what} 붕괴 · 도하 차단": "({x},{y}) {what} collapsed · crossing cut",
+    "{unit} › 다리와 함께 수몰": "{unit} › went down with the bridge",
+    "{unit} › 반격": "{unit} › counter-attack",
+    "{unit} › {where} 진격": "{unit} › advance on {where}",
+    "{head} · {victim} 격파": "{head} · destroyed {victim}",
+    "교량": "Bridge",
+    "부교": "Pontoon",
     "연합군은 능선 아래 통로를 뚫어라. 추축군은 통로를 여는 공병대를 없애라.": "Allies: force the pass below the ridge. Axis: destroy the engineers opening it.",
     "연합군은 칼라치 다리를 사흘 잡아라. 추축군은 다리 동쪽 진지를 사흘 지켜라.": "Allies: hold the Kalach bridge for three days. Axis: hold the east bank position for three days.",
     "추축군은 올호바트카 능선을 점령하라. 연합군은 이레를 버틴 뒤 동군 보급로를 끊어라.": "Axis: take the Olkhovatka ridge. Allies: hold seven days, then cut the eastern supply road.",
@@ -3478,7 +3567,7 @@ function startGame(config = {}) {
   hideResultScreen();
   // 첫날도 날짜부터 찍는다. 가장 먼저 넣어야 기록의 맨 아래에 깔린다.
   logDayLine();
-  addLog(`${sideName("player")} › 작전 개시 · 지휘 ${state.commanders.player.name}`);
+  addLog(t("{side} › 작전 개시 · 지휘 {co}", { side: sideName("player"), co: state.commanders.player.name }));
   addChronicle(
     t("작전 「{name}」 개시 · {side} {commander} 지휘", {
       name: t(scenario.name),
@@ -3491,14 +3580,14 @@ function startGame(config = {}) {
   addLog(missionBriefText());
   // 맞은편 장군 이름은 여기서 안 알려 준다. 개전 전문에 이름을 박아 두면 사령부를
   // 찾아낼 이유가 없어진다 — 적 대대사령부를 눌러야 누구인지 알게 해 두었다.
-  addLog(`${sideName("enemy")} 방어선 › 지휘관 미상 · 적 대대사령부 확인 요망`);
-  addLog(`${t("적 참모부")} 「${t(difficulty.name)}」 · ${t(difficulty.brief)}`);
-  addLog("공병대 배치 · 다리 1일, 보급창고·철도 수일 소요");
-  addLog("공병대 › 보병보다 빠르고 튼튼 · 전투력은 소총분대의 80%");
+  addLog(t("{side} 방어선 › 지휘관 미상 · 적 대대사령부 확인 요망", { side: sideName("enemy") }));
+  addLog(t("{staff} 「{name}」 · {brief}", { staff: t("적 참모부"), name: t(difficulty.name), brief: t(difficulty.brief) }));
+  addLog(t("공병대 배치 · 다리 1일, 보급창고·철도 수일 소요"));
+  addLog(t("공병대 › 보병보다 빠르고 튼튼 · 전투력은 소총분대의 80%"));
   if (state.deployMode === "manual") {
-    addLog(`배치 단계 › 부대를 강조된 칸으로 옮긴 뒤 「배치 완료」 · 조정 반경 ${deployRange}칸`, "order");
+    addLog(t("배치 단계 › 부대를 강조된 칸으로 옮긴 뒤 「배치 완료」 · 조정 반경 {n}칸", { n: deployRange }), "order");
   } else if (tidied) {
-    addLog(`참모부 › ${tidied}개 부대 배치 조정 (${state.commanders.player.name} 보급 역량)`);
+    addLog(t("참모부 › {n}개 부대 배치 조정 ({co} 보급 역량)", { n: tidied, co: state.commanders.player.name }));
   }
   renderBalanceEditor();
   render();
@@ -5069,7 +5158,7 @@ function saveCurrentAsDefaultBalance() {
   defaultBalance.units = JSON.parse(JSON.stringify(snapshot.units));
   defaultBalance.rules = { ...snapshot.rules };
   localStorage.setItem(DEFAULT_BALANCE_STORAGE_KEY, JSON.stringify(snapshot));
-  addLog("현행 수치 › 초기값으로 저장");
+  addLog(t("현행 수치 › 초기값으로 저장"));
 }
 
 // 예전에 저장해 둔 설정에는 그 뒤에 새로 생긴 값이 들어 있지 않다. 예전에는 저장본을
@@ -5963,9 +6052,11 @@ function handleTileClick(x, y) {
     state.inspectedId = null;
     state.inspectedTile = null;
     if (halt) {
-      addLog(`${unitLabel(selected)} › (${stopAt.x},${stopAt.y}) ${sideUnitLabel(halt.foe)} 발견 · 정지`);
+      addLog(t("{unit} › ({x},{y}) {foe} 발견 · 정지", { unit: unitLabel(selected), x: stopAt.x, y: stopAt.y, foe: sideUnitLabel(halt.foe) }));
     }
-    addLog(selected.acted ? `${unitLabel(selected)} › (${stopAt.x},${stopAt.y}) 기동` : `${unitLabel(selected)} › (${stopAt.x},${stopAt.y}) 기동 · 공격 가능`);
+    addLog(selected.acted
+      ? t("{unit} › ({x},{y}) 기동", { unit: unitLabel(selected), x: stopAt.x, y: stopAt.y })
+      : t("{unit} › ({x},{y}) 기동 · 공격 가능", { unit: unitLabel(selected), x: stopAt.x, y: stopAt.y }));
     checkVictory();
     render();
     return;
@@ -6019,8 +6110,8 @@ function finishDeployment() {
   state.phase = "player";
   state.selectedId = null;
   const stranded = state.units.filter((unit) => unit.owner === "player" && normalizedSupplyStatus(unit).level !== "full");
-  addLog("배치 완료 › 작전 개시");
-  if (stranded.length) addLog(`경고 › ${stranded.length}개 부대가 보급 범위 밖에서 개시`);
+  addLog(t("배치 완료 › 작전 개시"));
+  if (stranded.length) addLog(t("경고 › {n}개 부대가 보급 범위 밖에서 개시", { n: stranded.length }));
   render();
   // 손으로 짠 배치는 되돌릴 수 없는 일이다. 여기서 적어 두지 않으면 창을 닫는 순간
   // 그 배치를 통째로 다시 짜야 한다.
@@ -6078,7 +6169,7 @@ function recruit(type) {
   if (state.phase !== "player" || state.gameOver) return;
   const hq = selectedBattalionHQ();
   if (!hq) {
-    addLog("증원 불가 › 대대사령부를 먼저 선택");
+    addLog(t("증원 불가 › 대대사령부를 먼저 선택"));
     render();
     return;
   }
@@ -6086,13 +6177,13 @@ function recruit(type) {
   // 단추는 이미 내려가 있다. 그래도 규칙은 화면이 아니라 여기서 지킨다 —
   // 화면만 막으면 저장 파일을 손대거나 단추를 되살린 판에서 그대로 뚫린다.
   if (!canRecruitType("player", type)) {
-    addLog(`증원 불가 › ${spec.label} · 이 작전의 편성 대상 아님`);
+    addLog(t("증원 불가 › {unit} · 이 작전의 편성 대상 아님", { unit: t(spec.label) }));
     render();
     return;
   }
   if (state.resources < spec.cost) return;
   if (type === "battalionHQ" && remainingBattalionHQ("player") <= 0) {
-    addLog("증원 불가 › 배속된 대대사령부 전부 투입됨");
+    addLog(t("증원 불가 › 배속된 대대사령부 전부 투입됨"));
     render();
     return;
   }
@@ -6102,14 +6193,14 @@ function recruit(type) {
   // 한 턴에 한 사령부가 토해 낼 수 있는 양에는 여전히 끝이 있다.
   const spawn = findHQSpawn(hq, type);
   if (!spawn) {
-    addLog("증원 불가 › 대대사령부 주변에 빈 칸 없음");
+    addLog(t("증원 불가 › 대대사령부 주변에 빈 칸 없음"));
     render();
     return;
   }
 
   state.resources -= spec.cost;
   state.units.push(deployReinforcement("player", type, spawn.x, spawn.y));
-  addLog(`${unitLabel("player", type)} › 전선 도착 · 편성 중, 내일부터 기동`);
+  addLog(t("{unit} › 전선 도착 · 편성 중, 내일부터 기동", { unit: unitLabel("player", type) }));
   playNoticeSound("unit_ready");
   render();
 }
@@ -6120,7 +6211,7 @@ function toggleArtilleryTow() {
   unit.towed = !unit.towed;
   unit.acted = true;
   state.selectedId = null;
-  addLog(unit.towed ? "야포대 › 견인 연결 · 다음 턴 고속 이동, 포격 불가" : "야포대 › 포 전개 · 다음 턴부터 포격 가능");
+  addLog(unit.towed ? t("야포대 › 견인 연결 · 다음 턴 고속 이동, 포격 불가") : t("야포대 › 포 전개 · 다음 턴부터 포격 가능"));
   render();
 }
 
@@ -6129,7 +6220,7 @@ function engineerBuild(type) {
   if (!engineer) return;
   const cost = constructionCosts[type] ?? 0;
   if (state.resources < cost) {
-    addLog(`공사 불가 › ${constructionName(type)}에 보급품 ${cost} 필요`);
+    addLog(t("공사 불가 › {what}에 보급품 {n} 필요", { what: constructionName(type), n: cost }));
     render();
     return;
   }
@@ -6179,14 +6270,14 @@ function engineerBuild(type) {
   state.constructions.push({ type, owner: engineer.owner, builderId: engineer.id, x: engineer.x, y: engineer.y, remaining: duration });
   engineer.acted = true;
   state.selectedId = null;
-  addLog(`공병대 › (${engineer.x},${engineer.y}) ${constructionName(type)} 착공 · ${duration}일 소요`);
+  addLog(t("공병대 › ({x},{y}) {what} 착공 · {n}일 소요", { x: engineer.x, y: engineer.y, what: constructionName(type), n: duration }));
   // 공사는 여러 턴이 걸려서 명령을 넣어도 화면이 거의 그대로다. 삽질 소리가
   // 나야 명령이 들어간 것을 안다.
   if (engineer.owner === "player") playUnitSound(engineer, "build");
   // 적 AI는 안전하지 않은 자리를 아예 고르지 않지만, 플레이어는 막지 않고 경고만 한다.
   // 위험을 알면서 최전선에 창고를 미는 것도 하나의 수다 — 다만 모르고 하면 안 된다.
   if (type === "depot" && !isSafeDepotSite(engineer.owner, engineer.x, engineer.y)) {
-    addLog("경고 › 공사 중 공병대는 이동 불가 · 이 자리는 안전하지 않음");
+    addLog(t("경고 › 공사 중 공병대는 이동 불가 · 이 자리는 안전하지 않음"));
   }
   render();
 }
@@ -6236,7 +6327,7 @@ function confirmConstructionMove(unit) {
 
 function cancelConstruction(construction) {
   state.constructions = state.constructions.filter((item) => item !== construction);
-  addLog(`${constructionName(construction.type)} 공사 취소`);
+  addLog(t("{what} 공사 취소", { what: constructionName(construction.type) }));
 }
 
 function endPlayerTurn() {
@@ -6265,7 +6356,7 @@ function endPlayerTurn() {
   replenishNearBattalionHQ("enemy");
   refitOnOwnBase("enemy");
   repairOwnBases("enemy");
-  addLog(`${sideName("enemy")} › 반격 개시`);
+  addLog(t("{side} › 반격 개시", { side: sideName("enemy") }));
   render();
   window.setTimeout(enemyTurn, 420);
 }
@@ -6326,7 +6417,7 @@ function enemyTurn() {
 
   const enemyIncome = projectedIncome("enemy");
   state.enemyResources += enemyIncome;
-  addLog(`${sideName("enemy")} 보급 +${formatNumber(enemyIncome)}`);
+  addLog(t("{side} 보급 +{n}", { side: sideName("enemy"), n: formatNumber(enemyIncome) }));
   maybeEnemyRecruit();
 
   state.phase = "player";
@@ -6355,7 +6446,7 @@ function enemyTurn() {
   // 자리는 그날 맨 처음이다. 기록은 새 줄이 위로 쌓이므로, 이 줄 위쪽이 곧
   // 그날 있었던 일이 된다 — 아래로 내려갈수록 어제로 간다.
   logDayLine();
-  addLog(`보급 +${formatNumber(income)}`);
+  addLog(t("보급 +{n}", { n: formatNumber(income) }));
   render();
   showTurnCard();
   // 하루가 넘어간 이 자리가 중간 저장 지점이다. 턴 한가운데서 적으면 반쯤 움직인
@@ -6450,7 +6541,7 @@ function advanceConstructions(owner) {
     (construction) => construction.owner === owner && !state.units.some((unit) => unit.id === construction.builderId),
   );
   abandoned.forEach((construction) =>
-    addLog(`${sideName(construction.owner)} ${constructionName(construction.type)} › 시공 부대 소실 · 공사 중단`),
+    addLog(t("{side} {what} › 시공 부대 소실 · 공사 중단", { side: sideName(construction.owner), what: constructionName(construction.type) })),
   );
   if (abandoned.length) state.constructions = state.constructions.filter((construction) => !abandoned.includes(construction));
 
@@ -6460,7 +6551,7 @@ function advanceConstructions(owner) {
       construction.remaining -= 1;
       if (construction.remaining > 0) {
         // 이제 양측이 함께 공사하므로 누구 공사인지 적어야 로그가 읽힌다.
-        addLog(`${sideName(construction.owner)} ${constructionName(construction.type)} › 완공까지 ${construction.remaining}일`);
+        addLog(t("{side} {what} › 완공까지 {n}일", { side: sideName(construction.owner), what: constructionName(construction.type), n: construction.remaining }));
       }
     });
 
@@ -6476,7 +6567,7 @@ function completeConstruction(construction) {
   } else {
     state.improvements.push({ type: construction.type, owner: construction.owner, x: construction.x, y: construction.y });
   }
-  addLog(`${sideName(construction.owner)} ${constructionName(construction.type)} › 완공`);
+  addLog(t("{side} {what} › 완공", { side: sideName(construction.owner), what: constructionName(construction.type) }));
   if (construction.owner === "player") playNoticeSound("work_complete");
 }
 
@@ -6575,7 +6666,7 @@ function maybeEnemyRecruit() {
   if (!battalionHQs("enemy").length) {
     if (!state.enemyRecruitHalted) {
       state.enemyRecruitHalted = true;
-      addLog(`${sideName("enemy")} › 대대사령부 상실 · 예비대 편성 중단`);
+      addLog(t("{side} › 대대사령부 상실 · 예비대 편성 중단", { side: sideName("enemy") }));
     }
     return;
   }
@@ -6616,7 +6707,7 @@ function maybeEnemyRecruit() {
     }
     state.enemyResources -= unitTypes[type].cost;
     state.units.push(deployReinforcement("enemy", type, spawn.x, spawn.y));
-    addLog(`${sideUnitLabel("enemy", type)} 예비대 투입`);
+    addLog(t("{unit} 예비대 투입", { unit: sideUnitLabel("enemy", type) }));
     placed += 1;
   }
 
@@ -6625,18 +6716,18 @@ function maybeEnemyRecruit() {
   if (!encircled) state.enemyEncircleNoted = false;
   if (placed) return;
   if (blockedByMoney) {
-    addLog(`${sideName("enemy")} › 보급 부족 · 예비대 투입 지연`);
+    addLog(t("{side} › 보급 부족 · 예비대 투입 지연", { side: sideName("enemy") }));
     return;
   }
   if (!blockedBySpace) return;
   if (!encircled) {
-    addLog(`${sideName("enemy")} › 전개 공간 없음 · 예비대 투입 지연`);
+    addLog(t("{side} › 전개 공간 없음 · 예비대 투입 지연", { side: sideName("enemy") }));
     return;
   }
   // 포위는 풀리기 전까지 계속되는 상태다. 상태는 한 번만 알린다.
   if (!state.enemyEncircleNoted) {
     state.enemyEncircleNoted = true;
-    addLog(`${sideName("enemy")} › 사령부 포위 · 증원 불가`);
+    addLog(t("{side} › 사령부 포위 · 증원 불가", { side: sideName("enemy") }));
   }
 }
 
@@ -6694,18 +6785,18 @@ function maybeEnemyRecruitEngineer() {
   if (state.enemyResources < cost) return false;
   state.enemyResources -= unitTypes.engineer.cost;
   state.units.push(deployReinforcement("enemy", "engineer", spawn.x, spawn.y));
-  addLog(`${sideName("enemy")} › 공병대 투입 · 후방 보급 공사`);
+  addLog(t("{side} › 공병대 투입 · 후방 보급 공사", { side: sideName("enemy") }));
   return true;
 }
 
 function attack(attacker, defender) {
   if (isTowedArtillery(attacker)) {
-    addLog("포격 불가 › 견인 중 · 포를 전개할 것");
+    addLog(t("포격 불가 › 견인 중 · 포를 전개할 것"));
     return;
   }
 
   if (ridgeBlocksFire(attacker, defender)) {
-    addLog("포격 무효 › 능선이 사선을 차단");
+    addLog(t("포격 무효 › 능선이 사선을 차단"));
     return;
   }
 
@@ -6743,7 +6834,7 @@ function attack(attacker, defender) {
     // 사격과 동시에 터지면 둘이 한 덩어리로 뭉개진다.
     window.setTimeout(() => playDestroySound(defender), 260);
     state.units = state.units.filter((unit) => unit.id !== defender.id);
-    addLog(`${sideUnitLabel(defender)} 격파`);
+    addLog(t("{unit} 격파", { unit: sideUnitLabel(defender) }));
     chronicleKill(attacker, defender);
     if (deckShare) damageDeck(deck, deckShare);
     return;
@@ -6809,7 +6900,7 @@ function attackIsSuicidal(attacker, defender) {
 function resolveCounterattack(attacker, defender) {
   if (!canCounterattack(defender, attacker)) {
     if (isArtilleryUnit(attacker) && distance(attacker, defender) > unitTypes[defender.type].range) {
-      addLog(`${unitLabel(attacker)} › 사거리 밖 포격 · 반격 없음`);
+      addLog(t("{unit} › 사거리 밖 포격 · 반격 없음", { unit: unitLabel(attacker) }));
     }
     return;
   }
@@ -6820,12 +6911,12 @@ function resolveCounterattack(attacker, defender) {
   attacker.hp -= damage;
   attacker.hitSinceRefit = true;
   recordCombatEvent(defender, attacker, { damage, killed: attacker.hp <= 0, counter: true });
-  addLog(`${sideUnitLabel(defender)} › 반격 · ${unitLabel(attacker)} 피해 ${damage}`);
+  addLog(t("{unit} › 반격 · {foe} 피해 {n}", { unit: sideUnitLabel(defender), foe: unitLabel(attacker), n: damage }));
 
   if (attacker.hp <= 0) {
     window.setTimeout(() => playDestroySound(attacker), 260);
     state.units = state.units.filter((unit) => unit.id !== attacker.id);
-    addLog(`${sideUnitLabel(attacker)} 반격에 격파`);
+    addLog(t("{unit} 반격에 격파", { unit: sideUnitLabel(attacker) }));
     chronicleKill(defender, attacker, { counter: true });
   }
 }
@@ -6860,15 +6951,15 @@ function combatDamage(attacker, defender) {
 
 function raidBase(attacker, base) {
   if (isTowedArtillery(attacker)) {
-    addLog("거점 포격 불가 › 견인 중 · 포를 전개할 것");
+    addLog(t("거점 포격 불가 › 견인 중 · 포를 전개할 것"));
     return;
   }
 
   if (ridgeBlocksFire(attacker, base)) {
-    addLog("거점 포격 불가 › 능선 뒤 · 사선 없음");
+    addLog(t("거점 포격 불가 › 능선 뒤 · 사선 없음"));
     return;
   }
-  addLog(`${sideUnitLabel(attacker)} › (${base.x},${base.y}) 보급 거점 타격`);
+  addLog(t("{unit} › ({x},{y}) 보급 거점 타격", { unit: sideUnitLabel(attacker), x: base.x, y: base.y }));
   playUnitSound(attacker, "attack");
   recordCombatEvent(attacker, base, { base: true });
   damageBaseProduction(base, attacker);
@@ -6886,10 +6977,10 @@ function damageBaseProduction(base, attacker, { collateral = false } = {}) {
   // 하한에 닿은 거점이 포화 속에서 복구를 시작한다.
   markBaseHit(base);
   if (!applyBaseEfficiencyLoss(base, factor)) return;
-  addLog(`${sideName(base.owner)} 거점 생산 효율 ${Math.round(base.efficiency * 100)}%로 하락`);
+  addLog(t("{side} 거점 생산 효율 {n}%로 하락", { side: sideName(base.owner), n: Math.round(base.efficiency * 100) }));
 
   if (!collateral && isArtilleryUnit(attacker) && applyBaseEfficiencyLoss(base, raidEfficiencyFactor)) {
-    addLog(`${unitLabel(attacker)} 포격 › 보급 시설 피해 누적`);
+    addLog(t("{unit} 포격 › 보급 시설 피해 누적", { unit: unitLabel(attacker) }));
   }
 }
 
@@ -6926,7 +7017,7 @@ function applySupplyAttrition(owner) {
     unit.hp -= isolatedAttritionDamage;
   });
   if (encircled.length) {
-    addLog(`${sideName(owner)} › 고립 ${encircled.length}개 부대 포위 압박 · 각 피해 ${isolatedAttritionDamage}`);
+    addLog(t("{side} › 고립 {n}개 부대 포위 압박 · 각 피해 {dmg}", { side: sideName(owner), n: encircled.length, dmg: isolatedAttritionDamage }));
   }
 
   const collapsing = mine
@@ -6938,12 +7029,12 @@ function applySupplyAttrition(owner) {
   });
   if (collapsing.length) {
     const total = collapsing.reduce((sum, entry) => sum + entry.damage, 0);
-    addLog(`${sideName(owner)} › 보급 두절 ${collapsing.length}개 부대 붕괴 · 총 피해 ${total}`);
+    addLog(t("{side} › 보급 두절 {n}개 부대 붕괴 · 총 피해 {dmg}", { side: sideName(owner), n: collapsing.length, dmg: total }));
   }
 
   const destroyed = state.units.filter((unit) => unit.owner === owner && unit.hp <= 0);
   if (destroyed.length) {
-    destroyed.forEach((unit) => addLog(`${sideUnitLabel(unit)} 보급 붕괴로 소멸`));
+    destroyed.forEach((unit) => addLog(t("{unit} 보급 붕괴로 소멸", { unit: sideUnitLabel(unit) })));
     // 한 턴에 여러 부대가 함께 무너져도 소리는 한 번만 낸다. 겹쳐 울리면
     // 개수가 늘수록 커지는 잡음이 될 뿐이다.
     playDestroySound(destroyed[0]);
@@ -6984,7 +7075,7 @@ function replenishNearBattalionHQ(owner) {
     unit.hp = Math.min(unitTypes[unit.type].hp, unit.hp + 1);
   });
 
-  if (recovered.length) addLog(`${sideName(owner)} 대대사령부 › 인접 ${recovered.length}개 부대 병력 +1`);
+  if (recovered.length) addLog(t("{side} 대대사령부 › 인접 {n}개 부대 병력 +1", { side: sideName(owner), n: recovered.length }));
 }
 
 // 거점 위 재편성. 보급 거점은 여태 "생산 숫자가 붙은 칸"일 뿐이어서, 지형으로서는
@@ -7026,7 +7117,7 @@ function refitOnOwnBase(owner) {
     unit.hp = Math.min(unitTypes[unit.type].hp, unit.hp + baseRepairRate);
   });
 
-  if (refitted.length) addLog(`${sideName(owner)} › 거점 재편성 ${refitted.length}개 부대 · 병력 +${baseRepairRate}`);
+  if (refitted.length) addLog(t("{side} › 거점 재편성 {n}개 부대 · 병력 +{hp}", { side: sideName(owner), n: refitted.length, hp: baseRepairRate }));
 }
 
 // 거점 복구. 효율은 여태 내려가기만 하는 값이었다 — 습격 한 번에 곱하기로 깎이고
@@ -7051,7 +7142,7 @@ function repairOwnBases(owner) {
   mended.forEach((base) => {
     base.efficiency = Math.min(1, base.efficiency + baseEfficiencyRepair);
   });
-  addLog(`${sideName(owner)} › 거점 ${mended.length}곳 복구 · 생산 효율 상승`);
+  addLog(t("{side} › 거점 {n}곳 복구 · 생산 효율 상승", { side: sideName(owner), n: mended.length }));
 }
 
 // 반격이 생기면서 공격자가 attack() 안에서 죽을 수 있게 됐다. 호출부들은
@@ -7066,7 +7157,7 @@ function captureBase(unit) {
   const wasNeutral = base.owner === "neutral";
   base.owner = unit.owner;
   if (wasNeutral) {
-    addLog(`${sideName(unit.owner)} › (${unit.x},${unit.y}) 무혈 접수 · 효율 ${Math.round(base.efficiency * 100)}%`);
+    addLog(t("{side} › ({x},{y}) 무혈 접수 · 효율 {n}%", { side: sideName(unit.owner), x: unit.x, y: unit.y, n: Math.round(base.efficiency * 100) }));
     addChronicle(
       `${sideUnitLabel(unit)} › (${unit.x},${unit.y}) 보급 거점 무혈 접수`,
       unit.owner === "player" ? "kill" : "loss",
@@ -7078,7 +7169,7 @@ function captureBase(unit) {
   // 이미 받았다. 점령은 부수는 행위가 아니라 부순 뒤에 들어가 앉는 행위다.
   // 값을 두 번 매기면 뺏은 거점이 껍데기가 되고, 부수기만 하는 쪽이 언제나 이긴다.
   applyBaseEfficiencyLoss(base, captureEfficiencyLoss);
-  addLog(`${sideName(unit.owner)} › (${unit.x},${unit.y}) 거점 장악 · 효율 ${Math.round(base.efficiency * 100)}%`);
+  addLog(t("{side} › ({x},{y}) 거점 장악 · 효율 {n}%", { side: sideName(unit.owner), x: unit.x, y: unit.y, n: Math.round(base.efficiency * 100) }));
   addChronicle(
     `${sideUnitLabel(unit)} › (${unit.x},${unit.y}) 보급 거점 탈취`,
     unit.owner === "player" ? "kill" : "loss",
@@ -7182,11 +7273,11 @@ function advanceObjectiveHold(owner) {
     const where = objectiveName(objective);
     const opened = objective.kind === "supply";
     if (holding && objective.held < need) {
-      const what = opened ? `${where} 보급선 개통` : `${where} 장악`;
-      addLog(`${sideName(owner)} › ${what} · 유지 ${objective.held}/${need}턴`);
+      const what = opened ? t("{where} 보급선 개통", { where }) : t("{where} 장악", { where });
+      addLog(t("{side} › {what} · 유지 {held}/{need}턴", { side: sideName(owner), what, held: objective.held, need }));
     } else if (!holding && previous > 0) {
-      const what = opened ? `${where} 보급선 차단됨` : `${where} 장악 상실`;
-      addLog(`${sideName(owner)} › ${what} · 유지 턴 초기화`);
+      const what = opened ? t("{where} 보급선 차단됨", { where }) : t("{where} 장악 상실", { where });
+      addLog(t("{side} › {what} · 유지 턴 초기화", { side: sideName(owner), what }));
     }
   });
 }
@@ -8224,9 +8315,9 @@ function bombardDeck(attacker, deck) {
   attacker.firedFrom = { x: attacker.x, y: attacker.y };
   const damage = deckDamage(attacker, deck);
   playUnitSound(attacker, "attack");
-  addLog(`${sideUnitLabel(attacker)} › (${deck.x},${deck.y}) ${kind.name} 포격 · 피해 ${damage}`);
+  addLog(t("{unit} › ({x},{y}) {what} 포격 · 피해 {n}", { unit: sideUnitLabel(attacker), x: deck.x, y: deck.y, what: t(kind.name), n: damage }));
   if (!damageDeck(deck, damage)) {
-    addLog(`${kind.name} 잔존 · 내구 ${deck.hp}/${deck.maxHp}`);
+    addLog(t("{what} 잔존 · 내구 {hp}/{max}", { what: t(kind.name), hp: deck.hp, max: deck.maxHp }));
   }
 }
 
@@ -8966,13 +9057,13 @@ function enemyTowDecision(gun, goal) {
   if (!gun.towed && threat > enemyTowDistance && !posted) {
     gun.towed = true;
     gun.acted = true;
-    addLog(`${sideUnitLabel(gun)} › 견인 연결`);
+    addLog(t("{unit} › 견인 연결", { unit: sideUnitLabel(gun) }));
     return true;
   }
   if (gun.towed && (threat <= enemyTowDistance || posted)) {
     gun.towed = false;
     gun.acted = true;
-    addLog(`${sideUnitLabel(gun)} › 포 전개`);
+    addLog(t("{unit} › 포 전개", { unit: sideUnitLabel(gun) }));
     return true;
   }
   return false;
@@ -9291,7 +9382,7 @@ function tryStartEnemyBridge(engineer, site) {
   engineer.acted = true;
   // 지형이 바뀌었으니 어제 그린 길은 이제 거짓말이다.
   clearRouteFields();
-  addLog(`${sideName("enemy")} 공병대 › (${site.x},${site.y}) 임시 교량 완성`);
+  addLog(t("{side} 공병대 › ({x},{y}) 임시 교량 완성", { side: sideName("enemy"), x: site.x, y: site.y }));
   return true;
 }
 
@@ -9334,7 +9425,7 @@ function tryStartEnemyRail(engineer, site) {
     remaining: constructionDuration("rail"),
   });
   engineer.acted = true;
-  addLog(`${sideName("enemy")} 공병대 › (${site.x},${site.y}) 철도 부설 착공`);
+  addLog(t("{side} 공병대 › ({x},{y}) 철도 부설 착공", { side: sideName("enemy"), x: site.x, y: site.y }));
   return true;
 }
 
@@ -9358,7 +9449,7 @@ function tryStartEnemyDepot(engineer, focus) {
     remaining: constructionDuration("depot"),
   });
   engineer.acted = true;
-  addLog(`${sideName("enemy")} 공병대 › (${engineer.x},${engineer.y}) 보급창고 착공`);
+  addLog(t("{side} 공병대 › ({x},{y}) 보급창고 착공", { side: sideName("enemy"), x: engineer.x, y: engineer.y }));
   return true;
 }
 
@@ -9970,8 +10061,8 @@ function collapseDeck(deck) {
   // 강이 다시 막혔으니 어제 그린 길은 거짓말이다.
   clearRouteFields();
   const name = bridgeKinds[deck.type].name;
-  addLog(`(${deck.x},${deck.y}) ${name} 붕괴`);
-  addChronicle(`(${deck.x},${deck.y}) ${name} 붕괴 · 도하 차단`);
+  addLog(t("({x},{y}) {what} 붕괴", { x: deck.x, y: deck.y, what: t(name) }));
+  addChronicle(t("({x},{y}) {what} 붕괴 · 도하 차단", { x: deck.x, y: deck.y, what: t(name) }));
   // 다리 위에 서 있던 부대는 다리와 함께 물로 간다. 다리가 사라진 자리는 하천이고,
   // 하천에는 육상 부대가 설 수 없다 — 살려 두면 건널 수도 나올 수도 없는 유령이 된다.
   // 그래서 "다리 위에서 턴을 끝내지 마라"가 이 게임의 규칙이 된다.
@@ -9990,10 +10081,10 @@ function collapseDeck(deck) {
   // 무전 기록은 열넉 줄이 전부다. 수몰 셋을 세 줄로 적으면 붕괴 한 번에 그 전 턴이
   // 통째로 밀려나서, 무슨 일이 있었는지 되짚을 근거가 사라진다. 한 사건은 한 줄이다.
   // 이력(240줄)은 넉넉하므로 거기에는 부대별로 남긴다 — 끝나고 몰아서 읽는 곳이다.
-  const rest = riders.length > 1 ? ` 외 ${riders.length - 1}` : "";
-  addLog(`${sideUnitLabel(riders[0])}${rest} 다리와 함께 수몰`);
+  const rest = riders.length > 1 ? t(" 외 {n}", { n: riders.length - 1 }) : "";
+  addLog(t("{unit}{rest} 다리와 함께 수몰", { unit: sideUnitLabel(riders[0]), rest }));
   riders.forEach((rider) =>
-    addChronicle(`${sideUnitLabel(rider)} › 다리와 함께 수몰`, rider.owner === "enemy" ? "kill" : "loss"),
+    addChronicle(t("{unit} › 다리와 함께 수몰", { unit: sideUnitLabel(rider) }), rider.owner === "enemy" ? "kill" : "loss"),
   );
 }
 
@@ -10130,28 +10221,28 @@ const orderBook = [
     id: "isolated",
     when: () =>
       state.units.some((unit) => unit.owner === "player" && supplyStatus(unit).level === "isolated"),
-    text: () => "보급 두절 › 해당 부대는 매 턴 병력이 녹는다 · 보급선 안으로 후퇴시킬 것",
+    text: () => t("보급 두절 › 해당 부대는 매 턴 병력이 녹는다 · 보급선 안으로 후퇴시킬 것"),
   },
   {
     id: "deadline",
     when: () => turnsRemaining() <= 3,
-    text: () => `기한 임박 › ${turnsRemaining()}턴 남음 · 목표 달성을 최우선으로`,
+    text: () => t("기한 임박 › {n}턴 남음 · 목표 달성을 최우선으로", { n: turnsRemaining() }),
   },
   {
     id: "supplyShort",
     when: () => state.turn >= 3 && state.resources < unitTypes.infantry.cost,
-    text: () => "보급 고갈 › 보급은 거점에서 나온다 · 거점을 지키거나 공병대로 보급창고를 세울 것",
+    text: () => t("보급 고갈 › 보급은 거점에서 나온다 · 거점을 지키거나 공병대로 보급창고를 세울 것"),
   },
   {
     id: "contact",
     when: () => visibleFoes("player").length > 0,
     text: () =>
-      "적 접촉 › 부대를 고르고 사거리 안의 적을 누르면 사격 · 고지와 숲은 방어에 유리하다",
+      t("적 접촉 › 부대를 고르고 사거리 안의 적을 누르면 사격 · 고지와 숲은 방어에 유리하다"),
   },
   {
     id: "holding",
     when: () => objectiveTiles("player").some((objective) => objective.held > 0),
-    text: () => "목표 진입 › 장악은 눌러앉아야 오른다 · 상대 턴을 넘기고도 남아 있어야 한 턴이다",
+    text: () => t("목표 진입 › 장악은 눌러앉아야 오른다 · 상대 턴을 넘기고도 남아 있어야 한 턴이다"),
   },
   {
     id: "crossing",
@@ -10159,17 +10250,17 @@ const orderBook = [
       state.turn >= 2 &&
       state.units.some((unit) => unit.owner === "player" && unit.type === "engineer") &&
       terrainMap.some((row) => row.includes("W")),
-    text: () => `도하 › 공병대를 물가에 붙이고 「부교 건설」 · 한 도하에 ${bridgeLimitPerSide}줄까지`,
+    text: () => t("도하 › 공병대를 물가에 붙이고 「부교 건설」 · 한 도하에 {n}줄까지", { n: bridgeLimitPerSide }),
   },
   {
     id: "reinforce",
     when: () => state.turn >= 2 && state.resources >= unitTypes.armor.cost,
-    text: () => "증원 › 대대사령부를 고른 뒤 편성 · 도착한 부대는 다음 턴부터 움직인다",
+    text: () => t("증원 › 대대사령부를 고른 뒤 편성 · 도착한 부대는 다음 턴부터 움직인다"),
   },
   {
     id: "advance",
     when: () => state.phase === "player",
-    text: () => "작전 개시 › 부대를 눌러 강조된 칸으로 이동 · 지도 밑줄이 왜 안 되는지 알려 준다",
+    text: () => t("작전 개시 › 부대를 눌러 강조된 칸으로 이동 · 지도 밑줄이 왜 안 되는지 알려 준다"),
   },
 ];
 
@@ -10218,9 +10309,9 @@ function addChronicle(text, kind = "") {
 function chronicleKill(attacker, victim, options = {}) {
   const where = `(${victim.x},${victim.y})`;
   const head = options.counter
-    ? `${sideUnitLabel(attacker)} › 반격`
-    : `${sideUnitLabel(attacker)} › ${where} 진격`;
-  addChronicle(`${head} · ${sideUnitLabel(victim)} 격파`, victim.owner === "enemy" ? "kill" : "loss");
+    ? t("{unit} › 반격", { unit: sideUnitLabel(attacker) })
+    : t("{unit} › {where} 진격", { unit: sideUnitLabel(attacker), where });
+  addChronicle(t("{head} · {victim} 격파", { head, victim: sideUnitLabel(victim) }), victim.owner === "enemy" ? "kill" : "loss");
 }
 
 // 범례는 넓고 높은 화면에서만 펴 둔다. 좁거나 낮은 화면에서는 접힌 채로 두어

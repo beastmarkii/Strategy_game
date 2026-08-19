@@ -4328,7 +4328,7 @@ h1 {
   }
 
   .unit-card.expanded .unit-card-visual::after {
-    content: "접기 ▴";
+    content: var(--card-less, "접기 ▴");
   }
 
   .action-hint {
@@ -4917,7 +4917,7 @@ h1 {
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 1.6px;
-  content: "무전 수신 기록";
+  content: var(--log-title, "무전 수신 기록");
 }
 
 /* --- 수치 에디터 ------------------------------------------------ */
@@ -5210,7 +5210,7 @@ body {
   }
 
   .battlefield-wrap .unit-card.expanded::after {
-    content: "접기 ▴";
+    content: var(--card-less, "접기 ▴");
   }
 }
 
@@ -7190,4 +7190,15 @@ body {
     outline: 2px solid rgba(216, 164, 65, 0.75);
     outline-offset: 2px;
   }
+}
+
+/* --- 영어판 글자 -------------------------------------------------
+   화면에 그림처럼 박히는 글자는 CSS content로 들어간다. 자바스크립트가 못
+   건드리는 자리이므로, 여기서는 글자를 변수로 빼고 <html lang>에 따라 값만
+   갈아 끼운다. applyLocale이 lang을 바꾸므로 언어를 바꾸는 그 순간 같이 바뀐다.
+   새 언어가 늘어도 이 블록 하나만 늘리면 된다 — 규칙은 그대로다. */
+html[lang="en"] {
+  --log-title: "RADIO LOG";
+  --card-more: "More";
+  --card-less: "Less ▴";
 }

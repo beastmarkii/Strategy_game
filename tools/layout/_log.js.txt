@@ -1,0 +1,32 @@
+<script>
+// 무전 기록(전투 기록) 촬영판. 판을 열고 몇 턴 넘겨서 기록줄을 채운 뒤,
+// 지휘 창을 펴 놓고 그대로 찍는다. 한국어판과 영어판을 같은 순서로 돌려
+// 두 화면이 같은 사건을 적고 있는지 눈으로 맞춘다.
+window.confirm = () => true; window.alert = () => {};
+setTimeout(()=>{
+  try{
+    startGame({ side:"west", scenarioId:"cobra" });
+    document.querySelectorAll("#newOperationModal,#storageNotice,#coach,#coachSpot,#resultScreen,.setup-modal,.modal,#operationSetup").forEach(el=>{el.hidden=true;el.style.display="none";});
+    // 턴을 넘기면 적 반격·보급·거점 판정이 돌아가며 기록줄이 여러 종류로 쌓인다.
+    for(let i=0;i<6;i++){ try{ endPlayerTurn(); }catch(e){} }
+    // 폰 화면에서는 지휘 창이 접힌 채로 열린다. 기록을 찍으려면 펴야 한다.
+    const openBtn=document.getElementById("focusCommandPanel");
+    if(openBtn) openBtn.click();
+    const tog=document.getElementById("toggleCommandPanel");
+    if(tog && tog.getAttribute("aria-expanded")==="false") tog.click();
+    render();
+    fitBoardToScreen();
+    // 기록 창을 화면 맨 위로 올려 잘리지 않게 한다.
+    const log=document.querySelector("#battleLog");
+    if(log && log.scrollIntoView) log.scrollIntoView({block:"start"});
+    // 밖에서 글자를 걷어 갈 수 있게 적어 둔다.
+    const NL=String.fromCharCode(10);
+    const pre=document.createElement("pre");
+    pre.id="probe"; pre.style.position="fixed"; pre.style.left="-9999px";
+    pre.textContent=[...document.querySelectorAll("#battleLog p")].map(p=>p.textContent).join(NL)
+      +NL+"--- 이력 ---"+NL
+      +(state.chronicle||[]).slice(-12).map(c=>c.date+" "+c.text).join(NL);
+    document.body.appendChild(pre);
+  }catch(e){ document.title="ERR "+e.message; }
+},1200);
+</script>
