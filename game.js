@@ -521,11 +521,13 @@ const localePacks = {
       tow: "Tow by Truck",
       endTurn: "End Turn",
       restart: "New Operation",
+      command: "Command",
     },
     // 계기 띠 다섯 칸. 폰에서 폭이 정해진 자리라 긴 낱말은 안 들어간다 —
     // Initiative(10칸)는 「주도권」(6칸)보다 넓어서 띠를 한 줄 더 접게 만든다.
     status: ["Day", "Turn", "Supply", "Income", "Units"],
     legend: "Legend",
+    more: "More",
     folds: ["Army Reinforcements", "Navy", "Air Force", "AI"],
     hint: "Click a unit to show available commands.",
     select: "Select a unit",
@@ -573,9 +575,11 @@ const localePacks = {
       tow: "卡车牵引",
       endTurn: "结束回合",
       restart: "新作战",
+      command: "指挥",
     },
     status: ["作战日", "主动权", "补给", "下回补给", "战斗部队"],
     legend: "图例",
+    more: "更多",
     folds: ["陆军增援", "海军", "空军", "AI"],
     hint: "点击部队显示可用命令。",
     select: "选择部队",
@@ -620,9 +624,11 @@ const localePacks = {
       tow: "トラック牽引",
       endTurn: "作戦終了",
       restart: "新作戦",
+      command: "指揮",
     },
     status: ["作戦日", "主導権", "補給", "次回補給", "戦闘部隊"],
     legend: "凡例",
+    more: "詳細",
     folds: ["陸軍増援", "海軍", "空軍", "AI"],
     hint: "部隊をクリックすると使用可能な命令が表示されます。",
     select: "部隊を選択",
@@ -662,6 +668,125 @@ const activePack = localePacks[activeLocale];
 // prettier-ignore
 const uiDict = {
   en: {
+    "전장 이상 없음": "All quiet",
+    "작전": "Operation",
+    // 부대 이름과 작전 목표 이름. 장비 이름은 원래 표기를 그대로 둔다.
+    "Kar98k 분대": "Kar98k sqd",
+    "Kar98k 소총분대": "Kar98k rifle sqd",
+    "M1 개런드 소총분대": "M1 Garand rifle sqd",
+    "M1 소총분대": "M1 rifle sqd",
+    "M2A1 105mm 야포대": "M2A1 105mm bty",
+    "M2A1 야포": "M2A1 gun",
+    "M4 셔먼": "M4 Sherman",
+    "M4 셔먼 중형전차": "M4 Sherman medium tank",
+    "M7 프리스트": "M7 Priest",
+    "M7 프리스트 자주포": "M7 Priest SPG",
+    "Panzer IV 중형전차": "Panzer IV medium tank",
+    "Pionier 공병대": "Pionier engineers",
+    "Wespe 자주포": "Wespe SPG",
+    "leFH 18 105mm 야포대": "leFH 18 105mm bty",
+    "leFH 18 야포": "leFH 18 gun",
+    "대대 HQ": "Bn HQ",
+    "전투공병대": "Combat engineers",
+    "능선 아래 통로": "Pass Below Ridge",
+    "동군 보급로": "E Supply Road",
+    "칼라치 동안 진지": "Kalach E Bank",
+    "정면": "front",
+    // 카드에 값으로 찍히는 말. 이름표만 고치면 값이 한글로 남는다.
+    "고립 {n}/4": "Cut off {n}/4",
+    "대대 보급": "HQ supply",
+    "보급선 두절": "Line cut",
+    "사령부 전멸": "HQ lost",
+    "전진 보급": "Forward",
+    "정상 보급": "Normal",
+    "보급 불안": "Strained",
+    "보급선 이탈": "Out of range",
+    "강변 또는 주요 접근로 / 이동 가능": "Riverbank or main approach / passable",
+    "원거리 포격 차단 / 전차, 자주포 진입 불가": "Blocks arty fire / no tanks or SPGs",
+    "하천: 교량 없이는 통과 불가": "River: impassable without a bridge",
+    "다리 위: 엄폐가 없어 개활지보다 맞기 쉽고, 다리가 끊기면 함께 빠진다": "On the bridge: no cover, easier to hit than open ground, and lost with the bridge",
+    "방어 유리 / 포격 효과 감소": "Good cover / arty less effective",
+    "시가지 창고: 방어 +2 / 포격 효과 감소 / 전차 진입 가능": "Town depot: defence +2 / arty less effective / tanks may enter",
+    " / 소유 시 주둔 부대 병력 +{n}": " / while held, garrison recovers +{n}",
+    "일반": "Standard",
+    "HQ {n}": "HQ {n}",
+    "거점 {n}": "Base {n}",
+    "단절": "Cut",
+    "보급선 두절 / 발급 불가": "Line cut / cannot issue",
+    "보충 {a}칸 / 보급 {b}칸": "Refit {a} / supply {b}",
+    "정상 {a}칸 / 불안 {b}칸": "Normal {a} / strained {b}",
+    "고지 +{n}": "High +{n}",
+    "저지 {n}": "Low {n}",
+    "북쪽": "North",
+    "동쪽": "East",
+    "남쪽": "South",
+    "서쪽": "West",
+    "지정 없음": "None",
+    "단절 (도하로 없음)": "Cut (no ford)",
+    "개통": "open",
+    "초과": "over",
+    // 부대 카드·지형 카드의 이름표. 카드 한 줄은 폰에서 두 칸씩 들어가므로
+    // 긴 낱말은 줄을 밀어낸다 — 승인된 약자 규칙대로 핵심만 남겼다.
+    "위치": "Tile",
+    "지형": "Terrain",
+    "방어 보정": "Cover",
+    "거점 엄폐": "Base Cover",
+    "지형 특성": "Trait",
+    "전투력": "Strength",
+    "부대 방어": "Armour",
+    "사기": "Morale",
+    "행동": "Action",
+    "보급": "Supply",
+    "기동력": "Move",
+    "사거리": "Range",
+    "중첩": "Stack",
+    "지휘관": "CO",
+    "장군 이동": "CO Move",
+    "장군 보급": "CO Supply",
+    "상태": "State",
+    "보급선": "Line",
+    "소모": "Upkeep",
+    "두절 지속": "Cut For",
+    "두절 사기 손실": "Cut Morale",
+    "다음 턴 붕괴 피해": "Next Collapse",
+    "지휘 범위": "Command",
+    "보급권": "Covers",
+    "사령부 보너스": "HQ Bonus",
+    "작전 목표": "Objective",
+    "이동 비용": "Move Cost",
+    "다리 위 노출": "On Bridge",
+    "고도": "Elev",
+    "포격 엄폐": "Arty Cover",
+    "방어방향": "Faces",
+    "특성": "Trait",
+    "개량": "Works",
+    "소유": "Owner",
+    "생산": "Output",
+    "효율": "Eff.",
+    "공사": "Building",
+    // 카드에 들어가는 값.
+    "장악 유지": "Hold",
+    "개통 유지": "Keep open",
+    "통과 불가": "Impassable",
+    "없음": "none",
+    "철도": "Rail",
+    "보급창고": "Depot",
+    "완료": "Done",
+    "가능": "Ready",
+    "이동 완료 / 공격 가능": "Moved / can attack",
+    "편성 중 / 내일부터": "Forming / from tomorrow",
+    "견인": "Towed",
+    "전개": "Deployed",
+    "부대를 선택하세요": "Select a unit",
+    "강변/접근로": "Riverbank",
+    "하천/강": "River",
+    "평지": "Open",
+    "숲": "Forest",
+    "고지/산등성이": "Ridge",
+    "보급 거점": "Supply Base",
+    "{n}턴": "{n} turns",
+    "{a}/{b}턴": "{a}/{b} turns",
+    "{n}/턴": "{n}/turn",
     "총력전": "Total War",
     "도하 돌파": "River Push",
     "교차로 사수": "Hold Crossroad",
@@ -2092,6 +2217,11 @@ function applyLocale() {
   document.querySelector(".command-panel")?.setAttribute("aria-label", activePack.title);
   document.querySelector(".battlefield-wrap")?.setAttribute("aria-label", "Battlefield");
   document.querySelector(".balance-editor")?.setAttribute("aria-label", activePack.editor);
+  // 접힌 카드 바닥의 「자세히 ▾」. 이 글자는 CSS 가 그려서 DOM 에 없다.
+  // 값만 넘겨 주고 그리는 것은 그대로 CSS 에 맡긴다.
+  if (activePack.more) {
+    document.documentElement.style.setProperty("--card-more", JSON.stringify(activePack.more));
+  }
   if (activePack.folds) {
     document.querySelectorAll(".command-panel details > summary").forEach((node, index) => {
       if (activePack.folds[index]) node.textContent = activePack.folds[index];
@@ -2125,6 +2255,11 @@ function applyLocale() {
   document.querySelector("#toggleTow").textContent = activePack.buttons.tow;
   document.querySelector("#endTurn").textContent = activePack.buttons.endTurn;
   document.querySelector("#restart").textContent = activePack.buttons.restart;
+  // 폰에서만 보이는 지휘 서랍 단추. 옛 언어팩에는 이 자리가 없으니 있을 때만 손댄다.
+  if (activePack.buttons.command) {
+    const commandButton = document.querySelector("#focusCommandPanel");
+    if (commandButton) commandButton.textContent = activePack.buttons.command;
+  }
 
   // 저장 안내와 「기록 지우기」. 다른 글자는 다 바뀌는데 이 넷만 한국어로 남아
   // 있으면, 무엇을 적어 두는지 알리는 글을 정작 그 사람은 못 읽는다.
@@ -3913,7 +4048,7 @@ function render() {
       const hillDirection = hillDefenseDirection(x, y);
       if (hillDirection) {
         cell.classList.add("ridge-shield", `ridge-${hillDirection}`);
-        cell.title += ` / 방어방향 ${ridgeDirectionLabel(hillDirection)}${ridgeFacingDefense ? ` 정면 +${ridgeFacingDefense}` : ""}`;
+        cell.title += ` / ${t("방어방향")} ${ridgeDirectionLabel(hillDirection)}${ridgeFacingDefense ? ` ${t("정면")} +${ridgeFacingDefense}` : ""}`;
       }
       // 교량과 부교는 그림이 달라야 한다. 하나는 돌기둥에 얹힌 트러스 다리고
       // 하나는 물에 띄운 널판이다 — 생김새가 같으면 어느 쪽이 한 방에 끊기는지
@@ -5117,10 +5252,10 @@ function updateOperationHud() {
   // (styles.css의 .hud-alerts.clear). 넓은 화면에서는 그대로 둔다.
   if (hudAlertLabelEl) {
     const alerts = operationAlerts();
-    hudAlertLabelEl.textContent = alerts.length ? alerts.join(" · ") : "전장 이상 없음";
+    hudAlertLabelEl.textContent = alerts.length ? alerts.join(" · ") : t("전장 이상 없음");
     hudAlertLabelEl.classList.toggle("clear", alerts.length === 0);
   }
-  if (missionNameLabelEl) missionNameLabelEl.textContent = state.mission?.name ?? "작전";
+  if (missionNameLabelEl) missionNameLabelEl.textContent = state.mission?.name ? t(state.mission.name) : t("작전");
   // 브리핑은 한 번 뜨고 로그에 묻힌다. 목표는 매 턴 보이는 자리에 있어야 한다.
   if (missionBriefLabelEl) missionBriefLabelEl.textContent = missionBriefText();
 }
@@ -5304,8 +5439,9 @@ function unitProfile(ownerOrUnit, type) {
 
 function unitLabel(ownerOrUnit, type, options = {}) {
   const profile = unitProfile(ownerOrUnit, type);
-  if (options.short && profile.shortLabel) return profile.shortLabel;
-  return profile.label ?? unitTypes[typeof ownerOrUnit === "object" ? ownerOrUnit.type : type]?.label ?? "";
+  if (options.short && profile.shortLabel) return t(profile.shortLabel);
+  const name = profile.label ?? unitTypes[typeof ownerOrUnit === "object" ? ownerOrUnit.type : type]?.label ?? "";
+  return name ? t(name) : "";
 }
 
 // 진영명은 한 번만 붙인다. 부대 이름 자체에 진영이 들어 있는 것들이 있어서
@@ -5389,7 +5525,7 @@ function renderSelectedCard() {
     return;
   }
   if (!unit) {
-    selectedCardEl.innerHTML = '<span class="muted">부대를 선택하세요</span>';
+    selectedCardEl.innerHTML = '<span class="muted">${t("부대를 선택하세요")}</span>';
     return;
   }
 
@@ -5401,35 +5537,35 @@ function renderSelectedCard() {
     ${renderUnitCardVisual(unit, spec)}
     ${renderEnemyCommanderStrip(unit)}
     <div class="unit-stats">
-      <span>위치 <strong>${displayTileName(unit.x, unit.y)}</strong></span>
-      <span>지형 <strong>${terrainDescription(tile)}</strong></span>
-      <span>방어 보정 <strong>+${coverAt(unit.x, unit.y)}</strong></span>
-      ${getBaseAt(unit.x, unit.y) && baseDefenseBonus ? `<span>거점 엄폐 <strong>+${baseDefenseBonus}</strong></span>` : ""}
-      <span>지형 특성 <strong>${terrainTraitText(unit.x, unit.y)}</strong></span>
-      <span class="key">전투력 <strong>${unit.hp}/${spec.hp}</strong></span>
-      ${spec.defense ? `<span>부대 방어 <strong>+${spec.defense}</strong></span>` : ""}
-      <span class="key">사기 <strong>${effectiveMorale(unit)}%</strong></span>
+      <span>${t("위치")} <strong>${displayTileName(unit.x, unit.y)}</strong></span>
+      <span>${t("지형")} <strong>${terrainDescription(tile)}</strong></span>
+      <span>${t("방어 보정")} <strong>+${coverAt(unit.x, unit.y)}</strong></span>
+      ${getBaseAt(unit.x, unit.y) && baseDefenseBonus ? `<span>${t("거점 엄폐")} <strong>+${baseDefenseBonus}</strong></span>` : ""}
+      <span>${t("지형 특성")} <strong>${terrainTraitText(unit.x, unit.y)}</strong></span>
+      <span class="key">${t("전투력")} <strong>${unit.hp}/${spec.hp}</strong></span>
+      ${spec.defense ? `<span>${t("부대 방어")} <strong>+${spec.defense}</strong></span>` : ""}
+      <span class="key">${t("사기")} <strong>${effectiveMorale(unit)}%</strong></span>
       <!-- 접힌 카드는 좁은 폰에서 이 여섯 줄 중 앞의 서너 개만 보여 준다(나머지는
            카드 안에서 굴러간다). 그래서 매 턴 바뀌는 것을 앞에 둔다 — 전투력·사기·
            행동·보급은 턴마다 달라지고, 기동력·사거리는 병종을 알면 늘 같은 값이다.
            화면이 몇 px이든 이 순서면 먼저 보이는 것이 먼저 알아야 할 것이 된다. -->
-      <span class="key">행동 <strong>${unit.justArrived ? "편성 중 / 내일부터" : unit.acted ? "완료" : unit.moved ? "이동 완료 / 공격 가능" : "가능"}</strong></span>
-      <span class="key">보급 <strong>${supply.label}</strong></span>
-      <span class="key">기동력 <strong>${effectiveMove(unit)}</strong></span>
-      <span class="key">사거리 <strong>${spec.range}</strong></span>
-      <span>중첩 <strong>${stack.length}/${maxStackSize}</strong></span>
-      ${unit.owner === "player" ? `<span>지휘관 <strong>${commanderFor(unit.owner).name.split(" ").at(-1)}</strong></span>` : ""}
-      ${unit.owner === "player" && commanderFor(unit.owner).move ? `<span>장군 이동 <strong>${signedStat(commanderFor(unit.owner).move)}</strong></span>` : ""}
-      ${unit.owner === "player" && commanderFor(unit.owner).supply ? `<span>장군 보급 <strong>${signedStat(commanderFor(unit.owner).supply)}</strong></span>` : ""}
-      ${unit.type === "artillery" ? `<span>상태 <strong>${unit.towed ? "견인" : "전개"}</strong></span>` : ""}
-      <span>보급선 <strong>${formatSupplyDistance(supply)}</strong></span>
-      <span>소모 <strong>${spec.supplyUse}/턴</strong></span>
-      ${(unit.hqOutTurns ?? 0) ? `<span>두절 지속 <strong>${unit.hqOutTurns}턴</strong></span>` : ""}
-      ${hqOutOfRangeMoraleLoss(unit) ? `<span>두절 사기 손실 <strong>-${hqOutOfRangeMoraleLoss(unit)}%</strong></span>` : ""}
-      ${supply.level === "cut" ? `<span>다음 턴 붕괴 피해 <strong>${collapseDamageFor({ hqOutTurns: (unit.hqOutTurns ?? 0) + 1 })}</strong></span>` : ""}
-      ${unit.type === "battalionHQ" ? `<span>지휘 범위 <strong>${spec.commandRange}</strong></span>` : ""}
-      ${unit.type === "battalionHQ" ? `<span>보급권 <strong>${battalionCoverageText(unit)}</strong></span>` : ""}
-      ${hqMoraleBonus(unit) ? `<span>사령부 보너스 <strong>+${hqMoraleBonus(unit)}%</strong></span>` : ""}
+      <span class="key">${t("행동")} <strong>${t(unit.justArrived ? "편성 중 / 내일부터" : unit.acted ? "완료" : unit.moved ? "이동 완료 / 공격 가능" : "가능")}</strong></span>
+      <span class="key">${t("보급")} <strong>${supply.label}</strong></span>
+      <span class="key">${t("기동력")} <strong>${effectiveMove(unit)}</strong></span>
+      <span class="key">${t("사거리")} <strong>${spec.range}</strong></span>
+      <span>${t("중첩")} <strong>${stack.length}/${maxStackSize}</strong></span>
+      ${unit.owner === "player" ? `<span>${t("지휘관")} <strong>${commanderFor(unit.owner).name.split(" ").at(-1)}</strong></span>` : ""}
+      ${unit.owner === "player" && commanderFor(unit.owner).move ? `<span>${t("장군 이동")} <strong>${signedStat(commanderFor(unit.owner).move)}</strong></span>` : ""}
+      ${unit.owner === "player" && commanderFor(unit.owner).supply ? `<span>${t("장군 보급")} <strong>${signedStat(commanderFor(unit.owner).supply)}</strong></span>` : ""}
+      ${unit.type === "artillery" ? `<span>${t("상태")} <strong>${t(unit.towed ? "견인" : "전개")}</strong></span>` : ""}
+      <span>${t("보급선")} <strong>${formatSupplyDistance(supply)}</strong></span>
+      <span>${t("소모")} <strong>${t("{n}/턴", { n: spec.supplyUse })}</strong></span>
+      ${(unit.hqOutTurns ?? 0) ? `<span>${t("두절 지속")} <strong>${t("{n}턴", { n: unit.hqOutTurns })}</strong></span>` : ""}
+      ${hqOutOfRangeMoraleLoss(unit) ? `<span>${t("두절 사기 손실")} <strong>-${hqOutOfRangeMoraleLoss(unit)}%</strong></span>` : ""}
+      ${supply.level === "cut" ? `<span>${t("다음 턴 붕괴 피해")} <strong>${collapseDamageFor({ hqOutTurns: (unit.hqOutTurns ?? 0) + 1 })}</strong></span>` : ""}
+      ${unit.type === "battalionHQ" ? `<span>${t("지휘 범위")} <strong>${spec.commandRange}</strong></span>` : ""}
+      ${unit.type === "battalionHQ" ? `<span>${t("보급권")} <strong>${battalionCoverageText(unit)}</strong></span>` : ""}
+      ${hqMoraleBonus(unit) ? `<span>${t("사령부 보너스")} <strong>+${hqMoraleBonus(unit)}%</strong></span>` : ""}
     </div>
   `;
 }
@@ -5442,8 +5578,8 @@ function renderTileCard(x, y) {
   const deck = deckAt(x, y);
   const improvements = [
     deck ? `${bridgeKinds[deck.type].name} ${deck.hp}/${deck.maxHp}` : null,
-    hasImprovement(x, y, "rail") ? "철도" : null,
-    hasImprovement(x, y, "depot") ? "보급창고" : null,
+    hasImprovement(x, y, "rail") ? t("철도") : null,
+    hasImprovement(x, y, "depot") ? t("보급창고") : null,
   ].filter(Boolean);
   const moveCost = movementCostForTile(x, y);
   const objective = objectiveAt(x, y);
@@ -5464,57 +5600,56 @@ function renderTileCard(x, y) {
   selectedCardEl.innerHTML = `
     <div class="unit-card-visual"><h2>${displayTileName(x, y)} (${x}, ${y})</h2></div>
     <div class="unit-stats">
-      ${objective ? `<span class="key">작전 목표 <strong>${sideName(objective.owner)} ${objective.label}</strong></span>` : ""}
-      ${objective ? `<span class="key">${objective.kind === "supply" ? "개통" : "장악"} 유지 <strong>${objectiveOpen(objective) ? `${objective.held}/${objectiveHoldRequirement(objective)}턴` : t("{n}일차부터", { n: objective.fromTurn })}</strong>${objectiveNoteText(objective, { byTag: true, fromTurn: false })}</span>` : ""}
-      ${objective?.kind === "supply" ? `<span>보급선 <strong>${objectiveSupplyText(objective)}</strong></span>` : ""}
-      <span class="key">지형 <strong>${terrainDescription(tile)}</strong></span>
-      <span class="key">이동 비용 <strong>${Number.isFinite(moveCost) ? formatNumber(moveCost) : "통과 불가"}</strong></span>
-      <span class="key">방어 보정 <strong>${coverAt(x, y) >= 0 ? "+" : ""}${coverAt(x, y)}</strong></span>
-      ${deck ? `<span>다리 위 노출 <strong>-${bridgeExposure}</strong></span>` : ""}
-      ${base && baseDefenseBonus ? `<span>거점 엄폐 <strong>+${baseDefenseBonus}</strong></span>` : ""}
-      <span>고도 <strong>${formatElevation(tile.elevation)}</strong></span>
-      <span>포격 엄폐 <strong>${tile.artilleryCover ? `-${tile.artilleryCover}` : "없음"}</strong></span>
-      ${hillDirection ? `<span>방어방향 <strong>${ridgeDirectionLabel(hillDirection)}</strong>${ridgeFacingDefense ? ` 정면 <strong>+${ridgeFacingDefense}</strong>` : ""}</span>` : ""}
-      <span>특성 <strong>${terrainTraitText(x, y)}</strong></span>
-      <span>개량 <strong>${improvements.length ? improvements.join(", ") : "없음"}</strong></span>
-      ${base ? `<span>소유 <strong>${sideName(base.owner)}</strong></span>` : ""}
-      ${base ? `<span>생산 <strong>${formatNumber(baseProduction(base))}</strong></span>` : ""}
-      ${base ? `<span>효율 <strong>${Math.round(base.efficiency * 100)}%</strong></span>` : ""}
-      ${base ? `<span>보급권 <strong>${baseCoverageText(base)}</strong></span>` : ""}
-      ${construction ? `<span>공사 <strong>${constructionName(construction.type)} ${construction.remaining}턴</strong></span>` : ""}
+      ${objective ? `<span class="key">${t("작전 목표")} <strong>${sideName(objective.owner)} ${t(objective.label)}</strong></span>` : ""}
+      ${objective ? `<span class="key">${t(objective.kind === "supply" ? "개통 유지" : "장악 유지")} <strong>${objectiveOpen(objective) ? t("{a}/{b}턴", { a: objective.held, b: objectiveHoldRequirement(objective) }) : t("{n}일차부터", { n: objective.fromTurn })}</strong>${objectiveNoteText(objective, { byTag: true, fromTurn: false })}</span>` : ""}
+      ${objective?.kind === "supply" ? `<span>${t("보급선")} <strong>${objectiveSupplyText(objective)}</strong></span>` : ""}
+      <span class="key">${t("지형")} <strong>${terrainDescription(tile)}</strong></span>
+      <span class="key">${t("이동 비용")} <strong>${Number.isFinite(moveCost) ? formatNumber(moveCost) : t("통과 불가")}</strong></span>
+      <span class="key">${t("방어 보정")} <strong>${coverAt(x, y) >= 0 ? "+" : ""}${coverAt(x, y)}</strong></span>
+      ${deck ? `<span>${t("다리 위 노출")} <strong>-${bridgeExposure}</strong></span>` : ""}
+      ${base && baseDefenseBonus ? `<span>${t("거점 엄폐")} <strong>+${baseDefenseBonus}</strong></span>` : ""}
+      <span>${t("고도")} <strong>${formatElevation(tile.elevation)}</strong></span>
+      <span>${t("포격 엄폐")} <strong>${tile.artilleryCover ? `-${tile.artilleryCover}` : t("없음")}</strong></span>
+      ${hillDirection ? `<span>${t("방어방향")} <strong>${ridgeDirectionLabel(hillDirection)}</strong>${ridgeFacingDefense ? ` ${t("정면")} <strong>+${ridgeFacingDefense}</strong>` : ""}</span>` : ""}
+      <span>${t("특성")} <strong>${terrainTraitText(x, y)}</strong></span>
+      <span>${t("개량")} <strong>${improvements.length ? improvements.join(", ") : t("없음")}</strong></span>
+      ${base ? `<span>${t("소유")} <strong>${sideName(base.owner)}</strong></span>` : ""}
+      ${base ? `<span>${t("생산")} <strong>${formatNumber(baseProduction(base))}</strong></span>` : ""}
+      ${base ? `<span>${t("효율")} <strong>${Math.round(base.efficiency * 100)}%</strong></span>` : ""}
+      ${base ? `<span>${t("보급권")} <strong>${baseCoverageText(base)}</strong></span>` : ""}
+      ${construction ? `<span>${t("공사")} <strong>${constructionName(construction.type)} ${t("{n}턴", { n: construction.remaining })}</strong></span>` : ""}
     </div>
   `;
 }
 
 function terrainDescription(tile) {
-  if (tile.className === "coast") return "강변/접근로";
-  if (tile.className === "water") return "하천/강";
-  if (tile.className === "plain") return "평지";
-  if (tile.className === "forest") return "숲";
-  if (tile.className === "hill") return "고지/산등성이";
-  if (tile.className === "water") return "하천";
-  if (tile.className === "base") return "보급 거점";
+  if (tile.className === "coast") return t("강변/접근로");
+  if (tile.className === "water") return t("하천/강");
+  if (tile.className === "plain") return t("평지");
+  if (tile.className === "forest") return t("숲");
+  if (tile.className === "hill") return t("고지/산등성이");
+  if (tile.className === "base") return t("보급 거점");
   return tile.name;
 }
 
 function formatElevation(elevation) {
-  if (elevation > 0) return `고지 +${elevation}`;
-  if (elevation < 0) return `저지 ${elevation}`;
-  return "평지";
+  if (elevation > 0) return t("고지 +{n}", { n: elevation });
+  if (elevation < 0) return t("저지 {n}", { n: elevation });
+  return t("평지");
 }
 
 function terrainTraitText(x, y) {
-  if (getTerrainKey(x, y) === "C") return "강변 또는 주요 접근로 / 이동 가능";
-  if (getTerrainKey(x, y) === "H") return "원거리 포격 차단 / 전차, 자주포 진입 불가";
-  if (getTerrainKey(x, y) === "W" && !deckAt(x, y)) return "하천: 교량 없이는 통과 불가";
-  if (deckAt(x, y)) return "다리 위: 엄폐가 없어 개활지보다 맞기 쉽고, 다리가 끊기면 함께 빠진다";
-  if (getTerrainKey(x, y) === "F") return "방어 유리 / 포격 효과 감소";
+  if (getTerrainKey(x, y) === "C") return t("강변 또는 주요 접근로 / 이동 가능");
+  if (getTerrainKey(x, y) === "H") return t("원거리 포격 차단 / 전차, 자주포 진입 불가");
+  if (getTerrainKey(x, y) === "W" && !deckAt(x, y)) return t("하천: 교량 없이는 통과 불가");
+  if (deckAt(x, y)) return t("다리 위: 엄폐가 없어 개활지보다 맞기 쉽고, 다리가 끊기면 함께 빠진다");
+  if (getTerrainKey(x, y) === "F") return t("방어 유리 / 포격 효과 감소");
   // 거점만 "일반"으로 나오면 지도에서 왜 이 칸을 다투는지가 카드에 한 줄도 안 적힌다.
   if (getTerrainKey(x, y) === "B") {
-    const refit = baseRepairRate > 0 ? ` / 소유 시 주둔 부대 병력 +${baseRepairRate}` : "";
-    return `시가지 창고: 방어 +2 / 포격 효과 감소 / 전차 진입 가능${refit}`;
+    const refit = baseRepairRate > 0 ? t(" / 소유 시 주둔 부대 병력 +{n}", { n: baseRepairRate }) : "";
+    return t("시가지 창고: 방어 +2 / 포격 효과 감소 / 전차 진입 가능") + refit;
   }
-  return "일반";
+  return t("일반");
 }
 
 // 명부는 얼굴을 보는 자리다. 능력치는 장군을 고를 때 이미 다 읽었으므로 여기서
@@ -6879,9 +7014,9 @@ function supplyOpenAt(owner, x, y) {
 // 해야 할지 모른다. 길이 없는 것(다리)과 너무 먼 것(창고·철도)은 다른 문제다.
 function objectiveSupplyText(objective) {
   const cost = supplyLineCost({ owner: objective.owner, x: objective.x, y: objective.y });
-  if (!Number.isFinite(cost)) return "단절 (도하로 없음)";
+  if (!Number.isFinite(cost)) return t("단절 (도하로 없음)");
   const need = effectiveSupplyRange({ owner: objective.owner });
-  return `${formatNumber(cost)} / ${formatNumber(need)}${cost <= need ? " 개통" : " 초과"}`;
+  return `${formatNumber(cost)} / ${formatNumber(need)}${cost <= need ? " " + t("개통") : " " + t("초과")}`;
 }
 
 function taggedUnits(owner, tag) {
@@ -7375,24 +7510,24 @@ function normalizedSupplyStatus(unit) {
   const hqDistanceNow = nearestBattalionHQDistance(unit);
   const enemyFaces = adjacentEnemyFaceCount(unit);
   if (enemyFaces >= 3) {
-    return { level: "isolated", via: "none", label: `고립 ${enemyFaces}/4`, cost: supplyLineCost(unit), hqDistance: hqDistanceNow };
+    return { level: "isolated", via: "none", label: t("고립 {n}/4", { n: enemyFaces }), cost: supplyLineCost(unit), hqDistance: hqDistanceNow };
   }
 
   if (hqDistanceNow <= effectiveHQSupplyRange(unit)) {
-    return { level: "full", via: "hq", label: "대대 보급", cost: hqDistanceNow, hqDistance: hqDistanceNow };
+    return { level: "full", via: "hq", label: t("대대 보급"), cost: hqDistanceNow, hqDistance: hqDistanceNow };
   }
 
   const costNow = supplyLineCost(unit);
   if (!Number.isFinite(costNow)) {
-    const label = battalionHQs(unit.owner).length ? "보급선 두절" : "사령부 전멸";
+    const label = battalionHQs(unit.owner).length ? t("보급선 두절") : t("사령부 전멸");
     return { level: "cut", via: "none", label, cost: costNow, hqDistance: hqDistanceNow };
   }
   if (unit.type === "battalionHQ") {
-    return { level: "full", via: "base", label: "전진 보급", cost: costNow, hqDistance: hqDistanceNow };
+    return { level: "full", via: "base", label: t("전진 보급"), cost: costNow, hqDistance: hqDistanceNow };
   }
-  if (costNow <= effectiveSupplyRange(unit)) return { level: "full", via: "base", label: "정상 보급", cost: costNow, hqDistance: hqDistanceNow };
-  if (costNow <= effectiveStrainedSupplyRange(unit)) return { level: "strained", via: "base", label: "보급 불안", cost: costNow, hqDistance: hqDistanceNow };
-  return { level: "cut", via: "none", label: "보급선 이탈", cost: costNow, hqDistance: hqDistanceNow };
+  if (costNow <= effectiveSupplyRange(unit)) return { level: "full", via: "base", label: t("정상 보급"), cost: costNow, hqDistance: hqDistanceNow };
+  if (costNow <= effectiveStrainedSupplyRange(unit)) return { level: "strained", via: "base", label: t("보급 불안"), cost: costNow, hqDistance: hqDistanceNow };
+  return { level: "cut", via: "none", label: t("보급선 이탈"), cost: costNow, hqDistance: hqDistanceNow };
 }
 
 function adjacentEnemyFaceCount(unit) {
@@ -7481,8 +7616,8 @@ function supplyRouteTo(owner, x, y) {
 // 무조건 "HQ n"을 찍어서, 두절된 대대 사령부 카드에 자기 자신까지의 거리인 "HQ 0"이
 // 떠 있었다 — 같은 카드 안에서 "보급선 이탈"과 정면으로 모순됐다.
 function formatSupplyDistance(supply) {
-  if (supply.via === "hq") return `HQ ${formatNumber(supply.hqDistance)}`;
-  return Number.isFinite(supply.cost) ? `거점 ${formatNumber(supply.cost)}` : "단절";
+  if (supply.via === "hq") return t("HQ {n}", { n: formatNumber(supply.hqDistance) });
+  return Number.isFinite(supply.cost) ? t("거점 {n}", { n: formatNumber(supply.cost) }) : t("단절");
 }
 
 function battalionHQs(owner) {
@@ -7628,16 +7763,16 @@ function supplyCoverLabel(kind, band, owner) {
 // 지도 색만으로는 "몇 칸을 먹이는가"를 눈으로 세어야 안다. 카드에 숫자로 같이 적는다.
 function battalionCoverageText(hq) {
   const coverage = battalionCoverage(hq);
-  if (!coverage.live) return "보급선 두절 / 발급 불가";
+  if (!coverage.live) return t("보급선 두절 / 발급 불가");
   const bands = [...coverage.field.values()];
   const recovery = bands.filter((band) => band === "recovery").length;
-  return `보충 ${recovery}칸 / 보급 ${bands.length}칸`;
+  return t("보충 {a}칸 / 보급 {b}칸", { a: recovery, b: bands.length });
 }
 
 function baseCoverageText(base) {
   const bands = [...baseCoverage(base).field.values()];
   const normal = bands.filter((band) => band === "supply").length;
-  return `정상 ${normal}칸 / 불안 ${bands.length - normal}칸`;
+  return t("정상 {a}칸 / 불안 {b}칸", { a: normal, b: bands.length - normal });
 }
 
 function canMoveTo(unit, x, y) {
@@ -9799,11 +9934,11 @@ function hillDefenseDirection(x, y) {
 
 function ridgeDirectionLabel(direction) {
   return {
-    n: "북쪽",
-    e: "동쪽",
-    s: "남쪽",
-    w: "서쪽",
-  }[direction] ?? "지정 없음";
+    n: t("북쪽"),
+    e: t("동쪽"),
+    s: t("남쪽"),
+    w: t("서쪽"),
+  }[direction] ?? t("지정 없음");
 }
 
 function neighbors(x, y) {

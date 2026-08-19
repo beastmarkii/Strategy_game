@@ -4314,7 +4314,7 @@ h1 {
     font-size: 13px;
     font-weight: 800;
     white-space: nowrap;
-    content: "자세히 ▾";
+    content: var(--card-more, "자세히") " ▾";
   }
 
   /* 펴진 카드는 이름 줄이 「그림 | 이름」 두 칸이다. 표시 칸을 하나 더 연다 —
@@ -5191,7 +5191,7 @@ body {
     text-align: right;
     pointer-events: auto;
     cursor: pointer;
-    content: "자세히 ▾";
+    content: var(--card-more, "자세히") " ▾";
   }
 
   /* 펼치면 스물두 줄이 된다. 한 줄로 세우면 지도를 세로로 갈라 놓으므로
