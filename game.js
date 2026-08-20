@@ -290,7 +290,7 @@ const unitTypes = {
   // 못 하는데, 지금까지는 개활지에서 전차 두 대면 정리됐다. 사령부가 죽으면 보급이
   // 통째로 끊기므로 그 한 번의 돌파가 전선 전체를 무너뜨렸다. 이제 보병은 세 번,
   // 전차는 두 번 붙어야 한다 — 잡을 수는 있되, 지나가는 길에 덤으로 잡히지는 않는다.
-  battalionHQ: { label: "대대 사령부", mark: "지", domain: "land", hp: 9, move: 1, range: 1, attack: 1, cost: 6, supplyUse: 1, defense: 3, moraleAura: 10, commandRange: 2, supplyRange: hqSupplyRange, recoveryRange: hqRecoveryRange, sight: 3 },
+  battalionHQ: { label: "대대 사령부", mark: "지", domain: "land", hp: 9, move: 2, range: 1, attack: 1, cost: 6, supplyUse: 1, defense: 3, moraleAura: 10, commandRange: 2, supplyRange: hqSupplyRange, recoveryRange: hqRecoveryRange, sight: 3 },
 };
 
 const factionUnitProfiles = {
@@ -9406,6 +9406,9 @@ function enemyAxes() {
     y: objective.y,
     label: "목표",
     key: `목표:${objective.x},${objective.y}`,
+    // 축선에 목표 자체를 달아 둔다. 좌표만 넘기면 축선을 저울질할 때
+    // "이건 이미 채운 칸인가, 아직 못 채운 칸인가"를 알 길이 없다.
+    objective,
   }));
   if (seats.length) return seats;
   // 좌표 목표가 없으면 플레이어의 보급 거점이 축선이다. 보급이 이 게임의 중심이니
@@ -9464,6 +9467,23 @@ function enemyBreach(unit) {
   return broken.length ? nearestOf(unit, broken) : null;
 }
 
+// 목표 축선이 얼마나 급한가. 거리와 병력만 보고 축선을 고르면 두 가지를 놓친다.
+// 하나는 이미 유지 턴을 다 채운 목표 — 거기 주력을 세워 봐야 더 얻을 것이 없다.
+// 다른 하나는 묶음 목표의 남은 짝 — 그 한 칸이 승패를 그대로 가른다.
+// 좌표 목표가 아닌 축선(초소·거점·표적)에는 해당이 없으므로 0을 준다.
+function objectiveAxisBias(axis) {
+  const objective = axis?.objective;
+  if (!objective) return 0;
+  // 다 채운 목표. 지킬 인원만 남기면 되니 주공을 걸 곳이 아니다.
+  if (objective.held >= objectiveHoldRequirement(objective)) return -40;
+  if (!objective.group) return 0;
+  // 묶음은 전부 채워야 이긴다. 짝이 이미 채워졌다면 남은 이 칸이 마지막 관문이다.
+  const done = objectivesFor(objective.owner).filter(
+    (other) => other !== objective && other.group === objective.group && objectiveMet(other),
+  ).length;
+  return done * 30;
+}
+
 // 어느 축선에 주력을 걸 것인가. 공격이면 "적이 얇은 곳", 수비면 "적이 몰려오는 곳".
 // 둘 다 결국 같은 원칙이다 — 결정이 날 곳에 무게를 싣는다.
 function axisWeight(axis, units) {
@@ -9471,12 +9491,18 @@ function axisWeight(axis, units) {
   const closeness = units.length
     ? units.reduce((sum, unit) => sum + distance(unit, axis), 0) / units.length
     : 0;
+  const bias = objectiveAxisBias(axis);
   if (enemyPosture() === "defend") {
     // 수비: 위협이 큰 초소가 주공. 몰려오는 쪽을 비워두면 그대로 뚫린다.
-    return defenders * 4 - closeness * 0.5;
+    return defenders * 4 - closeness * 0.5 + bias;
   }
   // 공격: 얇은 곳이 주공. 가깝기도 하면 더 좋다.
-  return -defenders * 2.5 - closeness;
+  // 단 목표 칸 자체는 얇은 곳을 고를 대상이 아니다. 그 칸을 밟지 않으면 이기지
+  // 못하는데, 적이 지키고 있다는 이유로 피하면 영원히 못 밟는다. 오히려 지키는
+  // 적이 많을수록 주력을 걸어야 밀어낼 수 있다. "얇은 곳으로"는 같은 목표로
+  // 가는 우회로들 사이에서 고를 때만 뜻이 있다(approachLanes).
+  if (axis?.objective) return defenders * 1.5 - closeness + bias;
+  return -defenders * 2.5 - closeness + bias;
 }
 
 // 매 턴 새로 짠다. 부대가 죽고 전선이 밀리면 어제의 계획은 이미 남의 계획이다.
@@ -9500,16 +9526,49 @@ function buildEnemyPlan() {
   // 그 자체로 손해고, 뒤에 있는 부대는 어차피 이번 턴에 결판에 못 닿는다.
   // 다만 어제 예비였던 부대가 먼저다 — 예비를 매 턴 갈아치우면 아껴 둔 부대가
   // 없는 것과 같다.
-  const byRear = units
+  // 이미 유지 턴을 채운 목표에는 지킬 인원만 남긴다. 다 채운 칸에 주력이 계속
+  // 눌러앉으면 아직 못 채운 목표는 끝까지 비어 있고, 묶음 미션은 영영 안 끝난다.
+  // 그렇다고 다 빼면 다음 턴에 빼앗겨 유지 턴이 0으로 돌아가므로, 칸마다 한 대만
+  // 남기고 나머지를 푼다. 개통 목표는 밟는 것이 아니라 잇는 것이라 제외한다.
+  const garrison = [];
+  objectiveTiles("enemy")
+    .filter((objective) => objective.kind === "seize" && objective.held >= objectiveHoldRequirement(objective))
+    .forEach((seat) => {
+      const keeper = units.find((unit) => unit.x === seat.x && unit.y === seat.y && !garrison.includes(unit));
+      if (keeper) garrison.push(keeper);
+    });
+  const free = units.filter((unit) => !garrison.includes(unit));
+  garrison.forEach((unit) => {
+    enemyPlan.set(unit.id, { role: "garrison", axis: { x: unit.x, y: unit.y, label: "확보 지점", key: `확보:${unit.x},${unit.y}` } });
+  });
+  // 지킬 부대만 남았으면 더 나눌 것이 없다.
+  if (!free.length) return;
+
+  const byRear = free
     .slice()
     .sort(
       (a, b) =>
         wasRole(a, "reserve") - wasRole(b, "reserve") ||
         nearestOpposingDistance("enemy", b.x, b.y) - nearestOpposingDistance("enemy", a.x, a.y),
     );
-  const reserveCount = Math.min(units.length - 1, Math.floor((units.length * enemyReserveShare) / 100));
+  // 아껴 둔 예비를 한 번도 안 쓰고 판이 끝나면 그건 아낀 것이 아니라 놀린 것이다.
+  // 임팔 16턴을 재보니 가장 강한 전차 한 대가 집결지에서 15턴을 서 있는 동안
+  // 보병만 목표에 밀어넣다가 전멸했다. 그래서 기한의 절반이 지났는데도 목표를
+  // 아직 못 채웠으면 예비를 없앤다 - 남은 턴 안에 결판을 못 내면 어차피 진다.
+  // 수비는 예외다. 버티는 쪽에게 예비는 뚫린 자리를 메우는 유일한 수단이다.
+  const seats = objectiveTiles("enemy");
+  const unfinished = seats.length
+    ? seats.some((objective) => objective.held < objectiveHoldRequirement(objective))
+    : true;
+  const late =
+    enemyPosture() !== "defend" &&
+    operationTurnLimit > 0 &&
+    state.turn * 2 > operationTurnLimit &&
+    unfinished;
+  const reserveShare = late ? 0 : enemyReserveShare;
+  const reserveCount = Math.min(free.length - 1, Math.floor((free.length * reserveShare) / 100));
   const reserves = byRear.slice(0, Math.max(0, reserveCount));
-  const committed = units.filter((unit) => !reserves.includes(unit));
+  const committed = free.filter((unit) => !reserves.includes(unit));
 
   // 축선이 하나뿐이면 갈라 만든다. 목표가 하나인 것과 길이 하나인 것은 다른
   // 이야기다. 다만 공격과 수비는 가르는 방향이 다르다 — 공격은 좌우로 벌려
@@ -9604,6 +9663,7 @@ function postureVerb(unit) {
   if (isArtilleryUnit(unit)) return t("사격 진지로 이동");
   if (unit && infantryScreenGoal(unit)) return t("포병 엄호로 이동");
   const role = unit ? enemyRoleFor(unit) : null;
+  if (role === "garrison") return t("확보 지점 사수");
   if (role === "reserve") return t("예비로 집결");
   if (role === "support") return t("조공으로 기동");
   if (role === "main") return t("주공으로 전진");
@@ -9830,6 +9890,18 @@ function enemyArmorStep(unit, goal) {
 
 // 이번 턴에 어디를 향할 것인가. 참모부의 계획이 먼저다.
 // 계획에 없는 부대(공병·사령부, 또는 계획이 비어 있는 경우)만 예전 규칙으로 떨어진다.
+// 이 축선이 "아직 안 밟은 점령 목표"인가. 개통 목표는 밟는 것이 아니라 잇는
+// 것이므로 뺀다. 이미 유지 턴을 채운 목표도 뺀다 - 다 채운 칸에서는 옆의 적을
+// 잡는 것이 그 칸을 지키는 일이다.
+function openSeizeAxis(axis) {
+  const objective = axis?.objective;
+  if (!objective || objective.kind !== "seize") return false;
+  if (objective.held >= objectiveHoldRequirement(objective)) return false;
+  return !state.units.some(
+    (unit) => unit.owner === objective.owner && unit.x === objective.x && unit.y === objective.y,
+  );
+}
+
 function enemyGoalFor(unit) {
   // 보병의 임무는 확보와 엄호다. 축선을 향해 걷는 것보다 급한 일이 하나 있는데,
   // 노출된 아군 포병 앞에 서는 것이다. 포병은 반격 한 번에 무너지는 병종이라
@@ -9854,6 +9926,13 @@ function enemyGoalFor(unit) {
     // 앞의 조건만 두면 입구 칸이 지형에 막혔을 때 부대가 그 앞에서 멈춰 선다.
     const turned = lane.target && (distance(unit, lane) <= 1 || distance(unit, lane.target) <= distance(lane, lane.target));
     const axis = turned ? lane.target : lane;
+    // 점령 목표는 밟아야 이긴다. 그 칸이 비어 있는데도 옆의 적부터 잡으러 가면
+    // 목표 옆에서 영원히 싸우다 판이 끝난다 - 엘 알라메인을 24턴까지 늘려 재봐도
+    // AI는 끝까지 한 칸 옆에 서 있었다. 목표 반경 4칸 안에 수비대가 있는 것은
+    // 이상한 일이 아니라 당연한 일이므로, 그 규칙이 여기서는 목표를 영원히
+    // 미루는 규칙이 된다. 비어 있는 점령 목표가 축선이면 그 칸이 먼저다.
+    // (밟은 뒤에는 붙어 있는 적을 어차피 공격한다 - 서 있기만 하는 것이 아니다.)
+    if (openSeizeAxis(axis)) return axis;
     // 축선 반경 안에 상대가 들어와 있으면 축선 자체보다 그 상대가 급하다.
     // 방어 초소를 밟고 서서 옆칸의 적을 구경하는 일을 막는 규칙이다.
     return nearestIntruder(unit, axis) ?? axis;
@@ -9950,9 +10029,24 @@ function bestDeckTarget(unit) {
 function enemyFieldTurn(unit) {
   // 무방비 거점이 발밑에 열려 있으면 그것이 이 턴의 최선이다. 사격보다 먼저 본다.
   if (tryEnemyCapture(unit)) return;
-  if (tryEnemyStrike(unit)) return;
 
   const goal = enemyGoalFor(unit);
+
+  // 사격이 이동보다 먼저인 것이 원칙이다. 다만 비어 있는 점령 목표를 이번 턴에
+  // 밟을 수 있다면 그때만은 밟는 것이 먼저다. 엘 알라메인을 24턴까지 늘려
+  // 재보니 목표 옆에 선 보병이 매 턴 사격만 하다 세 턴 만에 죽고, 목표는 끝까지
+  // 빈칸이었다 - 사격은 이겼는데 작전은 진 것이다. 밟은 뒤에도 사격은 그대로
+  // 한다(바로 아래 tryEnemyStrike). 바꾸는 것은 순서뿐이다.
+  if (goal && openSeizeAxis(goal) && !isArtilleryUnit(unit)) {
+    const rush = unit.type === "armor" ? enemyArmorStep(unit, goal) : bestReachableStepToward(unit, goal);
+    if (rush && rush.x === goal.x && rush.y === goal.y) {
+      moveEnemyUnit(unit, rush);
+      tryEnemyStrike(unit);
+      return;
+    }
+  }
+
+  if (tryEnemyStrike(unit)) return;
   if (!goal) return;
 
   // 포병은 전선을 향해 걷는 게 아니라 사격 진지를 고른다.
@@ -10430,7 +10524,10 @@ function enemyHQTurn(hq) {
 }
 
 function bestSafeHQStep(hq) {
-  const candidates = [hq, ...neighbors(hq.x, hq.y).filter((spot) => canMoveTo(hq, spot.x, spot.y))];
+  // 이동력이 닿는 칸 전부를 본다. 이웃 네 칸만 보면 사령부는 이동력이 얼마든
+  // 턴당 한 칸밖에 못 걷는다 - 보병이 두 칸, 전차가 세 칸을 가는 판에서 그러면
+  // 우산은 매 턴 한 칸씩 뒤처지고 전선은 중반부터 통째로 보급이 끊긴다.
+  const candidates = [hq, ...reachableTiles(hq)];
   const scored = candidates
     .map((spot) => ({ ...spot, score: hqSafetyScore(hq, spot.x, spot.y) }))
     .sort((a, b) => b.score - a.score);

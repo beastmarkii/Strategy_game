@@ -690,7 +690,7 @@ const scenarios = [
     lead: "allies",
     summary: "북은 바다, 남은 소금 늪. 옆으로 돌 길이 없어 정면으로만 뚫는 회랑이다.",
     objectiveBrief: "연합군은 능선 아래 통로를 뚫어라. 추축군은 통로를 여는 공병대를 없애라.",
-    turnLimit: 12,
+    turnLimit: 16,
     startDate: [1942, 10, 23],
     // 시간은 수비 측 편이다. 못 뚫으면 전선은 그대로 굳는다.
     timeoutWinner: "east",
@@ -1178,7 +1178,7 @@ const scenarios = [
     lead: "allies",
     summary: "산에 둘러싸인 진지 하나. 포위된 쪽이 남쪽 길을 다시 열어야 산다.",
     objectiveBrief: "연합군은 남쪽 도로까지 보급선을 사흘 이어라. 추축군은 임팔 진지를 점령하라.",
-    turnLimit: 16,
+    turnLimit: 20,
     startDate: [1944, 3, 8],
     // 버티면 이긴다. 굶는 쪽은 포위한 쪽이었다.
     timeoutWinner: "west",
@@ -1197,7 +1197,7 @@ const scenarios = [
       "PPFFPPPPPPPPPPPPPPPP",
       "CCCCCCCCCCCCCCCCCCCC",
       "PPFFPPPHHHPPPPFFPPPP",
-      "PPPPPPPHBHPPPPFFPPPP",
+      "PPPPPPPPBPPPPPFFPPPP",
       "PPPPPPPHHHPPPPPPPPPP",
       "PPHHPPPPPPPPPPHHPPPP",
       "PPHHPPPPPPPPPPHHPPPP",
