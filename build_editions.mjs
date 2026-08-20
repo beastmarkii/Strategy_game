@@ -66,6 +66,31 @@ function findScenario(id) {
   writeFileSync(path, body, "utf8");
 }
 
+
+// 수치 편집 창은 판에 넣지 않는다. 확장판에서 따로 팔 물건이다.
+// 단추만 감춰서는 소용이 없다 - 웹 게임은 파일을 통째로 손님 컴퓨터에 내려보내므로,
+// 주소 끝에 ?edit=1을 붙인 사람은 감춰 둔 창을 그대로 꺼내 쓴다. 파일에서 잘라낸다.
+// 저장소의 index.html은 손대지 않는다. 잘리는 것은 빌드 결과물뿐이다.
+function stripEditor(html) {
+  const cuts = [
+    ["<!-- 균형을 잡는 사람의 연장이다.", "수치 편집</button>"],
+    ["<aside class='balance-editor'".split("'").join('"'), "</aside>"],
+  ];
+  let out = html;
+  for (const [open, close] of cuts) {
+    const start = out.indexOf(open);
+    if (start < 0) throw new Error(`에디터를 못 찾았다: ${open}`);
+    const end = out.indexOf(close, start);
+    if (end < 0) throw new Error(`에디터 끝을 못 찾았다: ${close}`);
+    out = out.slice(0, start) + out.slice(end + close.length);
+  }
+  // 잘라낸 뒤에도 이름이 남아 있으면 뭔가 빠뜨린 것이다. 판이 나가기 전에 멈춘다.
+  for (const mark of ["toggleEditorPanel", "editorPanel", "balanceEditor"]) {
+    if (out.includes(mark)) throw new Error(`에디터 흔적이 남았다: ${mark}`);
+  }
+  return out;
+}
+
 const { scenarios: allScenarios, storeUrl } = readScenarios();
 rmSync(out, { recursive: true, force: true });
 
@@ -74,6 +99,9 @@ for (const [edition, config] of Object.entries(editions)) {
   mkdirSync(dir, { recursive: true });
 
   for (const file of clientFiles) cpSync(join(root, file), join(dir, file));
+  // 복사한 index.html에서 수치 편집 창을 도려낸다.
+  const indexPath = join(dir, "index.html");
+  writeFileSync(indexPath, stripEditor(readFileSync(indexPath, "utf8")), "utf8");
   // assets/audio/raw 는 음량 맞추기 전의 원본이다. 게임은 쓰지 않는데 18MB라서
   // 그대로 넣으면 처음 여는 사람이 두 배를 기다린다. 판에서는 뺀다.
   cpSync(join(root, "assets"), join(dir, "assets"), {

@@ -1881,7 +1881,7 @@ const defaultScenarioId = "cobra";
 const gameEdition = "full";
 
 // 무료판에서 「나머지 작전」 칸을 눌렀을 때 가는 곳. 주소가 정해지면 이 한 줄만 고친다.
-const storeUrl = "https://beastmarkii.itch.io/front-command-1944";
+const storeUrl = "https://yeenstudio.itch.io/front-command-1944";
 
 function findScenario(id) {
   return scenarios.find((scenario) => scenario.id === id) ?? scenarios.find((scenario) => scenario.id === defaultScenarioId) ?? scenarios[0];
