@@ -1383,6 +1383,19 @@ document.querySelector("#panelScrim")?.addEventListener("click", closeCommandPan
    단추만 감춰서는 부족하다. 창은 화면 밖으로 밀려 있을 뿐 살아 있어서, Tab 키만
    눌러 가면 안쪽 숫자칸 아흔 몇 개에 그대로 닿는다. 그래서 단추를 감출 때 창도
    같이 잠근다(inert) — 창의 생김새는 건드리지 않고 손잡이만 뗀다. */
+// ── 이용 기록 ──────────────────────────────────────────────────────
+// 몇 명이 들어와서 몇 명이 실제로 한 판을 하고 몇 명이 상점으로 넘어가는지,
+// 그 세 숫자만 센다. 누가 했는지는 남기지 않는다 - 사람을 구별해 두는 값이
+// 아예 없다. 기록이 꺼져 있으면(index.html의 이름 칸이 비어 있으면) 이 함수는
+// 아무 일도 하지 않는다. 게임 쪽에서는 켜졌는지 꺼졌는지 알 필요가 없다.
+function recordEvent(name) {
+  try {
+    window.goatcounter?.count?.({ path: name, title: name, event: true });
+  } catch (error) {
+    // 기록이 실패해도 게임은 계속 돌아야 한다. 숫자 하나 못 센 것뿐이다.
+  }
+}
+
 const EDIT_TOOLS_KEY = "ww2TacticalCommand.editTools";
 
 let editToolsOn = false;
@@ -2985,6 +2998,10 @@ function renderOperationScenarioChoices(side) {
         </span>
       </a>`,
     );
+    // 이 칸을 누른 사람의 수가 「사러 갈 마음이 든 사람」의 수다.
+    operationScenarioChoicesEl
+      .querySelector(".scenario-choice-more")
+      ?.addEventListener("click", () => recordEvent("store-click"));
   }
 }
 
@@ -3203,6 +3220,9 @@ function confirmNewOperationSetup() {
     difficulty: selectedOperationDifficulty(),
   });
   operationCommenced = true;
+  // 여기가 손님이 「작전 개시」를 실제로 누른 자리다. 게임이 켜지면서 기본 판을
+  // 까는 자리에서 세면 들어온 사람 수와 똑같아져서 아무것도 알 수 없다.
+  recordEvent(`game-start/${state.scenarioId}`);
   // 개시하는 그 순간부터 적어 둔다. 첫날에 창을 닫아도 고른 것(작전·진영·장군·
   // 배치·난이도)이 남아 있어야, 다시 켰을 때 그 다섯 개를 또 고르지 않는다.
   saveOperation();
@@ -8424,6 +8444,7 @@ function finishGame(outcome) {
   // 끝난 작전은 이어할 것이 없다. 남겨 두면 다음에 켤 때 이미 승패가 난 판을
   // 「중단된 작전」이라고 내밀게 된다.
   clearSavedOperation();
+  recordEvent(`game-end/${outcome.verdict}`);
   const message = `${verdictWord(outcome.verdict)}: ${outcome.reason}`;
   addLog(message);
   addChronicle(message, "end");

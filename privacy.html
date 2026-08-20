@@ -349,11 +349,20 @@
 
       <h2 data-t="h2-out">밖으로 나가는 것</h2>
       <p data-t="p-out">
-        없습니다. 게임이 받아 오는 파일 — 화면, 지도 그림, 장군 사진, 무전 소리, 배경음악 —
-        은 전부 이 게임이 올라가 있는 그 주소 한 곳에서만 옵니다. 다른 회사의 서버는
-        하나도 부르지 않습니다. 광고도, 이용 기록 측정 도구도, 글꼴을 빌려 오는 곳도,
-        지도 서비스도 없습니다. 당신이 몇 판을 했는지, 어디서 졌는지, 어떤 작전과 어떤
-        장군을 골랐는지는 이 기계 밖으로 나가지 않습니다.
+        게임이 받아 오는 파일 — 화면, 지도 그림, 장군 사진, 무전 소리, 배경음악 — 은 전부
+        이 게임이 올라가 있는 그 주소 한 곳에서만 옵니다. 광고도, 글꼴을 빌려 오는 곳도,
+        지도 서비스도 없습니다.
+      </p>
+      <p data-t="p-count">
+        딱 하나, 사람 수를 세는 곳이 있습니다. <strong>GoatCounter</strong>라는 곳으로 네 가지가
+        갑니다 — 이 쪽을 열었다는 것, 어느 작전을 시작했다는 것, 그 판을 이겼는지 졌는지,
+        그리고 「나머지 작전」 칸을 눌렀다는 것. 만드는 사람이 어느 작전이 너무 어려운지
+        알아야 고칠 수 있기 때문입니다.
+      </p>
+      <p data-t="p-count2">
+        당신이 누구인지는 함께 가지 않습니다. 쿠키도 없고, 사람마다 붙이는 번호도 없습니다.
+        같은 사람이 내일 다시 와도 다른 사람으로 셉니다. 고른 장군, 몇 번째 턴에서 졌는지,
+        저장한 판, 지도 위에서 한 일은 하나도 나가지 않습니다.
       </p>
       <p data-t="p-osm">
         <strong>2026년 8월 18일에 고친 것:</strong> 그전까지는 판을 그릴 때마다
@@ -388,9 +397,16 @@
 
       <h2 data-t="h2-change">이 방침이 바뀔 때</h2>
       <p data-t="p-change">
-        앞으로 이용 기록 측정(어느 화면에서 사람들이 그만두는지 같은)을 붙이게 되면,
-        <strong>켜기 전에 먼저 물어보고 당신이 동의한 뒤에만</strong> 작동시킵니다. 그때는 이
-        문서도 함께 고치고 아래 날짜를 바꿉니다.
+        <strong>2026년 8월 21일에 고친 것:</strong> 그전까지 이 문서는 「이용 기록 측정을 붙이게
+        되면 먼저 물어보고 동의한 뒤에만 켜겠다」고 적어 두었습니다. 그런데 위에 적은 세는
+        방식은 쿠키도 쓰지 않고 사람을 구별해 두는 값도 남기지 않아서, 동의를 받을 대상인
+        「당신」이 기록 안에 존재하지 않습니다. 물어볼 것이 없는 셈입니다. 그래서 동의창을
+        띄우는 대신, 무엇이 나가는지를 위에 전부 적어 두는 쪽을 골랐습니다.
+      </p>
+      <p data-t="p-change2">
+        앞으로 사람을 구별해 두는 것(계정, 번호, 쿠키)이 하나라도 생기면, 그때는
+        <strong>켜기 전에 먼저 물어보고 당신이 동의한 뒤에만</strong> 작동시킵니다. 그때도 이
+        문서를 함께 고치고 아래 날짜를 바꿉니다.
       </p>
 
       <h2 data-t="h2-contact">문의</h2>
@@ -402,7 +418,7 @@
 
       <a class="back" href="index.html" data-t="back">← 게임으로 돌아가기</a>
 
-      <footer data-t="footer">시행일 2026년 8월 18일 · 마지막으로 고친 날 2026년 8월 18일</footer>
+      <footer data-t="footer">시행일 2026년 8월 18일 · 마지막으로 고친 날 2026년 8월 21일</footer>
     </main>
     <!-- 여러 말로 여는 방법. 이 문서는 게임 파일(game.js)을 읽지 않는다 — 방침서가
          게임이 바뀔 때마다 같이 흔들리면 안 되기 때문이다. 그래서 어느 말로 열지
@@ -435,7 +451,7 @@
         packs.en = {
           "until-erased": "Until you erase it yourself",
           "back": "← Back to the game",
-          "footer": "Effective 18 August 2026 · Last updated 18 August 2026",
+          "footer": "Effective 18 August 2026 · Last updated 21 August 2026",
           "h1": "Privacy Policy",
           "h2-change": "If this policy changes",
           "h2-collect": "What is not collected",
@@ -449,7 +465,8 @@
           "lede": "This game never asks who you are. There is no account, no name, no email address. Everything the game writes down stays on the device you are using right now, and none of it is sent anywhere.",
           "li-browser": "In the browser: deleting this site's stored data has the same effect.",
           "li-ingame": "In the game: press <strong>Erase stored data</strong> in the Command drawer and all five rows above go at once. The unfinished operation goes with them.",
-          "p-change": "If usage measurement is ever added (to see which screen people give up on, for example), it will be <strong>switched on only after asking you first, and only once you have agreed</strong>. This document will be corrected at the same time and the date below will change.",
+          "p-change": "<strong>Changed on 21 August 2026:</strong> until that day this document said that if usage measurement were ever added, it would be switched on only after asking you first. But the counting described above uses no cookies and keeps no per-person value, so the “you” whose consent would be asked for does not exist inside the record. There is nobody to ask. Rather than raise a consent box, the choice was to write down exactly what leaves, above.",
+          "p-change2": "If anything that tells one person from another is ever added — an account, an identifier, a cookie — it will be <strong>switched on only after asking you first, and only once you have agreed</strong>. This document will be corrected at the same time and the date below will change.",
           "p-collect": "Name, email address, phone number, date of birth, location, payment details — none of it is asked for, and there is no field in the game that could ask. There is no sign-up and no login.",
           "p-contact": "Leave a note on the repository's <a href=\"https://github.com/beastmarkii/Strategy_game/issues\" rel=\"noopener noreferrer\" target=\"_blank\">issue tracker</a>.",
           "p-cookie": "This game uses no cookies at all.",
@@ -457,7 +474,9 @@
           "p-host": "The game is published on GitHub Pages. As with opening any website, the moment you connect that server (GitHub) may record the visit — the time and the IP address, for instance. GitHub handles those records under its own policy; we neither receive them nor store them. The details are in the <a href=\"https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement\" rel=\"noopener noreferrer\" target=\"_blank\">GitHub General Privacy Statement</a>.",
           "p-kids": "No age is asked for and no personal information is collected, so there is nothing collected about children either.",
           "p-osm": "<strong>Changed on 18 August 2026:</strong> until that day the game was fetching twenty-five map tiles from OpenStreetMap's servers every time a board was drawn. Those images were covered so that not one pixel of them ever reached the screen, and nobody had ever seen them — but the fetching happened all the same, and those addresses carried the coordinates of whichever operation you had picked. Which means the “Nothing” above was not true until then. That part has been taken out of the game, and the screen looks exactly as it did.",
-          "p-out": "Nothing. Every file the game fetches — the interface, the map art, the commander portraits, the radio sounds, the music — comes from the one address the game is published at, and nowhere else. Not a single other company's server is called. There is no advertising, no analytics, no borrowed fonts, no map service. How many games you have played, where you lost, which operation and which commander you picked: none of that leaves this device.",
+          "p-count": "One thing does. Four facts go to a service called <strong>GoatCounter</strong>: that this page was opened, which operation was started, whether that game was won or lost, and whether the “more operations” card was clicked. The person who makes this game needs to know which operation is too hard, or it never gets fixed.",
+          "p-count2": "Who you are does not go with it. There are no cookies and no per-person number. If you come back tomorrow you are counted as somebody else. The commander you picked, the turn you lost on, your saved game and anything you did on the map: none of it leaves this device.",
+          "p-out": "Every file the game fetches — the interface, the map art, the commander portraits, the radio sounds, the music — comes from the one address the game is published at, and nowhere else. There is no advertising, no borrowed fonts, no map service.",
           "p-store": "To let you carry on with an unfinished game, a few things have to be remembered. They go into the storage the browser keeps separately for this address (web storage). Websites at other addresses cannot read it, and it never reaches us. One caveat: this game sits under <code>beastmarkii.github.io</code>, so it shares that storage with any other page the same account has published at that address. Right now this game is the only thing there.",
           "r1-what": "An unfinished operation<br /><code>savedOperation</code>",
           "r1-when": "Erased by itself once that operation ends",
