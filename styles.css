@@ -6628,7 +6628,16 @@ body {
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease,
+    opacity 420ms ease;
+}
+
+/* 전투 장면이 흐르는 동안에는 이 단추를 치운다. 장면 위에 얹히면 그 자리가
+   화면의 일부인 줄 알게 되고, 지금 눌러야 할 것은 이 단추가 아니라 화면
+   아무 데나이기 때문이다. 제목이 뜨면 도로 나온다. */
+.title-screen.intro ~ .music-toggle {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .music-toggle:hover,
@@ -7546,7 +7555,7 @@ html[lang="en"] {
   display: none;
   place-items: center;
   overflow: hidden;
-  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820h");
+  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820i");
   opacity: 1;
   transition: opacity 700ms ease;
 }
