@@ -3393,18 +3393,16 @@ h1 {
     animation: none;
   }
 
-  /* 튀고 흩어지고 번쩍이는 것은 통째로 지운다. 멀미의 지름길이다.
-     섬광과 충격파 고리도 여기 넣는다 — 애니메이션을 끄면 fill 값이 사라져서
-     둘 다 제 크기 그대로 눌러앉아 버린다. */
+  /* 날아다니는 것만 지운다 - 파편·불똥·잔해가 화면을 가로지르는 게 멀미의
+     원인이지, 불길이 커 보이는 것은 아니다. 고리는 뺀다: 크기가 안 변하면
+     동그라미 테두리 하나가 과녁처럼 남을 뿐이라 폭발로 안 읽힌다. */
   .fx-shard,
   .fx-ember,
   .fx-debris,
-  .fx-flame,
   .fx-column,
-  .fx-dust,
-  .fx-glow,
   .fx-flash,
   .fx-ring,
+  .fx-dust,
   .fx-blast,
   .fx-smoke,
   .fx-wreck,
@@ -3413,21 +3411,52 @@ h1 {
     display: none;
   }
 
-  /* 착탄 자리에는 움직이지 않는 표시 하나만 남긴다. 그냥 animation: none으로
-     끄면 fill 값이 함께 사라져서 불덩이가 가운데가 아니라 타일 왼쪽 위 모서리에
-     달라붙고, 격파는 2.3초를 사는지라 주황색 덩어리가 한참 붙어 있게 된다.
-     여기서는 한 급 작게, 제자리에, 잠깐만 띄운다 — 움직임 없이도 "여기서
-     터졌다"는 읽혀야 하기 때문이다. */
+  /* 착탄을 판 위로 띄운다. 기본값 2px이면 기울어진 판에 반쯤 파묻혀 아랫부분이
+     타일에 잘려 나가고, 그래서 폭발이 반달로 보였다. */
+  .fx-impact {
+    transform: translateZ(calc(12px * var(--fx-scale, 1)));
+  }
+
+  /* 「퍼지는 동작」을 빼되 「퍼진 불길」은 남긴다. 불줄기는 처음부터 다 뻗은
+     길이로 떠서 옅어지기만 한다 - 커지지도 날아가지도 않으니 멀미가 없고,
+     사방으로 뻗은 불길이라 폭발로 읽힌다. */
+  .fx-flame {
+    animation: fxFlameStill 620ms linear both;
+    animation-delay: 0ms;
+  }
+
   .fx-fire {
-    width: calc(20px * var(--fx-scale, 1));
-    height: calc(20px * var(--fx-scale, 1));
+    width: calc(26px * var(--fx-scale, 1));
+    height: calc(26px * var(--fx-scale, 1));
     box-shadow: none;
+    z-index: 3;
     animation: fxImpactStill 560ms steps(1, end) both;
   }
 
   .fx-impact.fx-kill .fx-fire {
-    width: calc(30px * var(--fx-scale, 1));
-    height: calc(30px * var(--fx-scale, 1));
+    width: calc(36px * var(--fx-scale, 1));
+    height: calc(36px * var(--fx-scale, 1));
+    animation-duration: 900ms;
+  }
+
+  /* 불길 뒤에 깔리는 열기. 테두리 없는 번짐이라 과녁처럼 보이지 않는다. */
+  .fx-glow {
+    width: calc(56px * var(--fx-scale, 1));
+    height: calc(56px * var(--fx-scale, 1));
+    mix-blend-mode: normal;
+    z-index: 0;
+    animation: fxImpactStill 660ms linear both;
+  }
+
+  .fx-impact.fx-kill .fx-glow,
+  .fx-impact.fx-base .fx-glow {
+    width: calc(74px * var(--fx-scale, 1));
+    height: calc(74px * var(--fx-scale, 1));
+    animation-duration: 1000ms;
+  }
+
+  .fx-impact.fx-kill .fx-flame,
+  .fx-impact.fx-base .fx-flame {
     animation-duration: 900ms;
   }
 
@@ -3447,6 +3476,20 @@ h1 {
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) rotateX(calc(-1 * var(--board-tilt, 58deg)));
+  }
+}
+
+/* 움직임을 끈 사용자용 불길. 다 뻗은 길이 그대로 떠 있다가 옅어진다. */
+@keyframes fxFlameStill {
+  0%,
+  72% {
+    opacity: 0.95;
+    transform: translateY(-50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(var(--flame-angle, 0deg)) scale(1, 0.9);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) rotateX(calc(-1 * var(--board-tilt, 58deg))) rotate(var(--flame-angle, 0deg)) scale(1, 0.9);
   }
 }
 
