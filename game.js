@@ -1853,6 +1853,12 @@ const noticeSounds = ["work_complete", "unit_ready", "axis_work_complete", "axis
 const uiSounds = ["ui_click", "map_tap", "hatch_open"];
 
 const sampleData = new Map();
+// 지금 받고 있는 중인 파일 이름. 이게 없으면 첫 번째 요청이 끝나기 전에
+// 두 번째 요청이 들어와 같은 파일을 두 벌 내려받는다.
+const samplePrefetching = new Set();
+// 인트로가 끝나기 전인가. 끝나기 전에는 소리를 받지 않고 요청만 적어 둔다.
+let soundPrefetchArmed = false;
+let soundPrefetchQueued = null;
 const sampleBuffers = new Map();
 const samplePending = new Map();
 const lastVariantPick = new Map();
@@ -1904,14 +1910,22 @@ function allSoundNames(playerSide = state?.playerSide ?? "allies", roster = stat
 // 소리를 내주지 않지만, 내려받는 데는 그런 제약이 없다. 이걸 안 해두면 첫 클릭에서만
 // 대답이 늦게 온다.
 function prefetchSounds(playerSide, roster) {
+  // 인트로 영상이 끝나기 전에는 받지 않는다. 같은 길을 두고 다투면 영상이 끊긴다.
+  // 그 사이에 들어온 요청은 마지막 것만 적어 두었다가 영상이 끝나면 그대로 쓴다.
+  if (!soundPrefetchArmed) {
+    soundPrefetchQueued = [playerSide, roster];
+    return;
+  }
   allSoundNames(playerSide, roster).forEach((name) => {
-    if (sampleData.has(name)) return;
+    if (sampleData.has(name) || samplePrefetching.has(name)) return;
+    samplePrefetching.add(name);
     fetch(`${audioBasePath}${name}.mp3`)
       .then((response) => (response.ok ? response.arrayBuffer() : null))
       .then((data) => {
         if (data) sampleData.set(name, data);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => samplePrefetching.delete(name));
   });
 }
 
@@ -2607,7 +2621,19 @@ musicToggleEl?.addEventListener("click", (event) => {
 
 ["pointerdown", "keydown"].forEach((type) => document.addEventListener(type, musicNudge));
 
-prefetchSounds();
+// 소리 파일은 첫 화면에서 받지 않는다. 인트로 영상과 같은 길을 두고 다투면
+// 영상이 끊긴다. 영상이 끝나고 제목이 뜨는 순간부터 받는다 - 그때부터
+// 작전 명령서를 다 채울 때까지 몇 초가 남아 있어 충분하다.
+function startSoundPrefetch() {
+  if (soundPrefetchArmed) return;
+  soundPrefetchArmed = true;
+  const queued = soundPrefetchQueued;
+  soundPrefetchQueued = null;
+  if (queued) prefetchSounds(queued[0], queued[1]);
+  prefetchSounds();
+}
+// 타이틀 화면이 아예 없는 경우를 대비한 보험이다.
+window.setTimeout(startSoundPrefetch, 12000);
 
 // index.html 에 표시해 둔 자리를 한 번만 훑어서 원래 한글을 적어 둔다.
 // 표시가 없어져도 조용히 넘어가지 않도록, 처음 훑을 때 개수를 남긴다.
@@ -8531,6 +8557,8 @@ function titleReveal(instant) {
   titleClearTimers();
   titleClipWaiting = false;
   titleScreenEl.classList.remove("intro", "waiting");
+  // 영상이 끝났다. 이제 소리 파일을 받아도 영상을 방해하지 않는다.
+  startSoundPrefetch();
   if (instant) titleScreenEl.classList.add("instant");
   titleScreenEl.classList.add("ready");
   try {
