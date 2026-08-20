@@ -1313,9 +1313,6 @@ const resumeOperationEl = document.querySelector("#resumeOperation");
 const discardOperationEl = document.querySelector("#discardOperation");
 const missionNameLabelEl = document.querySelector("#missionNameLabel");
 const missionBriefLabelEl = document.querySelector("#missionBriefLabel");
-// 저장 알림 띠. 첫 판 안내(coachAllowed)가 이 띠에게 자리를 비켜 주므로,
-// 그쪽보다 먼저 잡아 둔다 — 뒤에 두면 부팅 순서가 조금만 바뀌어도 터진다.
-const storageNoticeEl = document.querySelector("#storageNotice");
 const resultScreenEl = document.querySelector("#resultScreen");
 const resultVerdictEl = document.querySelector("#resultVerdict");
 const resultReasonEl = document.querySelector("#resultReason");
@@ -2698,14 +2695,10 @@ function applyLocale() {
     if (commandButton) commandButton.textContent = activePack.buttons.command;
   }
 
-  // 저장 안내와 「기록 지우기」. 다른 글자는 다 바뀌는데 이 넷만 한국어로 남아
-  // 있으면, 무엇을 적어 두는지 알리는 글을 정작 그 사람은 못 읽는다.
+  // 「개인정보 처리방침」과 「기록 지우기」. 다른 글자는 다 바뀌는데 이 둘만
+  // 한국어로 남으면, 무엇을 적어 두는지 알리는 글을 정작 그 사람은 못 읽는다.
   const privacyPack = activePack.privacy;
   if (privacyPack) {
-    setText("#storageNoticeTitle", privacyPack.noticeTitle);
-    setText("#storageNotice .storage-notice-text p", privacyPack.noticeBody);
-    setText("#storageNotice .storage-notice-actions a", privacyPack.noticeMore);
-    setText("#storageNoticeOk", privacyPack.noticeOk);
     setText(".privacy-row a", privacyPack.policy);
     // 「정말 지운다」로 바뀌어 있는 중이라면 그 글자를 덮어쓰지 않는다.
     // 덮어쓰면 경고가 사라진 채로 다음 누름이 진짜 지우는 누름이 된다.
@@ -2839,10 +2832,7 @@ function openNewOperationSetup() {
   // 그래서 시작한 판이 있고 그 판이 아직 안 끝났을 때만 내민다.
   if (operationCancelEl) operationCancelEl.hidden = !operationCommenced || !!state?.gameOver;
   if (operationModalEl) operationModalEl.hidden = false;
-  // 명령서가 올라온 순간 아래에 깔린 것들을 물린다. 게임을 켤 때는 판이 먼저
-  // 그려지고(render → 띠가 뜬다) 명령서가 그 다음에 오므로, 여기서 다시 묻지
-  // 않으면 띠가 명령서 밑에 깔린 채 「작전 개시」를 덮는다.
-  storageNoticeSync();
+  // 명령서가 올라온 순간 아래에 깔린 안내를 물린다.
   coachSync();
   briefingMusicPlay();
   // 창이 뜨자마자 첫 칸이 열린다. 한 박자 늦게 여는 이유는 열리는 동작 자체가
@@ -2932,7 +2922,6 @@ function closeNewOperationSetup() {
   // 판은 명령서가 닫히기 전에 이미 그려진다. 그때는 명령서가 아직 화면을 덮고
   // 있어서 안내가 스스로 물러나 있고, 그 뒤로는 다시 그릴 일이 없다 — 즉 여기서
   // 한 번 더 부르지 않으면 첫 마디는 플레이어가 무엇이든 누를 때까지 안 뜬다.
-  storageNoticeSync();
   coachSync();
 }
 
@@ -3453,9 +3442,6 @@ function coachAllowed() {
   if (state.phase !== "player") return false;
   if (operationModalEl && !operationModalEl.hidden) return false;
   if (resultScreenEl && !resultScreenEl.hidden) return false;
-  // 저장 알림 띠와 안내 쪽지는 화면 같은 자리(아래)를 쓴다. 둘이 겹치면 둘 다
-  // 못 읽으므로, 띠가 물러날 때까지 안내는 기다린다.
-  if (storageNoticeEl && !storageNoticeEl.hidden) return false;
   return true;
 }
 
@@ -3545,10 +3531,6 @@ coachNextEl?.addEventListener("click", () => {
 coachSkipEl?.addEventListener("click", coachFinish);
 
 showCoachEl?.addEventListener("click", () => {
-  // 알림 띠와 안내 쪽지는 화면 아래 같은 자리를 쓴다. 띠가 떠 있으면 안내는
-  // 안 나오는데(coachAllowed), 그러면 「조작 안내」를 눌러도 아무 일이 안 일어난다.
-  // 누른 사람이 보려는 것은 안내다. 띠는 읽고 닫으면 그만인 것이라 여기서 닫는다.
-  if (storageNoticeEl && !storageNoticeEl.hidden) dismissStorageNotice();
   // 안내를 가리지 않으려고 접는 것이다. 사람이 지휘칸을 닫은 것이 아니다.
   setCommandPanel(true, { byUser: false });
   coachStart(true);
@@ -3567,8 +3549,6 @@ function coachSyncSoon() {
   if (coachFrame) return;
   coachFrame = window.requestAnimationFrame(() => {
     coachFrame = 0;
-    // 알림 띠도 같은 자리(화면 아래)에 붙으므로 같이 다시 앉힌다.
-    if (storageNoticeEl && !storageNoticeEl.hidden) dockAboveHudActions(storageNoticeEl);
     coachSync();
   });
 }
@@ -3577,23 +3557,19 @@ window.addEventListener("resize", coachSyncSoon);
 window.addEventListener("scroll", coachSyncSoon, true);
 
 /* ── 이 기계에 무엇을 적어 두는지 ─────────────────────────────────────────────
-   이 게임은 계정도 없고 서버로 보내는 것도 없다. 그래도 판을 이어서 하려면
-   몇 가지를 브라우저에 적어 둬야 하고, 그 사실은 처음 온 사람에게 한 번은
-   말해야 한다.
+   이 게임은 계정도 없고 서버로 보내는 것도 없다. 판을 이어서 하려고 몇 가지를
+   이 기계에 적어 둘 뿐이다. 무엇을 적는지는 privacy.html에 다 적어 두었고,
+   그리로 가는 길과 통째로 지우는 단추는 지휘 서랍 맨 아래에 있다.
 
-   동의를 받는 창이 아니다. 받을 동의가 없기 때문이다 — 여기 적어 두는 다섯은
-   전부 게임이 굴러가는 데 필요한 것이고 광고도 추적도 아니다. 그래서 「거부」
-   단추를 두지 않는다. 아무것도 안 하면서 거부 단추만 세워 두는 쪽이 오히려
-   거짓말이다. 대신 무엇을 적는지 다 적어 둔 문서(privacy.html)로 가는 길과,
-   그것을 통째로 지우는 단추를 준다.
-
-   명령서가 닫힌 뒤에 뜬다. 명령서 위에 겹쳐 띄우면 화면 아래에 있는 「작전
-   개시」를 이 띠가 덮는다. */
+   예전에는 화면 아래에 알림 띠를 하나 띄웠다. 뺐다 — 판을 켠 사람이 맨 먼저
+   읽는 글이 저장 공지인 것은 게임이 아니고, 폰에서는 그 띠가 지도 아래쪽을
+   덮은 채 글자와 단추가 화면 밖으로 잘려 나갔다. 알릴 것은 방침 문서에 있다. */
 
 const STORAGE_NOTICE_KEY = "ww2TacticalCommand.storageNotice";
 
 // 「기록 지우기」가 지우는 것 전부. 새 저장 항목을 만들면 여기에도 넣어야 한다 —
-// 안 넣으면 지웠다고 말해 놓고 남겨 두는 것이 된다.
+// 안 넣으면 지웠다고 말해 놓고 남겨 두는 것이 된다. STORAGE_NOTICE_KEY는 이제
+// 새로 적히지 않지만, 예전에 그 띠를 본 기계에는 남아 있으므로 그대로 둔다.
 const GAME_STORAGE_KEYS = [
   DEFAULT_BALANCE_STORAGE_KEY,
   SAVED_OPERATION_KEY,
@@ -3602,57 +3578,7 @@ const GAME_STORAGE_KEYS = [
   STORAGE_NOTICE_KEY,
 ];
 
-// storageNoticeEl은 첫 판 안내가 먼저 참조하므로 파일 위쪽에서 잡아 둔다.
-const storageNoticeOkEl = document.querySelector("#storageNoticeOk");
 const clearStoredDataEl = document.querySelector("#clearStoredData");
-
-/* 「알겠다」를 눌렀다는 사실은 이 판이 도는 동안에도 따로 쥐고 있어야 한다.
-   저장이 막힌 브라우저(사파리 비공개 창, 저장 공간이 꽉 찬 경우)에서는 적어
-   두기만 실패하고 읽기는 멀쩡히 도는 일이 있다. 그러면 눌러서 띠를 닫아도
-   화면을 다시 그리는 순간 storageNoticeSync가 "아직 안 봤다"고 판단해 도로
-   띄운다. 띠가 서 있는 동안에는 첫 판 안내도 못 나오므로(coachAllowed),
-   그 사람은 안내 1번에서 영영 못 벗어난다. */
-let storageNoticeDismissed = false;
-
-function storageNoticeSeen() {
-  if (storageNoticeDismissed) return true;
-  try {
-    return localStorage.getItem(STORAGE_NOTICE_KEY) === "seen";
-  } catch (error) {
-    // 저장이 막힌 브라우저라면 적어 두는 것 자체가 없다. 알릴 것도 없다.
-    return true;
-  }
-}
-
-function storageNoticeSync() {
-  if (!storageNoticeEl) return;
-  // 배치 중에는 안 띄운다. 그때는 화면 아래쪽 칸에 부대를 손으로 놓는 중이라,
-  // 이 띠가 그 칸들을 덮으면 놓을 자리가 안 보인다. 배치가 끝나면 그때 나온다.
-  const deploying = state?.phase === "deploy";
-  const show =
-    !storageNoticeSeen() &&
-    !deploying &&
-    (!operationModalEl || operationModalEl.hidden) &&
-    (!resultScreenEl || resultScreenEl.hidden);
-  storageNoticeEl.hidden = !show;
-  // 폰에서는 「턴 종료」 띠가 화면 바닥에 붙어 있다. 그 위에 겹치면 이 띠가
-  // 단추를 먹는다.
-  if (show) dockAboveHudActions(storageNoticeEl);
-}
-
-function dismissStorageNotice() {
-  storageNoticeDismissed = true;
-  try {
-    localStorage.setItem(STORAGE_NOTICE_KEY, "seen");
-  } catch (error) {
-    /* 못 적어도 이번 판에서는 닫힌 채로 간다. */
-  }
-  if (storageNoticeEl) storageNoticeEl.hidden = true;
-  // 띠가 비켜야 첫 판 안내가 그 자리에 들어온다.
-  coachSync();
-}
-
-storageNoticeOkEl?.addEventListener("click", dismissStorageNotice);
 
 // 한 번 누르면 지워지지 않는다. 여기서 지우는 것에는 하다 만 판도 들어 있어서,
 // 잘못 누른 사람은 그 판을 잃는다. 그래서 두 번 누르게 하고, 잠깐 두면 저절로
@@ -4460,6 +4386,8 @@ function render() {
   // 처리방침이 거짓말이 되고, 어느 작전을 골랐는지가 그 좌표로 남의 기록에 남았다.
   // 그래서 받아 오는 일을 없앴다 — 화면은 그대로다.
   boardEl.classList.toggle("map-enabled", mapConfig.enabled);
+  // 그림이 먼저, 지명이 그 위에. 둘 다 칸보다 아래층이다.
+  renderMapArt();
   renderMapLabels();
   // 물줄기는 칸을 그리기 전에 깔아야 부대와 이동 표시가 그 위에 온다.
   {
@@ -4608,14 +4536,299 @@ function render() {
   // 첫 판 안내는 화면이 바뀔 때마다 "이제 다음 걸 배울 차례인가"를 스스로 본다.
   // 클릭 자리마다 안내를 부르지 않는 이유는, 그러면 조작 하나를 새로 만들 때마다
   // 안내를 부르는 줄도 같이 넣어야 하고 언젠가 빼먹기 때문이다.
-  storageNoticeSync();
   coachSync();
 }
 
-// 판에 깔린 그림(operation-map.svg)은 어느 작전에서나 같은 한 장이다. 예전에는
-// 거기 노르망디 지명이 박혀 있어서, 엘 알라메인 사막에서도 「CAEN」이 보였다.
-// 이제 자리는 코드가 정하고 이름은 작전이 들고 온다. 자리는 그림 속 마을 점과
-// 물길에 맞춰 잡은 값이라 작전이 바뀌어도 그대로 두고 이름만 갈아 끼운다.
+// ── 판에 깔리는 작전지도 ───────────────────────────────────────────────────
+// 여태 이 그림은 assets/terrain/operation-map.svg 한 장이었다. 열여덟 작전이 모두
+// 같은 노르망디 해안선을 깔았고, 그림 속 물길은 실제 물 칸과 아무 상관이 없었다.
+// 그림과 규칙이 따로 놀았다는 뜻이다.
+//
+// 이제 그림은 지형에서 나온다. 물 칸 자리에 물을, 숲 칸에 숲을, 고지 칸에 등고선을,
+// 접근로 칸에 길을, 거점 자리에 마을 점을 찍는다. 작전마다 지형이 다르니 그림도
+// 저절로 전부 달라지고, 새 작전을 넣어도 그림을 따로 그릴 일이 없다. 무엇보다
+// 그림과 규칙이 어긋날 수가 없다 — 물로 보이는 자리가 진짜 물 칸이다.
+//
+// 종이색·잉크색·선 굵기는 예전 그림에서 그대로 가져왔다. 색조는 안 바꾼다.
+// 바뀌는 것은 무엇을 어디에 그리느냐뿐이다.
+//
+// 이 층은 칸(z-index 2)보다 아래다. 칸이 그리는 물결·숲·고지가 이 위에 그대로
+// 얹히므로, 여기서는 옅게만 깐다 — 종이 지도에서 지형을 뭉뚱그려 칠한 자리다.
+
+const MAP_ART_CELL = 100;
+
+// 예전 그림의 색을 그대로 옮겨 적은 것이다. 여기 있는 값 말고 다른 색은 안 쓴다.
+const MAP_ART_INK = {
+  sea: "#e3ece9",
+  seaLine: "#829c9c",
+  river: "#bcd4da",
+  riverLine: "#6d8b92",
+  forest: "#9aa972",
+  forestLine: "#7c8c58",
+  contour: "#9b8b5f",
+  road: "#9b8b5f",
+  town: "#21323b",
+  frame: "#d7bf65",
+};
+
+// 손으로 그린 지도처럼 가장자리를 흔든다. 매번 같은 값이 나와야 화면을 다시 그릴
+// 때마다 해안선이 춤추지 않으므로, 난수가 아니라 좌표에서 뽑는다.
+function mapArtWobble(x, y, salt) {
+  const n = Math.sin(x * 12.9898 + y * 78.233 + salt * 37.719) * 43758.5453;
+  return n - Math.floor(n) - 0.5;
+}
+
+// 조건에 맞는 칸들을 서로 붙은 덩어리별로 나눈다. 바다 하나와 개울 하나를 같은
+// 것으로 칠하면 안 되기 때문이다 — 나뉘어 있어야 크기를 보고 달리 그릴 수 있다.
+function mapArtRegions(match) {
+  const seen = new Array(width * height).fill(false);
+  const regions = [];
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (seen[y * width + x] || !match(x, y)) continue;
+      const cells = [];
+      const stack = [[x, y]];
+      seen[y * width + x] = true;
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        cells.push({ x: cx, y: cy });
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          if (seen[ny * width + nx] || !match(nx, ny)) continue;
+          seen[ny * width + nx] = true;
+          stack.push([nx, ny]);
+        }
+      }
+      regions.push(cells);
+    }
+  }
+  return regions;
+}
+
+// 칸 덩어리를 감싸는 곡선을 뽑는다. 바깥과 맞닿은 칸 변만 모아 고리로 잇고,
+// 꼭짓점을 둥글려 종이 지도의 곡선으로 만든다. 네모 칸에서 뽑았지만 결과는
+// 네모가 아니다 — 꼭짓점마다 곡선으로 넘어가기 때문이다.
+function mapArtRegionPath(cells, { wobble = 12, salt = 0, grow = 0 } = {}) {
+  const inside = new Set(cells.map((cell) => cell.x + ":" + cell.y));
+  const has = (x, y) => inside.has(x + ":" + y);
+  const at = (p) => p.x + ":" + p.y;
+
+  // 변의 방향을 한쪽으로 맞춰 넣는다. 그래야 고리가 끊기지 않고 이어진다.
+  const outgoing = new Map();
+  const link = (from, to) => {
+    const key = at(from);
+    if (!outgoing.has(key)) outgoing.set(key, []);
+    outgoing.get(key).push(to);
+  };
+  for (const cell of cells) {
+    const { x, y } = cell;
+    if (!has(x, y - 1)) link({ x, y }, { x: x + 1, y });
+    if (!has(x + 1, y)) link({ x: x + 1, y }, { x: x + 1, y: y + 1 });
+    if (!has(x, y + 1)) link({ x: x + 1, y: y + 1 }, { x, y: y + 1 });
+    if (!has(x - 1, y)) link({ x, y: y + 1 }, { x, y });
+  }
+
+  const loops = [];
+  for (const [startKey, ends] of outgoing) {
+    while (ends.length) {
+      const start = { x: Number(startKey.split(":")[0]), y: Number(startKey.split(":")[1]) };
+      const loop = [start];
+      let next = ends.pop();
+      let guard = 0;
+      while (at(next) !== startKey && guard++ < cells.length * 8) {
+        loop.push(next);
+        const list = outgoing.get(at(next));
+        if (!list || !list.length) break;
+        next = list.pop();
+      }
+      if (loop.length >= 4) loops.push(loop);
+    }
+  }
+  if (!loops.length) return "";
+
+  // 덩어리의 가운데. 바깥으로 부풀릴 때(grow) 어느 쪽이 바깥인지 여기서 정한다.
+  const midX = cells.reduce((sum, cell) => sum + cell.x + 0.5, 0) / cells.length;
+  const midY = cells.reduce((sum, cell) => sum + cell.y + 0.5, 0) / cells.length;
+
+  const round = (value) => Math.round(value * 10) / 10;
+  const parts = [];
+  for (const loop of loops) {
+    const points = loop.map((corner) => {
+      let px = corner.x * MAP_ART_CELL;
+      let py = corner.y * MAP_ART_CELL;
+      px += mapArtWobble(corner.x, corner.y, salt) * wobble;
+      py += mapArtWobble(corner.y, corner.x, salt + 5) * wobble;
+      if (grow) {
+        const dx = px - midX * MAP_ART_CELL;
+        const dy = py - midY * MAP_ART_CELL;
+        const far = Math.hypot(dx, dy) || 1;
+        px += (dx / far) * grow;
+        py += (dy / far) * grow;
+      }
+      return { x: px, y: py };
+    });
+    const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    const last = points.length - 1;
+    const head = mid(points[last], points[0]);
+    let d = "M" + round(head.x) + " " + round(head.y);
+    for (let i = 0; i < points.length; i += 1) {
+      const corner = points[i];
+      const stop = mid(corner, points[(i + 1) % points.length]);
+      d += " Q" + round(corner.x) + " " + round(corner.y) + " " + round(stop.x) + " " + round(stop.y);
+    }
+    parts.push(d + " Z");
+  }
+  return parts.join(" ");
+}
+
+// 덩어리를 한 겹 깎는다. 고지의 등고선은 같은 산을 조금씩 작게 여러 번 그린 것이다.
+function mapArtErode(cells) {
+  const inside = new Set(cells.map((cell) => cell.x + ":" + cell.y));
+  return cells.filter(
+    (cell) =>
+      inside.has(cell.x + 1 + ":" + cell.y) &&
+      inside.has(cell.x - 1 + ":" + cell.y) &&
+      inside.has(cell.x + ":" + (cell.y + 1)) &&
+      inside.has(cell.x + ":" + (cell.y - 1)),
+  );
+}
+
+function mapArtTouchesEdge(cells) {
+  return cells.some((cell) => cell.x === 0 || cell.y === 0 || cell.x === width - 1 || cell.y === height - 1);
+}
+
+// 이 작전의 그림 한 장을 글로 지어 낸다. 지형이 같으면 결과도 같으므로 한 번 지으면
+// 작전이 바뀔 때까지 그대로 쓴다.
+function buildMapArt() {
+  const full = width * MAP_ART_CELL;
+  const tall = height * MAP_ART_CELL;
+  const key = (x, y) => getTerrainKey(x, y);
+  const out = [];
+
+  // ── 물. 판 가장자리에 닿은 큰 물은 바다로, 나머지는 강으로 친다.
+  for (const cells of mapArtRegions((x, y) => key(x, y) === "W")) {
+    const sea = mapArtTouchesEdge(cells) && cells.length >= 10;
+    const path = mapArtRegionPath(cells, { wobble: 16, salt: sea ? 1 : 2, grow: 6 });
+    if (!path) continue;
+    out.push(
+      '<path d="' + path + '" fill-rule="evenodd" fill="' +
+        (sea ? MAP_ART_INK.sea : MAP_ART_INK.river) + '" opacity="' + (sea ? 0.82 : 0.72) + '"/>',
+    );
+    out.push(
+      '<path d="' + path + '" fill="none" stroke="' +
+        (sea ? MAP_ART_INK.seaLine : MAP_ART_INK.riverLine) +
+        '" stroke-width="' + (sea ? 6 : 5) + '" opacity="' + (sea ? 0.62 : 0.6) + '"/>',
+    );
+  }
+
+  // ── 숲. 옅게 깔고 테두리만 그린다. 나무는 칸이 그린다.
+  for (const cells of mapArtRegions((x, y) => key(x, y) === "F")) {
+    const path = mapArtRegionPath(cells, { wobble: 18, salt: 3, grow: 8 });
+    if (!path) continue;
+    out.push('<path d="' + path + '" fill-rule="evenodd" fill="' + MAP_ART_INK.forest + '" opacity="0.3"/>');
+    out.push(
+      '<path d="' + path + '" fill="none" stroke="' + MAP_ART_INK.forestLine +
+        '" stroke-width="4" opacity="0.34"/>',
+    );
+  }
+
+  // ── 고지. 같은 산을 조금씩 깎아 가며 세 겹 그으면 등고선이 된다.
+  for (const cells of mapArtRegions((x, y) => key(x, y) === "H")) {
+    let ring = cells;
+    for (let depth = 0; depth < 3 && ring.length; depth += 1) {
+      const path = mapArtRegionPath(ring, { wobble: 14, salt: 4 + depth, grow: 14 - depth * 10 });
+      if (path) {
+        out.push(
+          '<path d="' + path + '" fill="none" stroke="' + MAP_ART_INK.contour +
+            '" stroke-width="' + (4 - depth * 0.6) + '" opacity="' + (0.38 - depth * 0.07) + '"/>',
+        );
+      }
+      ring = mapArtErode(ring);
+    }
+  }
+
+  // ── 길. 접근로 칸끼리 이어 붙이면 그것이 곧 이 전장의 도로망이다.
+  const roads = [];
+  const centre = (x, y, salt) => ({
+    x: (x + 0.5) * MAP_ART_CELL + mapArtWobble(x, y, salt) * 16,
+    y: (y + 0.5) * MAP_ART_CELL + mapArtWobble(y, x, salt + 9) * 16,
+  });
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (key(x, y) !== "C") continue;
+      const from = centre(x, y, 7);
+      for (const [dx, dy] of [[1, 0], [0, 1]]) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= width || ny >= height || key(nx, ny) !== "C") continue;
+        const to = centre(nx, ny, 7);
+        roads.push(
+          "M" + Math.round(from.x) + " " + Math.round(from.y) + "L" + Math.round(to.x) + " " + Math.round(to.y),
+        );
+      }
+    }
+  }
+  if (roads.length) {
+    out.push(
+      '<path d="' + roads.join(" ") + '" fill="none" stroke="' + MAP_ART_INK.road +
+        '" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.34"/>',
+    );
+  }
+
+  // ── 마을. 거점이 선 자리가 이 전장의 마을이다.
+  const towns = (activeScenario?.west?.bases ?? [])
+    .concat(activeScenario?.east?.bases ?? [])
+    .filter((base) => Number.isInteger(base?.x) && Number.isInteger(base?.y));
+  for (const base of towns) {
+    const spot = centre(base.x, base.y, 11);
+    out.push(
+      '<circle cx="' + Math.round(spot.x) + '" cy="' + Math.round(spot.y) +
+        '" r="9" fill="' + MAP_ART_INK.town + '" opacity="0.5"/>',
+    );
+  }
+
+  // ── 방위 표시와 테두리. 예전 그림에 있던 것 그대로다.
+  const compassX = full - 110;
+  const compassY = tall - 150;
+  out.push(
+    '<g fill="' + MAP_ART_INK.town + '" opacity="0.34" transform="translate(' + compassX + " " + compassY + ')">' +
+      '<path d="M0 26 l14 44 l-14 -10 l-14 10 z"/>' +
+      '<rect x="-4" y="70" width="8" height="34" rx="3"/>' +
+      '<text x="0" y="10" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" text-anchor="middle">N</text>' +
+      "</g>",
+  );
+  out.push(
+    '<rect x="0" y="0" width="' + full + '" height="' + tall + '" fill="none" stroke="' +
+      MAP_ART_INK.frame + '" stroke-width="18" opacity="0.28"/>',
+  );
+
+  return (
+    '<svg class="map-art" viewBox="0 0 ' + full + " " + tall +
+    '" preserveAspectRatio="none" aria-hidden="true">' + out.join("") + "</svg>"
+  );
+}
+
+let mapArtCache = { key: "", markup: "" };
+
+function renderMapArt() {
+  if (!mapConfig.enabled) return;
+  const key = (activeScenario?.id ?? "?") + ":" + width + "x" + height;
+  if (mapArtCache.key !== key) mapArtCache = { key, markup: buildMapArt() };
+  if (!mapArtCache.markup) return;
+  // HTML 파서에 통째로 물린다. 이렇게 넣어야 svg 안의 태그가 제대로 된 SVG로 선다.
+  const holder = document.createElement("div");
+  holder.innerHTML = mapArtCache.markup;
+  const layer = holder.firstElementChild;
+  if (layer) boardEl.appendChild(layer);
+}
+
+// 판 위의 지명. 예전에는 그림에 노르망디 지명이 박혀 있어서, 엘 알라메인
+// 사막에서도 「CAEN」이 보였다. 이제 이름은 작전이 들고 온다.
+// 자리는 아래 고정값이다. 그림이 작전마다 달라져도 이름표 자리는 그대로 둔다 —
+// 지명이 판 위 어디에 앉든 읽히면 되는 것이고, 자리까지 지형에 맞춰 옮기면
+// 마을 점 위에 지명이 겹쳐 앉는 판이 반드시 나온다.
 const MAP_LABEL_SLOTS = {
   // 위쪽 물줄기/바다 띠 — 큰 글자, 자간 넓게.
   sea: { x: 700, y: 112, size: 44, weight: 700, track: 7 },
@@ -7172,7 +7385,31 @@ function enemyDepotTarget() {
   // 개통 임무의 창고는 경제가 아니라 작전 수단이다. 목표까지 선을 늘리려면
   // 창고를 앞으로 밀어야 하는데, 경제 목표를 다 채웠다는 이유로 삽을 놓으면
   // 적은 자기 승리 조건을 스스로 포기하는 셈이 된다. 그래서 두 기를 더 얹는다.
-  return enemyOpenSupplyObjective() ? economy + 2 : economy;
+  return (enemyOpenSupplyObjective() ? economy + 2 : economy) + enemyDepotStretch();
+}
+
+// 창고가 몇 채인지만 세면, 전선이 앞으로 나가도 적은 삽을 놓는다. 목표 수를 채운
+// 순간부터 공병대는 할 일이 없어져 마지막 창고 위에 선 채 작전이 끝날 때까지
+// 서 있는다. 자동 검사에서 엘 알라메인 적 공병 두 기가 18턴 내내 그랬다.
+//
+// 모자란 것은 창고 수가 아니라 창고 자리다. 그래서 자리로 잰다 - 보급이 「불안」
+// 하거나 「이탈」한 전투 부대가 하나라도 있으면 목표를 하나 올린다. 그 한 채가
+// 서면 그 부대들이 다시 정상 보급으로 들어오고, 목표는 저절로 도로 내려간다.
+//
+// 한 번에 하나씩만 올린다. 한꺼번에 여러 채를 지으면 그 턴의 보급이 전부 공사비로
+// 나가 전선이 굶는다. 공병대와 사령부는 세지 않는다 - 그 둘은 원래 뒤에 있고,
+// 그것 때문에 창고를 앞으로 밀면 짓자마자 털린다.
+//
+// 지도를 안 가리는 규칙이다. 어느 작전이든 부대가 보급선 밖으로 나가면 걸린다.
+function enemyDepotStretch() {
+  const stretched = state.units.some(
+    (unit) =>
+      unit.owner === "enemy" &&
+      unit.type !== "engineer" &&
+      unit.type !== "battalionHQ" &&
+      (supplyStatus(unit).level === "strained" || supplyStatus(unit).level === "cut"),
+  );
+  return stretched ? 1 : 0;
 }
 
 // 완성도 못 할 공사는 시작하지 않는다. 짓는 기간만큼은 더 굴려야 본전이라,
@@ -10166,10 +10403,12 @@ function enemyEngineerTurn(engineer) {
   if (tryStartEnemyDepot(engineer, focus)) return;
 
   const goal = rail ?? depot ?? nearestOwnedBase(engineer);
-  if (!goal) return;
-
-  const step = bestReachableStepToward(engineer, goal);
-  if (!step) return;
+  const step = goal ? bestReachableStepToward(engineer, goal) : null;
+  // 갈 곳이 안 나오면 지을 것도 없다는 뜻이다. 그때는 전선 쪽으로 자리를 옮겨 둔다.
+  if (!step) {
+    enemyEngineerKeepStation(engineer);
+    return;
+  }
   recordUnitMove(engineer, step.x, step.y);
   engineer.x = step.x;
   engineer.y = step.y;
@@ -10177,6 +10416,56 @@ function enemyEngineerTurn(engineer) {
   // 도착했으면 그 턴에 바로 삽을 뜬다. 한 턴을 통째로 버리면 목표를 채우지 못한다.
   if (tryStartEnemyRail(engineer, rail)) return;
   tryStartEnemyDepot(engineer, focus);
+}
+
+// 지을 것이 다 떨어진 공병대는 전선 쪽 아군 거점 곁으로 자리를 옮겨 대기한다.
+//
+// 왜 필요한가. 경제 목표를 다 채우면 bestEnemyDepotSite가 빈손을 주고, 개통 임무가
+// 없는 작전에서는 철도 자리도 안 나온다(bestEnemyRailSite는 임무가 있어야 자리를
+// 고른다). 그러면 남는 목표가 「가장 가까운 아군 거점」인데, 공병대는 제가 방금
+// 지은 창고 위에 서 있으므로 그 거점이 곧 제자리다. 한 걸음도 못 얻고, 남은 작전
+// 내내 그 칸에 못 박힌다. 자동 검사에서 엘 알라메인 적 공병 두 기가 18턴 중
+// 14턴을 그렇게 서 있었고, 바그라티온·싱가포르에서도 같은 일이 나왔다.
+//
+// 싸우러 보내지는 않는다. 공병대는 공격 2에 열 대면 죽는 병종이라 전선에 세우면
+// 그냥 헌납이다. 대신 전선에서 가장 가까운 아군 거점 곁으로 옮겨 둔다. 다음 일은
+// 늘 그 언저리에서 생기기 때문이다 - 창고가 하나 털리거나, 플레이어가 창고를
+// 늘려 목표가 오르거나(enemyDepotTarget), 전선이 밀려 새 창고 자리가 안전해지거나.
+// 뒤에 처박혀 있으면 그때부터 걸어와야 하고, 그 사이에 작전이 끝난다.
+//
+// 발을 딛는 칸은 창고를 짓는 자리와 같은 자로 고른다(depotSafeDistance). 값은
+// 편집 창이 정하고, 여기서는 그 값을 쓸 뿐이다.
+function enemyEngineerKeepStation(engineer) {
+  if (engineer.acted || engineer.moved) return;
+  const bases = state.bases.filter((base) => base.owner === engineer.owner);
+  if (!bases.length) return;
+
+  // 전선에 가장 가까운 아군 거점을 고른다. 「전선」은 보이는 적으로 재지 않는다 -
+  // 안개가 켜지면 아무도 안 보여 모든 거점이 똑같이 「멀다」가 되고, 그러면 공병대가
+  // 서 있는 제자리가 뽑혀 아무 데도 안 간다. 대신 상대 거점까지의 거리로 잰다.
+  // 거점은 안개와 무관하게 판에 박혀 있고, 어느 작전에도 양쪽 다 있다.
+  const towardFoe = (base) => nearestOwnedBaseDistance(opponentOwner(engineer.owner), base.x, base.y);
+  const station = bases
+    .slice()
+    .sort((a, b) => towardFoe(a) - towardFoe(b) || distance(engineer, a) - distance(engineer, b))[0];
+  if (!station) return;
+
+  const here = distance(engineer, station);
+  // 이미 곁이면 그 자리가 제자리다. 거점 칸 자체는 비워 둔다 - 증원이 거기 선다.
+  if (here <= 1) return;
+
+  let best = null;
+  for (const tile of reachableTiles(engineer)) {
+    if (nearestOpposingDistance(engineer.owner, tile.x, tile.y) < depotSafeDistance) continue;
+    const score = distance(tile, station) - coverAt(tile.x, tile.y) * 0.2;
+    if (!best || score < best.score) best = { x: tile.x, y: tile.y, score };
+  }
+  if (!best || distance(best, station) >= here) return;
+
+  recordUnitMove(engineer, best.x, best.y);
+  engineer.x = best.x;
+  engineer.y = best.y;
+  engineer.moved = true;
 }
 
 // 다리는 하나면 된다. 공병대가 여럿일 때 전원이 나루로 몰려가면 경제가 멈춘다.

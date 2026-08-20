@@ -834,7 +834,7 @@ h1 {
   border-radius: 7px;
   background:
     linear-gradient(180deg, rgb(255 255 255 / 16%), rgb(67 70 38 / 10%)),
-    url("assets/terrain/operation-map.svg") center / cover no-repeat,
+    linear-gradient(135deg, #e6d37a 0%, #efe7bb 22%, #e9e5ce 55%, #d9c267 100%),
     #e6dfb8;
   box-shadow:
     inset 0 0 0 2px rgb(242 226 174 / 44%),
@@ -852,7 +852,19 @@ h1 {
   margin: 0 0 92px;
 }
 
-/* 판 위의 지명. 그림(operation-map.svg)에서 빼내어 작전마다 갈아 끼우는 층이다.
+/* 판에 깔리는 작전지도. 예전에는 operation-map.svg 한 장을 배경으로 깔아
+   열여덟 작전이 모두 같은 노르망디 해안선을 쓰고 있었다. 이제 game.js가
+   그 작전의 지형에서 뽑아 그린다(renderMapArt) — 종이색만 여기 CSS에 남는다.
+   inset이 5px인 것은 판의 padding과 맞추기 위해서다. 그래야 그림 속 물길이
+   실제 물 칸과 같은 자리에 온다. */
+.map-art {
+  position: absolute;
+  inset: 5px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 판 위의 지명. 작전마다 갈아 끼우는 층이다.
    칸(z-index 2)보다 아래라 부대와 이동 표시가 늘 글자 위에 온다. */
 .map-labels {
   position: absolute;
@@ -4196,6 +4208,30 @@ h1 {
     white-space: nowrap;
   }
 
+  /* 계기 칸은 화면 밖으로 못 나간다.
+
+     칸 안의 글자는 줄을 안 바꾼다(white-space: nowrap). 그래서 칸은 글자 폭보다
+     좁아질 수 없고, 기계마다 한글 글꼴 폭이 조금씩 다르다 — 글꼴이 넓은 기계에서는
+     「다음 보급」 칸이 줄에 못 앉고 화면 오른쪽으로 밀려 나가 숫자가 안 보인다.
+     실제로 한 번 그렇게 찍혔다.
+
+     자리가 모자라면 이름표만 줄이고 숫자는 그대로 둔다. 읽어야 하는 것은 숫자이고,
+     이름표는 「다음 보…」로 잘려도 무슨 칸인지 안다. 글자 크기는 안 줄인다. */
+  .hud-stat {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .hud-stat span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hud-stat strong {
+    flex: 0 0 auto;
+  }
+
   .hud-alerts {
     flex: 1 0 100%;
     min-height: 30px;
@@ -7215,114 +7251,9 @@ body {
 @media (max-width: 860px) {
   body:not(.command-collapsed) .coach,
   body:not(.command-collapsed) .coach-spot,
-  body:not(.command-collapsed) .storage-notice,
   body.editor-open .coach,
-  body.editor-open .coach-spot,
-  body.editor-open .storage-notice {
+  body.editor-open .coach-spot {
     display: none;
-  }
-}
-
-/* ── 저장 알림 띠 ────────────────────────────────────────────────────────────
-   처음 한 번만 뜨고, 「알겠다」를 누르면 다시 안 뜬다. 안내 쪽지와 같은 자리를
-   쓰지만 둘이 동시에 뜨는 일은 없다 — 띠가 물러나야 안내가 들어온다(game.js).
-
-   화면 아래를 가로로 다 쓴다. 읽고 한 번 누르고 잊어버릴 것이라 구석에 작게
-   두면 오히려 두 번 눈이 가고, 그 사이 지도를 가린 채로 남는다. */
-.storage-notice {
-  position: fixed;
-  z-index: 1500;
-  right: 16px;
-  bottom: 16px;
-  left: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px 18px;
-  padding: 12px 16px;
-  border: 1px solid rgb(0 0 0 / 72%);
-  border-left: 5px solid rgb(214 168 60 / 88%);
-  border-radius: 6px;
-  background:
-    repeating-linear-gradient(90deg, rgb(255 255 255 / 3%) 0 1px, transparent 1px 3px),
-    linear-gradient(180deg, #3b402c, #23271a);
-  box-shadow:
-    inset 0 1px 0 rgb(226 232 214 / 12%),
-    0 10px 26px rgb(0 0 0 / 55%);
-}
-
-.storage-notice[hidden] {
-  display: none;
-}
-
-.storage-notice-text {
-  flex: 1 1 300px;
-  min-width: 0;
-}
-
-.storage-notice-text strong {
-  display: block;
-  color: #f0c24a;
-  font-size: 16px;
-  letter-spacing: 1.2px;
-}
-
-.storage-notice-text p {
-  margin: 4px 0 0;
-  color: #e2e8d6;
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.storage-notice-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 14px;
-}
-
-.storage-notice-actions a {
-  color: #cbd6b8;
-  font-size: 14px;
-  text-underline-offset: 3px;
-}
-
-.storage-notice-actions button {
-  min-height: 38px;
-  padding-inline: 20px;
-  border-color: rgb(8 10 6 / 76%);
-  border-radius: 5px;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 16%), transparent 44%),
-    linear-gradient(180deg, #3f7a4a, #24512f);
-  color: #f2f8ea;
-  font-size: 14px;
-  letter-spacing: 1px;
-  text-shadow: 0 1px 0 rgb(0 0 0 / 45%);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 22%),
-    inset 0 -3px 0 rgb(0 0 0 / 45%),
-    0 3px 0 rgb(0 0 0 / 55%);
-}
-
-.storage-notice-actions button:active {
-  transform: translateY(3px);
-  box-shadow: inset 0 3px 7px rgb(0 0 0 / 65%);
-}
-
-/* 폰에서는 「알겠다」가 오른쪽 끝에 혼자 떨어져 있으면 엄지에서 멀다. 줄을
-   바꿔서 아래 한 줄을 다 쓰게 둔다. */
-@media (max-width: 720px) {
-  .storage-notice {
-    right: 10px;
-    bottom: 10px;
-    left: 10px;
-  }
-
-  .storage-notice-actions {
-    flex: 1 1 100%;
-    justify-content: space-between;
   }
 }
 
