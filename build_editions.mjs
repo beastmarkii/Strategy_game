@@ -74,7 +74,12 @@ for (const [edition, config] of Object.entries(editions)) {
   mkdirSync(dir, { recursive: true });
 
   for (const file of clientFiles) cpSync(join(root, file), join(dir, file));
-  cpSync(join(root, "assets"), join(dir, "assets"), { recursive: true });
+  // assets/audio/raw 는 음량 맞추기 전의 원본이다. 게임은 쓰지 않는데 18MB라서
+  // 그대로 넣으면 처음 여는 사람이 두 배를 기다린다. 판에서는 뺀다.
+  cpSync(join(root, "assets"), join(dir, "assets"), {
+    recursive: true,
+    filter: (src) => !src.split("\\").join("/").includes("/assets/audio/raw"),
+  });
 
   const kept = config.scenarioIds
     ? config.scenarioIds.map((id) => {
