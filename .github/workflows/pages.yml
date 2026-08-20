@@ -1,0 +1,62 @@
+# 사이트에 올라가는 것은 "무료판"이다.
+#
+# 저장소 원본(index.html, scenarios.js …)은 언제나 전체판이다. 이 작업이 돌면서
+# build_editions.mjs로 무료판을 따로 만들어 그것만 올린다. 그래서 저장소를 그대로
+# 두고도 사이트에는 작전 두 개짜리만 나간다 — 잠긴 작전은 파일에 없으므로
+# 개발자 도구를 열어도 안 나온다.
+#
+# 처음 한 번은 사람이 해야 하는 설정이 있다:
+#   GitHub 저장소 → Settings → Pages → Build and deployment → Source 를
+#   "Deploy from a branch"에서 "GitHub Actions"로 바꾼다.
+# 바꾸기 전까지는 이 작업이 돌아도 사이트는 예전 방식(main 뿌리)으로 나간다.
+name: 사이트 배포 (무료판)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 무료판 만들기
+        run: node build_editions.mjs
+      - name: 무료판인지 확인
+        # 값을 잘못 고쳐서 전체판이 그대로 올라가는 사고를 막는다.
+        # 작전이 두 개가 아니면 여기서 멈춘다.
+        run: |
+          node -e '
+            const fs = require("fs");
+            const src = fs.readFileSync("dist-editions/free/scenarios.js", "utf8");
+            const ids = [...src.matchAll(/"id": "([a-zA-Z]+)"/g)].map((m) => m[1]);
+            if (ids.length !== 2) throw new Error("무료판 작전 수가 2개가 아니다: " + ids.join(", "));
+            if (!src.includes(`const gameEdition = "free"`)) throw new Error("무료판 표시가 없다");
+            console.log("무료판 확인:", ids.join(", "));
+          '
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-editions/free
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

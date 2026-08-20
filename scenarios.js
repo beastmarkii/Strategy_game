@@ -1874,6 +1874,15 @@ const scenarios = [
 // 돌아오는 자리다. 접어 둔 작전을 여기 두면 목록에 없는 판이 배경에 깔린다.
 const defaultScenarioId = "cobra";
 
+// 이 파일이 어느 판인지. 저장소 원본은 언제나 전체판이다 - build.mjs가 무료판을
+// 만들 때만 이 값을 "free"로 바꿔서 내보낸다. 그때는 위 scenarios 배열에서 잠긴
+// 작전이 아예 빠져 나간다. 화면에서 가리는 것이 아니라 파일에 없는 것이라서,
+// 개발자 도구를 열어도 나오지 않는다.
+const gameEdition = "full";
+
+// 무료판에서 「나머지 작전」 칸을 눌렀을 때 가는 곳. 주소가 정해지면 이 한 줄만 고친다.
+const storeUrl = "https://beastmarkii.itch.io/front-command-1944";
+
 function findScenario(id) {
   return scenarios.find((scenario) => scenario.id === id) ?? scenarios.find((scenario) => scenario.id === defaultScenarioId) ?? scenarios[0];
 }

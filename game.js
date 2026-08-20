@@ -791,6 +791,9 @@ const uiDict = {
     "작전 개시 › 부대를 눌러 강조된 칸으로 이동 · 지도 밑줄이 왜 안 되는지 알려 준다": "Get moving › tap a unit and move onto a marked tile · the note under the map says why one is blocked",
     "{staff} 「{name}」 · {brief}": "{staff} “{name}” · {brief}",
     "보급 두절": "Supply cut",
+    "나머지 작전 10개": "10 more operations",
+    "전체판에는 열두 작전이 모두 들어 있습니다. 눌러서 보러 가기.": "The full game carries all twelve operations. Tap to see it.",
+    "전체판에서 열림": "In the full game",
     "음악 켜기": "Music on",
     "음악 끄기": "Music off",
     "{side} › 작전 개시 · 지휘 {co}": "{side} › operation begins · CO {co}",
@@ -2969,6 +2972,26 @@ function renderOperationScenarioChoices(side) {
     `;
     })
     .join("");
+  // 무료판에는 두 작전만 들어 있다. 나머지 열 개는 파일에 아예 없으므로 여기서
+  // 잠긴 칸을 만들어 보여줄 수도 없다 - 대신 한 칸으로 묶어서, 나머지가 어디에
+  // 있는지만 알린다. 전체판에서는 이 줄이 통째로 안 돈다.
+  if (isFreeEdition()) {
+    operationScenarioChoicesEl.insertAdjacentHTML(
+      "beforeend",
+      `<a class="scenario-choice scenario-choice-more" href="${storeUrl}" target="_blank" rel="noopener">
+        <span class="scenario-choice-body">
+          <span class="scenario-choice-head"><strong>${t("나머지 작전 10개")}</strong><span class="scenario-choice-lead" data-lead="more">${t("전체판에서 열림")}</span></span>
+          <span class="scenario-choice-goal">${t("전체판에는 열두 작전이 모두 들어 있습니다. 눌러서 보러 가기.")}</span>
+        </span>
+      </a>`,
+    );
+  }
+}
+
+// 지금 돌아가는 것이 무료판인가. scenarios.js가 값으로 들고 있고, 빌드가 무료판을
+// 내보낼 때만 "free"가 된다. 없으면 전체판으로 본다 - 개발 중에는 언제나 전체판이다.
+function isFreeEdition() {
+  return typeof gameEdition === "string" && gameEdition === "free";
 }
 
 // 기한이 끝났을 때 누가 이기는지가 곧 미션의 성격이다. 고르기 전에 그걸 보여준다.

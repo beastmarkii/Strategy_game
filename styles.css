@@ -6306,6 +6306,28 @@ body {
   color: #d9a06a;
 }
 
+/* ── 무료판 마지막 칸 ────────────────────────────────────────────
+   작전 카드와 같은 크기·같은 자리를 쓰되, 고르는 칸이 아니라 밖으로 나가는
+   문이다. 테두리를 금색 점선으로 바꿔서 "이건 고를 수 없다"를 눌러보기 전에
+   알린다. 전체판에서는 이 칸 자체가 안 만들어진다. */
+.scenario-choice-more {
+  border-style: dashed;
+  border-color: rgb(240 194 74 / 52%);
+  text-decoration: none;
+}
+
+.scenario-choice-more:hover,
+.scenario-choice-more:focus-visible {
+  border-color: rgb(240 194 74 / 92%);
+  background:
+    linear-gradient(196deg, rgb(240 194 74 / 8%) 0 30%, transparent 30%),
+    linear-gradient(180deg, #262b18, #16190f);
+}
+
+.scenario-choice-body .scenario-choice-lead[data-lead="more"] {
+  color: #f0c24a;
+}
+
 /* ── 상대 참모부(난이도) ─────────────────────────────────────────
    네 칸을 한 줄에 늘어놓으면 "설정 항목"이 되고, 세로로 쌓으면 "등급표"가
    된다. 위에서 아래로 갈수록 세지는 표라서 세로로 쌓는다. */
