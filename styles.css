@@ -7546,7 +7546,7 @@ html[lang="en"] {
   display: none;
   place-items: center;
   overflow: hidden;
-  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820g");
+  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820h");
   opacity: 1;
   transition: opacity 700ms ease;
 }
@@ -7584,11 +7584,13 @@ html[lang="en"] {
 .title-hint {
   display: none;
   position: absolute;
-  left: 50%;
+  left: 0;
+  right: 0;
   bottom: max(6vh, 34px);
-  transform: translateX(-50%);
   z-index: 3;
-  margin: 0;
+  width: max-content;
+  max-width: calc(100% - 36px);
+  margin: 0 auto;
   padding: 8px 18px;
   border: 1px solid rgb(214 198 156 / 28%);
   border-radius: 999px;
@@ -7597,7 +7599,7 @@ html[lang="en"] {
   font-size: min(4vw, 16px);
   font-weight: 700;
   letter-spacing: 0.02em;
-  white-space: nowrap;
+  text-align: center;
   pointer-events: none;
   text-shadow: 0 1px 3px rgb(0 0 0 / 70%);
   animation: titleHintBreath 2400ms ease-in-out infinite;
