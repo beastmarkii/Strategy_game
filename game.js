@@ -10050,11 +10050,35 @@ function bestDeckTarget(unit) {
   ) ?? null;
 }
 
+// 밟은 점령 목표는 지키는 것이 임무다. openSeizeAxis는 그 칸에 아군이 서는 순간
+// false가 되고, 그러면 목표는 더 이상 갈 곳이 아니게 되어 enemyGoalFor 끝의
+// nearestIntruder가 옆칸 적을 새 목적지로 준다 - 밟은 부대가 다음 턴에 제 발로
+// 내려온다. 엘 알라메인 추적에서 AI는 목표 칸에 닿고도 매번 유지 1턴만 채우고
+// 옆칸으로 내려왔고, 2턴을 못 채워 판을 놓쳤다. 유지 턴이 다 찰 때까지는
+// 그 칸에서 안 움직인다. 사격은 그대로 한다 - 서 있기만 하는 것이 아니다.
+// byTag가 붙은 목표는 지정된 부대만 유효하므로 엉뚱한 부대를 묶어 두지 않는다.
+function holdingOwnSeize(unit) {
+  return objectivesFor(unit.owner).some(
+    (objective) =>
+      objective.kind === "seize" &&
+      objective.x === unit.x &&
+      objective.y === unit.y &&
+      (!objective.byTag || unit.tag === objective.byTag) &&
+      (objective.held ?? 0) < objectiveHoldRequirement(objective),
+  );
+}
+
 // 전투 부대의 한 턴. 어디로 갈지는 임무가, 어떻게 갈지는 병종이,
 // 무엇을 칠지는 표적 점수가 정한다.
 function enemyFieldTurn(unit) {
   // 무방비 거점이 발밑에 열려 있으면 그것이 이 턴의 최선이다. 사격보다 먼저 본다.
   if (tryEnemyCapture(unit)) return;
+
+  // 발밑이 아직 못 채운 점령 목표면 여기서 끝이다. 쏘고 버틴다.
+  if (holdingOwnSeize(unit)) {
+    tryEnemyStrike(unit);
+    return;
+  }
 
   const goal = enemyGoalFor(unit);
 
