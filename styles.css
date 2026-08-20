@@ -325,6 +325,33 @@ h1 {
   display: none !important;
 }
 
+/* 지도 바로 아래 명령 줄. 좁은 화면에서만 채워진다 - 지휘 서랍이 화면 밖에
+   내려가 있는 동안 고른 부대의 명령을 여기서 바로 누를 수 있게 한다. 단추가
+   여럿이면 옆으로 밀어서 본다. 세로로 쌓이면 지도가 그만큼 깎이기 때문이다. */
+.unit-action-bar {
+  grid-column: span 2;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.unit-action-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.unit-action-bar[hidden] {
+  display: none;
+}
+
+.unit-action-bar > button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
 .action-hint {
   grid-column: span 2;
   min-height: 34px;
@@ -337,7 +364,8 @@ h1 {
   padding: 8px 10px;
 }
 
-.actions button span {
+.actions button span,
+.unit-action-bar button span {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4042,12 +4070,19 @@ h1 {
     order: 4;
   }
 
-  .action-hint {
+  /* 명령 줄은 지도와 안내 줄 사이다. 지도에서 부대를 짚은 손가락이 그대로
+     내려와 닿는 자리다. */
+  .unit-action-bar {
     order: 5;
+    flex: 0 0 auto;
+  }
+
+  .action-hint {
+    order: 6;
   }
 
   .legend {
-    order: 6;
+    order: 7;
   }
 
   /* 전장은 남는 세로를 전부 가져간다. 판이 화면보다 넓어지면 여기서 밀린다 —
@@ -4707,8 +4742,10 @@ h1 {
 /* --- 스위치(버튼) ----------------------------------------------- */
 
 /* 명령 버튼은 베이클라이트 스위치다. 위가 밝고 아래가 어두운 돌출,
-   누르면 실제로 눌린 것처럼 그림자가 뒤집힌다. */
+   누르면 실제로 눌린 것처럼 그림자가 뒤집힌다. 지도 아래 명령 줄로 옮겨 간
+   단추도 같은 스위치다 - 자리를 옮겼다고 생김새까지 달라지면 안 된다. */
 .command-panel button,
+.unit-action-bar button,
 .hud-actions button,
 .balance-editor button {
   border: 1px solid rgb(8 10 6 / 76%);
@@ -4724,6 +4761,7 @@ h1 {
 }
 
 .command-panel button:hover:not(:disabled),
+.unit-action-bar button:hover:not(:disabled),
 .hud-actions button:hover:not(:disabled),
 .balance-editor button:hover:not(:disabled) {
   border-color: rgb(134 214 143 / 46%);
@@ -4732,6 +4770,7 @@ h1 {
 }
 
 .command-panel button:active:not(:disabled),
+.unit-action-bar button:active:not(:disabled),
 .hud-actions button:active:not(:disabled) {
   transform: translateY(2px);
   box-shadow:
@@ -4740,7 +4779,8 @@ h1 {
 }
 
 /* 비용 표시는 스위치 옆에 붙은 각인 숫자다. */
-.actions button span {
+.actions button span,
+.unit-action-bar button span {
   background: rgb(0 0 0 / 46%);
   color: var(--readout);
   box-shadow: inset 0 1px 2px rgb(0 0 0 / 60%);
@@ -7555,7 +7595,7 @@ html[lang="en"] {
   display: none;
   place-items: center;
   overflow: hidden;
-  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820j");
+  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820k");
   opacity: 1;
   transition: opacity 700ms ease;
 }

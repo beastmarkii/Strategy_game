@@ -1721,6 +1721,12 @@ function scheduleBoardFit() {
 }
 
 window.addEventListener("resize", scheduleBoardFit);
+// 폰을 눕히면 지휘칸이 서랍에서 왼쪽 칸으로 바뀐다. 그때 지도 아래 명령 줄에
+// 나와 있던 단추는 제자리로 돌아가야 한다. 그 판단은 updateActionPanel 한 곳에서만
+// 한다 - 여기서 따로 옮기면 옮기는 곳이 둘이 되고 두 곳이 어긋나는 날이 온다.
+window.addEventListener("resize", () => {
+  if (typeof updateActionPanel === "function") updateActionPanel();
+});
 
 // ─── 소리 ────────────────────────────────────────────────────────────────
 // 예전에는 여기서 소리를 합성했다. 사인파와 잡음으로 만든 총성은 어떻게 손을 봐도
@@ -5821,6 +5827,11 @@ function updateActionPanel() {
   if (isEngineer) groups.engineer.forEach((selector) => setActionVisible(selector, true));
   if (isArtillery) groups.artillery.forEach((selector) => setActionVisible(selector, true));
 
+  // 좁은 화면에서 지휘칸은 화면 아래에 내려가 있는 서랍이다. 지금 켜진 이 단추들이
+  // 그 안에 있으면 화면 밖에 있는 것과 같다 - 안내 줄은 「할 수 있다」고 말하는데
+  // 누를 것이 화면에 없었다. 지도 바로 아래로 옮겨 온다.
+  syncUnitActionBar(groups.hq.concat(groups.engineer, groups.artillery));
+
   const hint = document.querySelector("#actionHint");
   if (!hint) return;
   if (state.phase === "deploy") {
@@ -5848,6 +5859,39 @@ function updateActionPanel() {
 function setActionVisible(selector, visible) {
   const element = document.querySelector(selector);
   if (element) element.hidden = !visible;
+}
+
+// 단추가 원래 어디에 서 있었는지. 되돌릴 때 이 표가 없으면 순서가 뒤섞인다.
+const actionButtonHome = new Map();
+
+function rememberActionHome(button) {
+  if (actionButtonHome.has(button)) return;
+  actionButtonHome.set(button, { parent: button.parentElement, next: button.nextElementSibling });
+}
+
+function restoreActionHome(button) {
+  const home = actionButtonHome.get(button);
+  if (!home || !home.parent) return;
+  if (button.parentElement === home.parent) return;
+  home.parent.insertBefore(button, home.next && home.next.parentElement === home.parent ? home.next : null);
+}
+
+// 지금 켜져 있는 명령 단추를 지도 아래 한 줄로 모은다. 넓은 화면에서는 원래
+// 자리로 돌려보낸다. 어느 병종이든, 나중에 병종을 더 넣어도 이 한 곳만 지난다.
+function syncUnitActionBar(selectors) {
+  const bar = document.querySelector("#unitActionBar");
+  if (!bar) return;
+  const phone = isPhoneLayout();
+  const live = [];
+  selectors.forEach((selector) => {
+    const button = document.querySelector(selector);
+    if (!button) return;
+    rememberActionHome(button);
+    if (phone && !button.hidden) live.push(button);
+    else restoreActionHome(button);
+  });
+  live.forEach((button) => bar.appendChild(button));
+  bar.hidden = live.length === 0;
 }
 
 function syncConstructionButtonCosts() {

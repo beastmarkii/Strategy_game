@@ -73,7 +73,7 @@
     <meta name="theme-color" content="#202317" />
     <meta name="apple-mobile-web-app-title" content="FRONT COMMAND" />
 
-    <link rel="stylesheet" href="styles.css?v=20260820j" />
+    <link rel="stylesheet" href="styles.css?v=20260820k" />
   </head>
   <body>
     <main class="shell">
@@ -221,6 +221,11 @@
         <div class="unit-card" id="selectedCard">
           <span class="muted">부대를 선택하십시오.</span>
         </div>
+        <!-- 고른 부대가 지금 쓸 수 있는 명령이 여기 한 줄로 선다. 단추는 새로
+             만들지 않고 지휘칸에 있는 그 단추를 그대로 옮겨 온다 - 두 벌을 만들면
+             한쪽만 고쳐지는 날이 반드시 오기 때문이다. 좁은 화면에서만 옮기고,
+             넓은 화면에서는 있던 자리로 되돌린다. 명령이 없으면 줄 자체가 없다. -->
+        <div id="unitActionBar" class="unit-action-bar" hidden></div>
         <div id="actionHint" class="action-hint">부대를 클릭하면 가능한 명령이 표시됩니다.</div>
       </section>
 
@@ -449,8 +454,8 @@
            game.js가 연다. -->
       <div class="title-intro" id="titleIntro" aria-hidden="true">
         <video id="titleIntroClip" class="title-intro-clip"
-               src="assets/video/intro.mp4?v=20260820j"
-               poster="assets/video/intro-poster.jpg?v=20260820j"
+               src="assets/video/intro.mp4?v=20260820k"
+               poster="assets/video/intro-poster.jpg?v=20260820k"
                muted playsinline autoplay preload="auto"></video>
       </div>
       <!-- 폰은 사람이 화면을 한 번 누르기 전까지 어떤 소리도 내주지 않는다.
@@ -514,7 +519,7 @@
       </svg>
     </button>
 
-    <script src="scenarios.js?v=20260820j"></script>
-    <script src="game.js?v=20260820j"></script>
+    <script src="scenarios.js?v=20260820k"></script>
+    <script src="game.js?v=20260820k"></script>
   </body>
 </html>
