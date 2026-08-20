@@ -747,7 +747,7 @@ const uiDict = {
     " / 대대 보급 범위": " / battalion supply range",
     "포병 전개": "Unlimber",
     "트럭 견인": "Limber up",
-    "사령부 포위 · 증원 불가": "HQ encircled · no reinforcements",
+    "부대 세울 자리 없음 · 증원 불가": "No room to deploy · no reinforcements",
     "사령부 보급 두절 · 증원 불가": "HQ supply cut · no reinforcements",
     "{tile} / 철도": "{tile} / Rail",
     "승리 조건": "How you win this one",
@@ -808,7 +808,7 @@ const uiDict = {
     "{unit} 예비대 투입": "{unit} committed from reserve",
     "{side} › 보급 부족 · 예비대 투입 지연": "{side} › short of supply · reserves delayed",
     "{side} › 전개 공간 없음 · 예비대 투입 지연": "{side} › no room to deploy · reserves delayed",
-    "{side} › 사령부 포위 · 증원 불가": "{side} › HQ encircled · no reinforcement",
+    "{side} › 부대 세울 자리 없음 · 증원 불가": "{side} › no room to deploy · no reinforcement",
     "{side} › 사령부 보급 두절 · 증원 불가": "{side} › HQ supply cut · no reinforcement",
     "{side} › 공병대 투입 · 후방 보급 공사": "{side} › engineers committed · building supply in the rear",
     "포격 불가 › 견인 중 · 포를 전개할 것": "Cannot fire › still hitched · unlimber the gun",
@@ -5999,10 +5999,11 @@ function operationAlerts() {
   objectivesFor("enemy")
     .filter((objective) => objective.held > 0)
     .forEach((objective) => parts.push(t("후방 피탈 {held}/{need}", { held: objective.held, need: objectiveHoldRequirement(objective) })));
-  // 사령부가 포위되면 보급품이 아무리 쌓여도 증원이 안 나온다. 이건 단추가
-  // 고장 난 것이 아니라 판이 그렇게 된 것이고, 말해 주지 않으면 구별할 방법이 없다.
+  // 증원이 안 나오는 까닭은 둘뿐이다 - 사령부로 물자가 안 들어오거나, 사령부
+  // 지휘 범위 안에 부대를 세울 빈 칸이 없거나. 빈 칸은 적이 막았든 제 부대가 채웠든 같다.
+  // 그래서 "포위"라 부르지 않는다 - 아군끼리 붙어 서 있어도 자리는 없다.
   if (recruitSupplyCut("player")) parts.push(t("사령부 보급 두절 · 증원 불가"));
-  else if (recruitEncircled("player")) parts.push(t("사령부 포위 · 증원 불가"));
+  else if (recruitNoRoom("player")) parts.push(t("부대 세울 자리 없음 · 증원 불가"));
   if (isolated) parts.push(t("고립 {n}", { n: isolated }));
   if (collapsing) parts.push(t("붕괴 {n}", { n: collapsing }));
   if (cut.length - collapsing > 0) parts.push(t("보급 두절 {n}", { n: cut.length - collapsing }));
@@ -7308,7 +7309,7 @@ function recruitableTypes(owner) {
   return Object.keys(unitTypes).filter((type) => canRecruitType(owner, type));
 }
 
-function recruitEncircled(owner) {
+function recruitNoRoom(owner) {
   if (!battalionHQs(owner).length) return false;
   return !recruitableTypes(owner).some((type) => findSpawn(owner, type));
 }
@@ -7395,7 +7396,7 @@ function maybeEnemyRecruit() {
 
   // 막힌 이유는 한 턴에 한 줄만 적는다. 한 기마다 적으면 로그가 같은 문장으로 덮인다.
   const supplyCut = recruitSupplyCut("enemy");
-  const encircled = recruitEncircled("enemy");
+  const encircled = recruitNoRoom("enemy");
   if (!encircled) state.enemyEncircleNoted = false;
   if (placed) return;
   if (blockedByMoney) {
@@ -7414,10 +7415,10 @@ function maybeEnemyRecruit() {
     addLog(t("{side} › 전개 공간 없음 · 예비대 투입 지연", { side: sideName("enemy") }));
     return;
   }
-  // 포위는 풀리기 전까지 계속되는 상태다. 상태는 한 번만 알린다.
+  // 자리가 없는 것은 풀리기 전까지 계속되는 상태다. 상태는 한 번만 알린다.
   if (!state.enemyEncircleNoted) {
     state.enemyEncircleNoted = true;
-    addLog(t("{side} › 사령부 포위 · 증원 불가", { side: sideName("enemy") }));
+    addLog(t("{side} › 부대 세울 자리 없음 · 증원 불가", { side: sideName("enemy") }));
   }
 }
 
