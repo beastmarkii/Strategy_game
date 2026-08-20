@@ -5398,14 +5398,18 @@ function spawnImpact(to, tile, angle, profile, event, scale) {
   // 동그란 화구 하나가 커졌다 사라지는 것은 아무리 색을 겹쳐도 장난감으로 보인다 —
   // 터지는 것에 컴퍼스로 그린 테두리가 있을 리 없기 때문이다. 갈래마다 길이와
   // 굵기와 방향과 시작 시각을 다르게 줘서, 같은 폭발이 두 번 나오지 않게 한다.
-  const flames = event.killed ? 10 : 6;
+  // 갈래가 적으면 부채꼴 사이가 벌어져 불길이 아니라 꽃잎처럼 보인다.
+  const flames = event.killed ? 12 : 9;
   for (let index = 0; index < flames; index += 1) {
     // 고르게 돌려 두고 한 갈래씩 흔든다. 방향을 통째로 무작위로 뽑으면 우연히
     // 한쪽에 몰려서 반쪽만 타는 폭발이 나온다.
-    const heading = (index / flames) * 360 + (Math.random() - 0.5) * (320 / flames);
+    // 한 바퀴를 다 쓰지 않고 위쪽 210도만 쓴다. 아래로 향한 갈래는 눕힌 판에
+    // 가려서 어차피 안 보이고, 그 자리가 비면 폭발이 위로만 솟는 분수처럼
+    // 보인다. 옆으로도 뻗게 몰아 줘야 「퍼진다」로 읽힌다.
+    const heading = -195 + (index / (flames - 1)) * 210 + (Math.random() - 0.5) * (190 / flames);
     // 화면 기준 위쪽(-90도)에 가까울수록 길게 뻗는다. 불은 땅속으로 자라지 않는다.
     const lift = Math.max(0, Math.cos(((heading + 90) * Math.PI) / 180));
-    const reach = (0.58 + Math.random() * 0.5 + lift * 0.5) * to.w * 0.6 * scale;
+    const reach = (0.5 + Math.random() * 0.42 + lift * 0.34) * to.w * 0.6 * scale;
     impact.appendChild(makeLayer("fx-flame", {
       "--flame-angle": `${heading.toFixed(1)}deg`,
       "--flame-len": `${reach.toFixed(1)}px`,
