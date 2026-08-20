@@ -8269,9 +8269,10 @@ function titleTap() {
 function titleEnter() {
   hideTitleScreen();
   openNewOperationSetup();
-  // 이 기계에서 한 번도 안 해 본 사람에게만 붙는다. 예전에는 게임을 켜자마자
-  // 붙었는데, 그 자리를 이제 타이틀이 덮는다.
-  if (coachRead() !== "done") coachStart();
+  // 첫 판에 안내를 저절로 띄우지 않는다. 이 안내가 하는 말은 이미 화면에 다 있다 -
+  // 목표는 맨 위 임무줄에, 부대 기능은 지도 아래 안내줄에, 못 치는 이유는 그 자리에
+  // 거리까지 찍혀 나온다. 같은 말을 한 번 더 하면서 화면 아래를 가리는 대신,
+  // 「조작 안내」를 누른 사람에게만 나온다(showCoach → coachStart).
 }
 
 // 기다리는 동안 앞 3초를 넘어가면 도로 처음으로 돌린다.
