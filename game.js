@@ -1877,6 +1877,9 @@ const soundBank = {
 const soundLevels = { select: 1, taunt: 1, move: 0.42, attack: 0.7, destroy: 0.85, notice: 0.95, ui: 0.3, build: 0.6, commander: 1.35 };
 const noticeSounds = ["work_complete", "unit_ready", "axis_work_complete", "axis_unit_ready", "ja_work_complete", "ja_unit_ready"];
 const uiSounds = ["ui_click", "map_tap", "hatch_open"];
+// 판정지가 뜨는 순간 한 번 울리는 소리. 이긴 판·진 판·비긴 판이 각각 다르다 —
+// 글씨를 읽기 전에 결과를 아는 것이 이 소리가 하는 일이다.
+const endSounds = ["end_win", "end_lose", "end_draw"];
 
 const sampleData = new Map();
 // 지금 받고 있는 중인 파일 이름. 이게 없으면 첫 번째 요청이 끝나기 전에
@@ -1923,7 +1926,7 @@ function selectVoiceBanks(playerSide = state?.playerSide ?? "allies", roster = s
 // 사격음은 무전과 달리 두 벌 다 필요하다. 한 판에서 내 부대도 쏘고 적 부대도 쏘므로,
 // 미제 총소리와 독일제 총소리가 같은 판에서 번갈아 난다.
 function allSoundNames(playerSide = state?.playerSide ?? "allies", roster = state?.commanders) {
-  const names = new Set([...noticeSounds, ...uiSounds]);
+  const names = new Set([...noticeSounds, ...uiSounds, ...endSounds]);
   const wanted = new Set([...selectVoiceBanks(playerSide, roster), "move", "build", "attack", "axisAttack", "destroy"]);
   Object.entries(soundBank).forEach(([bank, group]) => {
     if (!wanted.has(bank)) return;
@@ -8526,6 +8529,14 @@ function showResultScreen(outcome) {
   // 한 프레임 쉬고 클래스를 준다. 붙이자마자 주면 브라우저가 처음 상태를 못 보고
   // 건너뛰어서, 떠오르는 것이 아니라 그냥 나타난다(턴 날짜판과 같은 이치).
   requestAnimationFrame(() => resultScreenEl.classList.add("show"));
+
+  // 종료음은 전투곱이 다 빠진 뒤에 울린다. 곱과 겹치면 둘 다 뭉개진다 -
+  // finishGame이 musicDuckSeconds 동안 빼고 있으므로 그만큼 기다린다.
+  // 목소리 길과 같은 길을 쓴다. 판정지가 뜨는 순간에 부대가 뭐라고 떠들면
+  // 결과를 알리는 소리가 그 밑에 깔린다.
+  if (endSounds.includes(`end_${outcome.verdict}`)) {
+    window.setTimeout(() => playSample(`end_${outcome.verdict}`, { level: soundLevels.notice, channel: "voice" }), musicDuckSeconds * 1000 + 120);
+  }
 
   // 한 줄씩 흘린다. 260ms는 "읽히는 속도"가 아니라 "일이 벌어지는 속도"다 —
   // 이력은 정독하는 글이 아니라 지나가는 전문이고, 눈에 걸리는 줄에서 손이
