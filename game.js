@@ -1724,7 +1724,15 @@ function placeCardAwayFromUnit() {
   if (!battlefieldWrapEl || isPhoneLayout()) return;
   const focused = selectedUnit() ?? inspectedUnit();
   let flip = false;
-  const element = focused ? findUnitElement(focused.id) : null;
+  // 부대를 안 골랐어도 칸 하나를 눌러 보고 있으면 그 칸을 기준으로 옮긴다.
+  // 예전에는 부대일 때만 옮겨서, 오른쪽 끝 지형을 누르면 카드가 그 자리에
+  // 그대로 남아 오른쪽에 몰린 부대들을 통째로 덮었다.
+  const anchor = focused
+    ? findUnitElement(focused.id)
+    : (state.inspectedTile
+        ? boardEl.querySelector(`.tile[data-x="${state.inspectedTile.x}"][data-y="${state.inspectedTile.y}"]`)
+        : null);
+  const element = anchor;
   if (element) {
     const box = element.getBoundingClientRect();
     const wrap = battlefieldWrapEl.getBoundingClientRect();
