@@ -7546,7 +7546,7 @@ html[lang="en"] {
   display: none;
   place-items: center;
   overflow: hidden;
-  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820f");
+  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820g");
   opacity: 1;
   transition: opacity 700ms ease;
 }
@@ -7576,6 +7576,49 @@ html[lang="en"] {
   .title-intro-clip {
     mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
   }
+}
+
+/* 소리를 여는 손짓을 알리는 한 줄. 전투 장면이 흐르는 동안에만, 그리고 아직
+   소리가 안 열렸을 때만 보인다. 영상 위에 앉으므로 아래쪽에 두어 장면을
+   가리지 않는다. 천천히 밝아졌다 어두워지며 「누르라」는 뜻을 남긴다. */
+.title-hint {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: max(6vh, 34px);
+  transform: translateX(-50%);
+  z-index: 3;
+  margin: 0;
+  padding: 8px 18px;
+  border: 1px solid rgb(214 198 156 / 28%);
+  border-radius: 999px;
+  background: rgb(10 12 8 / 46%);
+  color: #ded3b2;
+  font-size: min(4vw, 16px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 70%);
+  animation: titleHintBreath 2400ms ease-in-out infinite;
+}
+
+.title-screen.intro .title-hint {
+  display: block;
+}
+
+/* 소리가 열리면 이 표시가 붙고, 그 순간 안내는 사라진다. */
+.title-screen.sound-on .title-hint {
+  display: none;
+}
+
+@keyframes titleHintBreath {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title-hint { animation: none; opacity: 0.92; }
 }
 
 /* 전투가 흐르는 동안 제목은 없다. 같이 띄우면 둘 다 안 읽힌다. */

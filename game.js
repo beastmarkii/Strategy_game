@@ -892,6 +892,7 @@ const uiDict = {
     "자동 편제 준비 중": "Auto-organise — soon",
     "자동 보급 준비 중": "Auto-supply — soon",
     "조작 안내": "How to play",
+    "화면을 누르면 소리가 켜집니다": "Tap the screen for sound",
     // 타이틀·종막 화면.
     "다음 작전": "Next operation",
     "타이틀로": "Title screen",
@@ -2298,9 +2299,10 @@ function titleClipTryLoud() {
   const wasAt = clip.currentTime;
   clip.muted = false;
   window.setTimeout(() => {
-    if (!clip.muted && !clip.paused && clip.currentTime > wasAt) return;
+    if (!clip.muted && !clip.paused && clip.currentTime > wasAt) { titleHintSync(); return; }
     clip.muted = true;
     if (clip.paused) clip.play().catch(() => {});
+    titleHintSync();
   }, 200);
 }
 
@@ -2310,6 +2312,19 @@ function titleClipSyncSound() {
   const clip = document.querySelector("#titleIntroClip");
   if (!clip) return;
   clip.muted = !musicAllowed();
+  titleHintSync();
+}
+
+// 「화면을 누르면 소리가 켜집니다」 한 줄. 소리가 실제로 열린 뒤에도 남아
+// 있으면 거짓말이 된다. 영상이 소리를 내고 있는지 그 자리에서 보고 정한다.
+function titleHintSync() {
+  const screen = document.querySelector("#titleScreen");
+  const clip = document.querySelector("#titleIntroClip");
+  if (!screen) return;
+  const loud = !!clip && !clip.muted && !clip.paused;
+  // 소리를 스스로 꺼 둔 사람에게 「누르면 켜집니다」는 거짓말이다. 그 경우도
+  // 안내를 내린다.
+  screen.classList.toggle("sound-on", loud || musicMuted);
 }
 
 // 브라우저는 화면에 손이 닿기 전에는 소리를 못 내게 막는다. 타이틀 음악은 그
@@ -8131,6 +8146,7 @@ function titleOpen() {
   }
   titleClipSeen = true;
   titleScreenEl.classList.add("intro");
+  titleHintSync();
   titleClipEl.volume = 0.9;
   // 영상은 무슨 일이 있어도 나와야 한다. 그래서 소리를 끈 채로 건다 - 폰은
   // 소리 있는 영상의 자동 재생을 거절하고, 거절당하면 영상 자체가 안 나온다.
@@ -8201,6 +8217,8 @@ function titleTap() {
       // 영상이 소리 없이 돌고 있었다면 이 손짓으로 소리가 열린다. 그 손짓
       // 하나로 영상까지 건너뛰지는 않는다 - 건너뛰려면 한 번 더 누르면 된다.
       try { titleClipEl?.play()?.catch?.(() => {}); } catch (error) {}
+      // 소리가 열렸으니 안내는 할 일이 끝났다.
+      titleScreenEl.classList.add("sound-on");
       return;
     }
     if (!done) return;
