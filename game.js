@@ -6145,19 +6145,38 @@ function setActionVisible(selector, visible) {
   if (element) element.hidden = !visible;
 }
 
-// 단추가 원래 어디에 서 있었는지. 되돌릴 때 이 표가 없으면 순서가 뒤섞인다.
+// 단추가 원래 어디에 몇 번째로 서 있었는지. 되돌릴 때 이 표가 없으면 순서가 뒤섞인다.
+//
+// 예전에는 「바로 뒤에 누가 있었나」만 적어 두었다. 공병대를 고르면 다리·보급창고·
+// 철도 세 단추가 한꺼번에 지도 아래 띠로 나가는데, 되돌릴 때 다리의 뒤차례인
+// 보급창고가 아직 띠에 있으면 갈 곳을 못 찾아 목록 맨 끝에 붙었다. 그래서 공병
+// 단추가 「조작 안내」·「새 작전」 뒤에 섞여 나왔다. 이제는 자리 번호를 적는다.
+// 뒤차례가 어디 있든 제자리를 찾는다.
 const actionButtonHome = new Map();
+const actionHomeOrder = new Map();
 
 function rememberActionHome(button) {
   if (actionButtonHome.has(button)) return;
-  actionButtonHome.set(button, { parent: button.parentElement, next: button.nextElementSibling });
+  const parent = button.parentElement;
+  if (!parent) return;
+  // 그 자리의 형제들 번호를 한 번에 통째로 적어 둔다. 단추가 아닌 것(묶음 메뉴,
+  // 개인정보 줄)도 같이 적어야 그 사이에 끼워 넣을 수 있다.
+  if (!actionHomeOrder.has(parent)) {
+    const order = new Map();
+    Array.prototype.forEach.call(parent.children, (child, index) => order.set(child, index));
+    actionHomeOrder.set(parent, order);
+  }
+  actionButtonHome.set(button, { parent, index: actionHomeOrder.get(parent).get(button) ?? Number.MAX_SAFE_INTEGER });
 }
 
 function restoreActionHome(button) {
   const home = actionButtonHome.get(button);
   if (!home || !home.parent) return;
   if (button.parentElement === home.parent) return;
-  home.parent.insertBefore(button, home.next && home.next.parentElement === home.parent ? home.next : null);
+  const order = actionHomeOrder.get(home.parent);
+  // 지금 그 자리에 있는 것들 중 나보다 뒷번호인 첫 번째, 그 앞에 선다.
+  const after = Array.prototype.find.call(home.parent.children, (child) => (order?.get(child) ?? Number.MAX_SAFE_INTEGER) > home.index);
+  home.parent.insertBefore(button, after ?? null);
 }
 
 // 지금 켜져 있는 명령 단추를 지도 아래 한 줄로 모은다. 넓은 화면에서는 원래
