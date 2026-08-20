@@ -892,7 +892,6 @@ const uiDict = {
     "자동 편제 준비 중": "Auto-organise — soon",
     "자동 보급 준비 중": "Auto-supply — soon",
     "조작 안내": "How to play",
-    "화면을 누르면 소리가 켜집니다": "Tap the screen for sound",
     // 타이틀·종막 화면.
     "다음 작전": "Next operation",
     "타이틀로": "Title screen",
@@ -2290,41 +2289,22 @@ function frontMusicPlay(name) {
   musicPlayEl(el);
 }
 
-// 영상이 이미 돌고 있을 때만 부른다. 소리를 한 번 열어 보고, 그 때문에
-// 브라우저가 영상을 세워 버리면 도로 끄고 이어 튼다. 폰에서는 대개 손이
-// 닿기 전까지 여기서 되돌아간다 - 그건 막을 수 있는 일이 아니다.
-function titleClipTryLoud() {
-  const clip = document.querySelector("#titleIntroClip");
-  if (!clip || !musicAllowed()) return;
-  const wasAt = clip.currentTime;
-  clip.muted = false;
-  window.setTimeout(() => {
-    if (!clip.muted && !clip.paused && clip.currentTime > wasAt) { titleHintSync(); return; }
-    clip.muted = true;
-    if (clip.paused) clip.play().catch(() => {});
-    titleHintSync();
-  }, 200);
-}
+// 손짓을 기다리는 중인지. 기다리는 동안 영상은 앞 3초만 소리 없이 되풀이한다.
+// 브라우저는 사람이 화면을 한 번 만지기 전에는 소리를 내주지 않는다. 그래서
+// 여기서 30초를 통째로 흘려보내면 그 판은 소리 없이 지나간다 - 앞자락만
+// 돌려 두고 기다렸다가, 손이 닿으면 그때 처음부터 소리와 함께 튼다.
+let titleClipWaiting = false;
+const TITLE_CLIP_HEAD_SECONDS = 3;
 
 // 타이틀 영상에는 음악이 함께 구워져 있다. 그 소리는 오디오 시계를 거치지 않고
 // 영상 자체에서 나므로, 음악 끄기를 누른 뜻이 저기까지 닿게 여기서 맞춰 준다.
 function titleClipSyncSound() {
   const clip = document.querySelector("#titleIntroClip");
   if (!clip) return;
+  // 손짓을 기다리는 동안에는 소리를 열지 않는다. 그 자리에서 소리가 나면
+  // 영상은 앞 3초만 돌고 있으므로 음악도 3초마다 처음으로 되돌아간다.
+  if (titleClipWaiting) { clip.muted = true; return; }
   clip.muted = !musicAllowed();
-  titleHintSync();
-}
-
-// 「화면을 누르면 소리가 켜집니다」 한 줄. 소리가 실제로 열린 뒤에도 남아
-// 있으면 거짓말이 된다. 영상이 소리를 내고 있는지 그 자리에서 보고 정한다.
-function titleHintSync() {
-  const screen = document.querySelector("#titleScreen");
-  const clip = document.querySelector("#titleIntroClip");
-  if (!screen) return;
-  const loud = !!clip && !clip.muted && !clip.paused;
-  // 소리를 스스로 꺼 둔 사람에게 「누르면 켜집니다」는 거짓말이다. 그 경우도
-  // 안내를 내린다.
-  screen.classList.toggle("sound-on", loud || musicMuted);
 }
 
 // 브라우저는 화면에 손이 닿기 전에는 소리를 못 내게 막는다. 타이틀 음악은 그
@@ -8123,6 +8103,11 @@ let titleTimers = [];
 let titleClipSeen = false;
 // 이 화면에서 소리가 한 번이라도 열렸는지. 한 번 열리면 그 뒤로는 계속 열려 있다.
 let titleSoundOn = false;
+// 기기에서 화면 움직임 줄이기를 켠 사람이 있다. 그 설정이 없애야 할 것은
+// 글자가 튀어 들어오는 연출이지 전투 장면이 아니다.
+function titleCalm() {
+  return !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+}
 
 function titleClearTimers() {
   titleTimers.forEach((id) => window.clearTimeout(id));
@@ -8134,54 +8119,70 @@ function titleClearTimers() {
 function titleOpen() {
   if (!titleScreenEl) return;
   titleClearTimers();
-  titleScreenEl.classList.remove("ready", "done", "instant", "intro");
-  // 기기에서 화면 움직임 줄이기를 켠 사람이 있다. 그 설정이 없애야 할 것은
-  // 글자가 튀어 들어오는 연출이지 전투 장면이 아니다 - 이 장면은 이 게임이
-  // 무엇인지 알리는 자리이고, 누르면 곧바로 건너뛴다. 그래서 영상은 늘 틀고,
-  // 줄이기를 켠 기기에서는 뒤따르는 글자 연출만 순식간에 끝낸다.
-  const calm = !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  titleScreenEl.classList.remove("ready", "done", "instant", "intro", "waiting");
   if (titleClipSeen || !titleClipEl) {
-    titleReveal(calm);
+    titleReveal(titleCalm());
     return;
   }
   titleClipSeen = true;
-  titleScreenEl.classList.add("intro");
-  titleHintSync();
+  titleClipWaiting = true;
+  titleScreenEl.classList.add("intro", "waiting");
   titleClipEl.volume = 0.9;
-  // 영상은 무슨 일이 있어도 나와야 한다. 그래서 소리를 끈 채로 건다 - 폰은
-  // 소리 있는 영상의 자동 재생을 거절하고, 거절당하면 영상 자체가 안 나온다.
-  // 소리는 그 다음 일이다. 걸리고 나서 한 번 열어 보고, 그 때문에 영상이
-  // 멎으면 도로 끄고 이어 튼다. 소리 없는 영상이 멎은 영상보다 낫다.
+  // 소리를 끈 채로 건다. 소리 없는 영상의 자동 재생은 어느 기기에서도
+  // 거절당하지 않는다. 앞 3초만 되풀이하며 손짓을 기다린다.
+  titleClipEl.loop = true;
+  titleClipEl.muted = true;
   try {
     titleClipEl.currentTime = 0;
   } catch (error) {
     // 아직 한 조각도 안 받은 영상의 시각을 되돌리려 한 것뿐이다.
   }
   try {
-    titleClipEl.muted = true;
-    const started = titleClipEl.play();
-    if (started && started.then) {
-      started.then(titleClipTryLoud, () => {
-        // 소리를 껐는데도 거절당했다. 첫 장면 그림만 잠깐 세워 두고 넘어간다.
-        titleClearTimers();
-        titleTimers.push(window.setTimeout(() => titleReveal(calm), 1800));
-      });
-    } else {
-      titleClipTryLoud();
-    }
+    titleClipEl.play()?.catch?.(() => {});
   } catch (error) {
-    titleReveal(calm);
+    // 이 기기는 영상을 못 튼다. 첫 장면 그림과 안내 글이 그 자리를 지킨다.
   }
-  // 영상이 뜨지 않거나 끝났다는 신호가 오지 않아도 화면은 넘어가야 한다.
-  // 영상 길이는 30초다. 그보다 넉넉히 뒤에 둔다 - 이 시각이 영상보다 앞서면
-  // 다 보지도 못한 채 제목이 덮는다.
-  titleTimers.push(window.setTimeout(() => titleReveal(calm), 31000));
+}
+
+// 앞 3초를 되풀이한다. loop 표시만으로는 30초를 다 돌고 나서야 되돌아온다.
+function titleClipHoldHead() {
+  if (!titleClipWaiting || !titleClipEl) return;
+  if (titleClipEl.currentTime < TITLE_CLIP_HEAD_SECONDS) return;
+  try {
+    titleClipEl.currentTime = 0;
+  } catch (error) {
+    // 되감기가 막힌 기기다. loop 표시가 30초 뒤에 대신 되돌린다.
+  }
+}
+
+// 손이 닿았다. 여기서부터가 진짜 상영이다 - 처음부터, 소리와 함께.
+function titleClipStart() {
+  if (!titleScreenEl || !titleClipEl) return;
+  titleClipWaiting = false;
+  titleScreenEl.classList.remove("waiting");
+  titleClipEl.loop = false;
+  titleClipEl.muted = !musicAllowed();
+  try {
+    titleClipEl.currentTime = 0;
+  } catch (error) {
+    // 되감기가 막혔다면 지금 자리에서 이어 튼다.
+  }
+  try {
+    titleClipEl.play()?.catch?.(() => {});
+  } catch (error) {
+    titleReveal(titleCalm());
+    return;
+  }
+  // 끝났다는 신호가 안 와도 화면은 넘어가야 한다. 영상 길이는 30초다.
+  titleClearTimers();
+  titleTimers.push(window.setTimeout(() => titleReveal(titleCalm()), 31000));
 }
 
 function titleReveal(instant) {
   if (!titleScreenEl) return;
   titleClearTimers();
-  titleScreenEl.classList.remove("intro");
+  titleClipWaiting = false;
+  titleScreenEl.classList.remove("intro", "waiting");
   if (instant) titleScreenEl.classList.add("instant");
   titleScreenEl.classList.add("ready");
   try {
@@ -8205,23 +8206,17 @@ function titleTap() {
   if (!titleScreenEl || titleScreenEl.hidden) return;
   if (titleScreenEl.classList.contains("leaving")) return;
   const done = titleScreenEl.classList.contains("done");
-  // 첫 손짓은 소리를 여는 손짓이다. 그 한 번으로 영상까지 건너뛰면, 음악을
-  // 들으려고 화면을 만진 사람이 영상을 잃는다. 그래서 전투 장면이 흐르는
-  // 중이라면 소리만 켜고 영상은 그대로 둔다. 건너뛰려면 한 번 더 누르면 된다.
+  // 이 손짓이 소리 문을 연다. 브라우저는 이 한 번 전에는 어떤 소리도 못 낸다.
   if (!titleSoundOn) {
     titleSoundOn = true;
-    titleClipSyncSound();
     frontMusicResume();
-    const playing = titleScreenEl.classList.contains("intro");
-    if (playing) {
-      // 영상이 소리 없이 돌고 있었다면 이 손짓으로 소리가 열린다. 그 손짓
-      // 하나로 영상까지 건너뛰지는 않는다 - 건너뛰려면 한 번 더 누르면 된다.
-      try { titleClipEl?.play()?.catch?.(() => {}); } catch (error) {}
-      // 소리가 열렸으니 안내는 할 일이 끝났다.
-      titleScreenEl.classList.add("sound-on");
-      return;
-    }
-    if (!done) return;
+  }
+  if (titleScreenEl.classList.contains("intro")) {
+    // 기다리던 중이면 이 손짓이 상영을 시작한다. 이미 흐르는 중이면 이
+    // 손짓은 「그만 보겠다」는 뜻이므로 곧바로 제목으로 넘긴다.
+    if (titleClipWaiting) titleClipStart();
+    else titleReveal(true);
+    return;
   }
   if (!done) { titleReveal(true); return; }
   titleEnter();
@@ -8235,13 +8230,26 @@ function titleEnter() {
   if (coachRead() !== "done") coachStart();
 }
 
-titleClipEl?.addEventListener("ended", () => titleReveal(
-  !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
-));
+// 기다리는 동안 앞 3초를 넘어가면 도로 처음으로 돌린다.
+titleClipEl?.addEventListener("timeupdate", titleClipHoldHead);
+titleClipEl?.addEventListener("ended", () => {
+  if (titleClipWaiting) return;
+  titleReveal(titleCalm());
+});
 titleScreenEl?.addEventListener("pointerdown", titleTap);
-// 손이 아니라 자판으로 오는 사람도 있다.
+// 손이 아니라 자판으로 오는 사람도 있다. 전투 장면이 흐르는 동안에는 아무
+// 자판이나 눌러도 넘어간다 - 그때 화면에 있는 것은 이 장면 하나뿐이다.
 titleScreenEl?.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter" && event.key !== " ") return;
+  const playing = titleScreenEl.classList.contains("intro");
+  if (!playing && event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  titleTap();
+});
+// 자판 초점이 아직 이 화면에 없어도 눌린 자판은 받아야 한다.
+window.addEventListener("keydown", (event) => {
+  if (!titleScreenEl || titleScreenEl.hidden) return;
+  if (!titleScreenEl.classList.contains("intro")) return;
+  if (event.target === titleScreenEl) return;
   event.preventDefault();
   titleTap();
 });

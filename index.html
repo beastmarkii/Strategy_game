@@ -73,7 +73,7 @@
     <meta name="theme-color" content="#202317" />
     <meta name="apple-mobile-web-app-title" content="FRONT COMMAND" />
 
-    <link rel="stylesheet" href="styles.css?v=20260820i" />
+    <link rel="stylesheet" href="styles.css?v=20260820j" />
   </head>
   <body>
     <main class="shell">
@@ -449,14 +449,14 @@
            game.js가 연다. -->
       <div class="title-intro" id="titleIntro" aria-hidden="true">
         <video id="titleIntroClip" class="title-intro-clip"
-               src="assets/video/intro.mp4?v=20260820i"
-               poster="assets/video/intro-poster.jpg?v=20260820i"
+               src="assets/video/intro.mp4?v=20260820j"
+               poster="assets/video/intro-poster.jpg?v=20260820j"
                muted playsinline autoplay preload="auto"></video>
       </div>
       <!-- 폰은 사람이 화면을 한 번 누르기 전까지 어떤 소리도 내주지 않는다.
-           그래서 전투 장면은 소리 없이 시작한다. 그 사실을 모르면 소리가
-           고장난 줄 안다. 이 한 줄이 그것을 알려 준다 - 누르는 순간 사라진다. -->
-      <p class="title-hint" id="titleHint" data-i18n>화면을 누르면 소리가 켜집니다</p>
+           그래서 손이 닿기 전에는 앞 3초만 소리 없이 되풀이하고, 이 한 줄로
+           누르라고 알린다. 누르는 순간 영상이 처음부터 소리와 함께 시작한다. -->
+      <p class="title-hint" id="titleHint">Tap to start</p>
       <div class="title-screen-inner">
         <p class="title-eyebrow">WORLD WAR II · TURN-BASED TACTICAL COMMAND</p>
         <h1 class="title-mark">
@@ -476,11 +476,12 @@
         var s = document.querySelector("#titleScreen");
         var v = document.querySelector("#titleIntroClip");
         if (!s || !v) return;
-        s.classList.add("intro");
+        s.classList.add("intro", "waiting");
         // 소리를 끈 채로 건다. 이건 어느 기기에서도 거절당하지 않는다.
         // 소리를 여는 일은 game.js가 맡는다 - 여기서 같이 건드리면 두 곳에서
         // 같은 영상을 밀게 되고, 그 다툼이 곧 「2초 나오고 꺼짐」이 된다.
         v.muted = true;
+        v.loop = true;
         try { var p = v.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
       })();
     </script>
@@ -513,7 +514,7 @@
       </svg>
     </button>
 
-    <script src="scenarios.js?v=20260820i"></script>
-    <script src="game.js?v=20260820i"></script>
+    <script src="scenarios.js?v=20260820j"></script>
+    <script src="game.js?v=20260820j"></script>
   </body>
 </html>

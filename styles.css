@@ -7555,7 +7555,7 @@ html[lang="en"] {
   display: none;
   place-items: center;
   overflow: hidden;
-  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820i");
+  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820j");
   opacity: 1;
   transition: opacity 700ms ease;
 }
@@ -7587,9 +7587,9 @@ html[lang="en"] {
   }
 }
 
-/* 소리를 여는 손짓을 알리는 한 줄. 전투 장면이 흐르는 동안에만, 그리고 아직
-   소리가 안 열렸을 때만 보인다. 영상 위에 앉으므로 아래쪽에 두어 장면을
-   가리지 않는다. 천천히 밝아졌다 어두워지며 「누르라」는 뜻을 남긴다. */
+/* 「Tap to start」 한 줄. 앞 3초를 되풀이하며 손짓을 기다리는 동안에만 보인다.
+   손이 닿으면 상영이 시작되면서 사라진다. 영상 위에 앉으므로 아래쪽에 두어
+   장면을 가리지 않는다. 천천히 밝아졌다 어두워지며 「누르라」는 뜻을 남긴다. */
 .title-hint {
   display: none;
   position: absolute;
@@ -7614,13 +7614,8 @@ html[lang="en"] {
   animation: titleHintBreath 2400ms ease-in-out infinite;
 }
 
-.title-screen.intro .title-hint {
+.title-screen.intro.waiting .title-hint {
   display: block;
-}
-
-/* 소리가 열리면 이 표시가 붙고, 그 순간 안내는 사라진다. */
-.title-screen.sound-on .title-hint {
-  display: none;
 }
 
 @keyframes titleHintBreath {
