@@ -377,9 +377,28 @@ const builtInBalance = JSON.parse(JSON.stringify(defaultBalance));
 
 const DEFAULT_BALANCE_STORAGE_KEY = "ww2TacticalCommand.defaultBalance";
 
-// 하다 만 판을 적어 두는 자리. 칸은 하나뿐이다 — 여러 칸을 만들면 "몇 번 칸에
-// 저장할까"를 묻게 되고, 그건 이 게임이 사람에게 물을 일이 아니다.
+// 하다 만 판을 적어 두는 자리.
+//
+// 자동 칸은 게임이 알아서 적는다 — 하루가 넘어갈 때마다, 창을 닫을 때마다.
+// 사람이 챙기지 않아도 잃지 않는 것이 이 칸의 일이다.
+//
+// 손 칸 셋은 사람이 「저장」을 눌렀을 때만 적힌다. 자동 칸 하나뿐이던 시절에는
+// 되돌아갈 곳이 없었다 - 세 턴 전에 부대를 잘못 밀어 넣은 것을 깨달아도 그 판은
+// 이미 덮여 있었다. 되돌릴 자리를 사람이 직접 찍어 두는 것이 손 칸이다.
+//
+// 적히는 내용은 네 칸 모두 똑같다. 그래서 칸을 늘려도 옛 저장본은 그대로 읽힌다.
 const SAVED_OPERATION_KEY = "ww2TacticalCommand.savedOperation";
+const MANUAL_SAVE_SLOTS = ["m1", "m2", "m3"];
+const SAVE_SLOTS = ["auto", ...MANUAL_SAVE_SLOTS];
+
+// 자동 칸은 예전 자리를 그대로 쓴다. 이름을 바꾸면 지금 하다 만 사람이 판을 잃는다.
+function saveSlotKey(slot) {
+  return slot === "auto" ? SAVED_OPERATION_KEY : `${SAVED_OPERATION_KEY}.${slot}`;
+}
+
+function saveSlotName(slot) {
+  return slot === "auto" ? t("자동 저장") : t("저장 {n}", { n: MANUAL_SAVE_SLOTS.indexOf(slot) + 1 });
+}
 // 판의 생김새가 바뀌면 옛 저장본은 못 읽는다. 못 읽는 것을 억지로 읽으면 엉뚱한
 // 판이 뜨느니만 못하므로, 번호가 다르면 그냥 버린다.
 const SAVED_OPERATION_VERSION = 1;
@@ -903,6 +922,13 @@ const uiDict = {
     "작전 명령서": "Operation Orders",
     "기밀": "SECRET",
     "중단된 작전": "Operation in progress",
+    "저장된 작전": "Saved operations",
+    "자동 저장": "Auto-save",
+    "저장 {n}": "Slot {n}",
+    "빈 칸": "empty",
+    "{turn}일차": "Day {turn}",
+    "저장": "Save",
+    "{slot}에 적어 두었다": "Saved to {slot}",
     "이어하기": "Resume",
     "지우기": "Discard",
     "지휘관 명부": "Commander file",
@@ -1308,9 +1334,9 @@ const operationDifficultyChoicesEl = document.querySelector("#operationDifficult
 const operationConfirmEl = document.querySelector("#confirmOperationSetup");
 const operationCancelEl = document.querySelector("#cancelOperationSetup");
 const resumeNoticeEl = document.querySelector("#resumeNotice");
-const resumeNoticeMetaEl = document.querySelector("#resumeNoticeMeta");
-const resumeOperationEl = document.querySelector("#resumeOperation");
-const discardOperationEl = document.querySelector("#discardOperation");
+const resumeSlotsEl = document.querySelector("#resumeSlots");
+const saveMenuEl = document.querySelector("#saveMenu");
+const saveMenuGridEl = document.querySelector("#saveMenuGrid");
 const missionNameLabelEl = document.querySelector("#missionNameLabel");
 const missionBriefLabelEl = document.querySelector("#missionBriefLabel");
 const resultScreenEl = document.querySelector("#resultScreen");
@@ -3154,6 +3180,7 @@ function confirmNewOperationSetup() {
   // 개시하는 그 순간부터 적어 둔다. 첫날에 창을 닫아도 고른 것(작전·진영·장군·
   // 배치·난이도)이 남아 있어야, 다시 켰을 때 그 다섯 개를 또 고르지 않는다.
   saveOperation();
+  renderSaveMenu();
   closeNewOperationSetup();
 }
 
@@ -3167,17 +3194,12 @@ function confirmNewOperationSetup() {
 // 「기록 지우기」가 켜 두는 빗장. 지운 뒤로는 무슨 일이 있어도 다시 적지 않는다.
 let storageErased = false;
 
-function saveOperation() {
-  // 아직 명령서에 서명하지 않은 판(게임을 켜면 뒤에 깔리는 배경)은 적지 않는다.
-  // 고른 적 없는 작전을 「중단된 작전」이라고 내미는 건 거짓말이다.
-  if (storageErased) return;
-  if (!operationCommenced || !state || state.gameOver) return;
-  try {
+// 적어 둘 내용 한 벌. 어느 칸에 넣든 같은 것이 들어간다 — 자동 칸과 손 칸이
+// 다른 물건이면 손 칸에서 이어한 판만 몰래 다르게 굴러간다.
+function buildSavePayload() {
     const { deployZones, commanders: leaders, ...rest } = state;
     const { year, month, day } = missionDate(state.turn);
-    localStorage.setItem(
-      SAVED_OPERATION_KEY,
-      JSON.stringify({
+    return {
         version: SAVED_OPERATION_VERSION,
         // 안내에 그대로 찍을 문구를 여기서 만들어 둔다. 저장본을 읽는 시점에는
         // 그 판이 아직 깔려 있지 않아 날짜도 진영도 계산할 수가 없다.
@@ -3202,17 +3224,30 @@ function saveOperation() {
           // 명부와 남남인 복제본이 서게 된다 — 이름표만 적고 명부에서 다시 찾는다.
           commanderIds: { player: leaders?.player?.id ?? null, enemy: leaders?.enemy?.id ?? null },
         },
-      }),
-    );
+  };
+}
+
+// 지금 판을 적어 둘 수 있는 상태인가. 서명 전 배경 판과 이미 끝난 판은 적지 않는다 —
+// 고른 적 없는 작전을 「중단된 작전」이라고 내미는 건 거짓말이다.
+function canSaveOperation() {
+  return !storageErased && operationCommenced && !!state && !state.gameOver;
+}
+
+function saveOperation(slot = "auto") {
+  if (!canSaveOperation()) return false;
+  try {
+    localStorage.setItem(saveSlotKey(slot), JSON.stringify(buildSavePayload()));
+    return true;
   } catch (error) {
     // 저장이 막힌 브라우저(사생활 보호 창 등)도 있다. 판은 그래도 굴러가야 한다.
     console.warn("Failed to save operation", error);
+    return false;
   }
 }
 
-function readSavedOperation() {
+function readSavedOperation(slot = "auto") {
   try {
-    const saved = JSON.parse(localStorage.getItem(SAVED_OPERATION_KEY));
+    const saved = JSON.parse(localStorage.getItem(saveSlotKey(slot)));
     if (!saved || saved.version !== SAVED_OPERATION_VERSION) return null;
     if (!saved.state?.scenarioId || !Array.isArray(saved.state.units)) return null;
     return saved;
@@ -3221,13 +3256,14 @@ function readSavedOperation() {
   }
 }
 
-function clearSavedOperation() {
+function clearSavedOperation(slot = "auto") {
   try {
-    localStorage.removeItem(SAVED_OPERATION_KEY);
+    localStorage.removeItem(saveSlotKey(slot));
   } catch (error) {
     console.warn("Failed to clear saved operation", error);
   }
   renderResumeNotice();
+  renderSaveMenu();
 }
 
 // 저장한 날의 규칙으로 되돌린다. 저장본에 없는 값(저장한 뒤에 새로 생긴 규칙)은
@@ -3245,8 +3281,8 @@ function applySavedBalance(balance) {
 // 순서가 전부다. 지도(지형·크기·물길)는 판 바깥에 놓인 물건이라, 그 작전의 지도를
 // 먼저 깔아야 적어 둔 좌표가 제자리를 찾는다. 규칙을 그 다음에 얹고, 판은 맨 마지막에
 // 앉힌다 — 중간에 무엇이 잘못되면 판을 건드리기 전에 멈추기 위해서다.
-function restoreSavedOperation() {
-  const saved = readSavedOperation();
+function restoreSavedOperation(slot = "auto") {
+  const saved = readSavedOperation(slot);
   if (!saved) return false;
   try {
     const scenario = findScenario(saved.state.scenarioId);
@@ -3287,31 +3323,66 @@ function restoreSavedOperation() {
     // 되살리다 엎어졌으면 그 저장본은 못 쓰는 것이다. 남겨 두면 켤 때마다 같은 자리에서
     // 엎어지므로 버린다 — 부른 쪽은 false를 받고 새 판을 깔면 된다.
     console.warn("Failed to restore operation", error);
-    clearSavedOperation();
+    clearSavedOperation(slot);
     return false;
   }
 }
 
-// 명령서 맨 위에 뜨는 「중단된 작전」 한 줄.
-function renderResumeNotice() {
-  if (!resumeNoticeEl) return;
-  const saved = readSavedOperation();
-  resumeNoticeEl.hidden = !saved;
-  if (!saved || !resumeNoticeMetaEl) return;
-  const label = saved.label ?? {};
-  resumeNoticeMetaEl.textContent = [
-    label.operation ? `「${label.operation}」` : "",
+// 저장본 한 줄을 사람이 읽을 문장으로. 작전 이름, 며칠째, 어느 군의 누가
+// 지휘하던 판인지 - 이걸 못 읽으면 「이어하기」는 도박이 된다.
+function savedOperationSummary(saved) {
+  const label = saved?.label ?? {};
+  return [
+    label.operation ? `「${t(label.operation)}」` : "",
     label.date ? t("{date} · {turn}일차", { date: label.date, turn: label.turn }) : "",
-    [label.side, label.commander].filter(Boolean).join(" "),
+    [label.side ? t(label.side) : "", label.commander].filter(Boolean).join(" "),
   ]
     .filter(Boolean)
     .join(" · ");
 }
 
-resumeOperationEl?.addEventListener("click", () => {
-  // 게임을 켤 때 이미 그 판을 배경으로 깔아 두었지만, 그 사이에 다른 작전을 골라
+// 명령서 맨 위에 뜨는 「저장된 작전」 목록. 든 것이 있는 칸만 줄로 선다.
+function renderResumeNotice() {
+  if (!resumeNoticeEl || !resumeSlotsEl) return;
+  const filled = SAVE_SLOTS.map((slot) => [slot, readSavedOperation(slot)]).filter(([, saved]) => saved);
+  resumeNoticeEl.hidden = !filled.length;
+  resumeSlotsEl.textContent = "";
+  filled.forEach(([slot, saved]) => {
+    const row = document.createElement("div");
+    row.className = "resume-row";
+
+    const text = document.createElement("div");
+    text.className = "resume-notice-text";
+    const name = document.createElement("span");
+    name.className = "resume-slot-name";
+    name.textContent = saveSlotName(slot);
+    const meta = document.createElement("span");
+    meta.className = "resume-slot-meta";
+    meta.textContent = savedOperationSummary(saved);
+    text.append(name, meta);
+
+    const actions = document.createElement("div");
+    actions.className = "resume-notice-actions";
+    const resume = document.createElement("button");
+    resume.type = "button";
+    resume.className = "primary";
+    resume.textContent = t("이어하기");
+    resume.addEventListener("click", () => resumeFromSlot(slot));
+    const drop = document.createElement("button");
+    drop.type = "button";
+    drop.textContent = t("지우기");
+    drop.addEventListener("click", () => clearSavedOperation(slot));
+    actions.append(resume, drop);
+
+    row.append(text, actions);
+    resumeSlotsEl.append(row);
+  });
+}
+
+function resumeFromSlot(slot) {
+  // 게임을 켤 때 이미 자동 칸을 배경으로 깔아 두었지만, 그 사이에 다른 작전을 골라
   // 봤을 수도 있다. 여기서 한 번 더 깔면 두 경우가 같아진다.
-  if (!restoreSavedOperation()) {
+  if (!restoreSavedOperation(slot)) {
     renderResumeNotice();
     return;
   }
@@ -3321,14 +3392,39 @@ resumeOperationEl?.addEventListener("click", () => {
   // 몇 번 하면 열넉 줄이 전부 「지휘 재개」로 차서 진짜 전투 기록이 밀려 나간다.
   // 게다가 새로고침으로 되살리는 길(맨 아래 restoreSavedOperation)은 이 줄을 안
   // 적으므로, 같은 저장본인데 어느 길로 들어왔느냐에 따라 기록이 달라졌다.
-  // 재개했다는 사실은 명령서의 「중단된 작전」 안내가 이미 보여 준다.
   render();
+  renderSaveMenu();
   closeNewOperationSetup();
-});
+}
 
-discardOperationEl?.addEventListener("click", () => {
-  clearSavedOperation();
-});
+// 지휘칸의 「저장」 서랍. 칸마다 지금 무엇이 들어 있는지 단추 글씨에 적는다 —
+// 안 적으면 어느 칸을 덮는지 모르고 누르게 된다.
+function renderSaveMenu() {
+  if (!saveMenuGridEl) return;
+  const usable = canSaveOperation();
+  if (saveMenuEl) saveMenuEl.hidden = false;
+  saveMenuGridEl.textContent = "";
+  MANUAL_SAVE_SLOTS.forEach((slot) => {
+    const saved = readSavedOperation(slot);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.disabled = !usable;
+    // 단추 글씨는 짧게 - 「저장 2 · 14일차」. 서랍은 좁은 칸 둘이라 작전 이름과
+    // 지휘관까지 넣으면 단추 하나가 다섯 줄이 된다. 자세한 것은 명령서 목록에 있고,
+    // 여기서 알아야 할 것은 「이 칸을 덮으면 며칠째 판이 사라지는가」 하나뿐이다.
+    button.textContent = saved
+      ? `${saveSlotName(slot)} · ${t("{turn}일차", { turn: saved.label?.turn ?? "?" })}`
+      : `${saveSlotName(slot)} · ${t("빈 칸")}`;
+    if (saved) button.title = savedOperationSummary(saved);
+    button.addEventListener("click", () => {
+      if (!saveOperation(slot)) return;
+      renderSaveMenu();
+      renderResumeNotice();
+      addLog(t("{slot}에 적어 두었다", { slot: saveSlotName(slot) }));
+    });
+    saveMenuGridEl.append(button);
+  });
+}
 
 // 폰에서는 전화 한 통, 알림 하나에 화면이 넘어간다. 그때가 곧 판을 잃는 순간이라,
 // 화면이 뒤로 물러나면 그 자리에서 적어 둔다.
@@ -3606,7 +3702,7 @@ const STORAGE_NOTICE_KEY = "ww2TacticalCommand.storageNotice";
 // 새로 적히지 않지만, 예전에 그 띠를 본 기계에는 남아 있으므로 그대로 둔다.
 const GAME_STORAGE_KEYS = [
   DEFAULT_BALANCE_STORAGE_KEY,
-  SAVED_OPERATION_KEY,
+  ...SAVE_SLOTS.map(saveSlotKey),
   EDIT_TOOLS_KEY,
   COACH_KEY,
   STORAGE_NOTICE_KEY,
@@ -11605,6 +11701,7 @@ loadSavedDefaultBalance();
 // 닫히면 되도록 — 그때부터 판을 되살리기 시작하면 이어하는 느낌이 안 난다.
 if (restoreSavedOperation()) operationCommenced = true;
 else startGame();
+renderSaveMenu();
 // 명령서보다 한 장 앞이 생겼다. 여태는 게임을 켜면 아직 무슨 게임인지도 모르는
 // 사람에게 진영·작전·장군·난이도를 먼저 물었다.
 showTitleScreen();

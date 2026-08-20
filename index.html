@@ -73,7 +73,7 @@
     <meta name="theme-color" content="#202317" />
     <meta name="apple-mobile-web-app-title" content="FRONT COMMAND" />
 
-    <link rel="stylesheet" href="styles.css?v=20260820r" />
+    <link rel="stylesheet" href="styles.css?v=20260820s" />
   </head>
   <body>
     <main class="shell">
@@ -136,6 +136,13 @@
           <!-- 턴 종료·배치 완료는 지도 위 상황판으로 옮겼다(아래 .hud-actions).
                매 턴 누르는 단 하나의 버튼이 긴 명령 목록 맨 아래에 있어서, 부대를
                고를 때마다 목록이 길어지면 화면 밖으로 밀려났기 때문이다. -->
+          <!-- 손으로 찍는 저장 칸 셋. 자동 저장은 그대로 돌아가고, 이건 되돌아갈
+               자리를 사람이 직접 찍어 두는 것이다. 칸 이름 옆에 지금 그 칸에 든
+               판이 며칠째인지 적힌다 - 안 적으면 어느 칸을 덮는지 모르고 누른다. -->
+          <details id="saveMenu" class="command-menu">
+            <summary data-i18n>저장</summary>
+            <div class="command-menu-grid" id="saveMenuGrid"></div>
+          </details>
           <button id="showCoach" type="button" data-i18n>조작 안내</button>
           <button id="restart" type="button">새 작전</button>
           <!-- 이 기계에 적어 둔 것을 통째로 지우는 단추와, 무엇을 적어 두는지 다
@@ -276,14 +283,11 @@
              이어할 판이 있는 사람에게 제일 먼저 물을 것은 "새 작전을 짤 것인가"가
              아니라 "그 판을 마저 할 것인가"다. -->
         <div id="resumeNotice" class="resume-notice" hidden>
-          <div class="resume-notice-text">
-            <strong data-i18n>중단된 작전</strong>
-            <span id="resumeNoticeMeta"></span>
-          </div>
-          <div class="resume-notice-actions">
-            <button id="resumeOperation" type="button" class="primary" data-i18n>이어하기</button>
-            <button id="discardOperation" type="button" data-i18n>지우기</button>
-          </div>
+          <strong data-i18n>저장된 작전</strong>
+          <!-- 칸 목록은 game.js가 그린다. 자동 한 칸과 손으로 찍는 세 칸이고,
+               비어 있는 칸은 아예 나오지 않는다 - 빈 줄 셋을 먼저 보여 주고
+               「이 중에 없다」고 알리는 것은 안내가 아니라 방해다. -->
+          <div id="resumeSlots" class="resume-slots"></div>
         </div>
 
         <!-- 다섯 칸이 한꺼번에 펼쳐져 있으면 어디부터 정해야 하는지가 안 보인다.
@@ -442,8 +446,8 @@
            game.js가 연다. -->
       <div class="title-intro" id="titleIntro" aria-hidden="true">
         <video id="titleIntroClip" class="title-intro-clip"
-               src="assets/video/intro.mp4?v=20260820r"
-               poster="assets/video/intro-poster.jpg?v=20260820r"
+               src="assets/video/intro.mp4?v=20260820s"
+               poster="assets/video/intro-poster.jpg?v=20260820s"
                muted playsinline autoplay preload="auto"></video>
       </div>
       <!-- 폰은 사람이 화면을 한 번 누르기 전까지 어떤 소리도 내주지 않는다.
@@ -507,7 +511,7 @@
       </svg>
     </button>
 
-    <script src="scenarios.js?v=20260820r"></script>
-    <script src="game.js?v=20260820r"></script>
+    <script src="scenarios.js?v=20260820s"></script>
+    <script src="game.js?v=20260820s"></script>
   </body>
 </html>
