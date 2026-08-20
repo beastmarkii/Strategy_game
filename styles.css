@@ -4379,7 +4379,12 @@ h1 {
     display: none;
   }
 
-  /* 매 턴 누르는 버튼은 엄지가 늘 닿는 화면 맨 아래에 붙박이로 둔다. */
+  /* 매 턴 누르는 버튼은 엄지가 늘 닿는 화면 맨 아래에 붙박이로 둔다.
+
+     오른쪽만 62px을 비운다. 소리 단추(.music-toggle)가 화면 오른쪽 아래에
+     못 박혀 있고 층이 2400이라 이 띠보다 위에 뜬다. 자리를 안 비워 두면
+     「턴 종료」의 오른쪽 46px이 그대로 소리 단추가 되어, 턴을 넘기려고 누른
+     손가락이 음악을 끈다. 62px = 단추 46px + 화면 끝에서 띄운 10px + 사이 6px. */
   .hud-actions {
     position: fixed;
     right: 0;
@@ -4388,7 +4393,7 @@ h1 {
     z-index: 45;
     display: flex;
     gap: 5px;
-    padding: 5px 6px calc(5px + env(safe-area-inset-bottom));
+    padding: 5px 62px calc(5px + env(safe-area-inset-bottom)) 6px;
     border-top: 1px solid rgb(8 10 6 / 70%);
     background: linear-gradient(180deg, #343a2d, #1b1f17);
     box-shadow: 0 -6px 18px rgb(0 0 0 / 45%);
@@ -7084,7 +7089,7 @@ body {
   bottom: 16px;
   left: auto;
   width: min(380px, calc(100vw - 32px));
-  padding: 12px 14px 12px 16px;
+  padding: 10px 12px 11px 14px;
   border: 1px solid rgb(0 0 0 / 72%);
   border-left: 5px solid rgb(214 168 60 / 88%);
   border-radius: 6px;
@@ -7100,12 +7105,13 @@ body {
   display: none;
 }
 
+/* 제목·몇 마디째·단추가 한 줄이다. 단추를 아래로 내리면 쪽지가 그 줄만큼
+   높아지고, 폰에서 그 높이는 그대로 지도에서 깎인다. */
 .coach-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 6px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
 }
 
 .coach-head strong {
@@ -7117,6 +7123,7 @@ body {
 /* 몇 마디 남았는지가 보여야 사람이 끝을 가늠하고 앉아 있는다. */
 .coach-count {
   flex: 0 0 auto;
+  margin-right: auto; /* 여기서 밀어야 단추가 오른쪽 끝에 붙는다 */
   color: #9aa88a;
   font-family: var(--tech);
   font-size: 13px;
@@ -7132,14 +7139,14 @@ body {
 
 .coach-actions {
   display: flex;
+  flex: 0 0 auto;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 6px;
 }
 
 .coach-actions button {
-  min-height: 38px;
-  padding-inline: 16px;
+  min-height: 40px;
+  padding-inline: 14px;
   border-radius: 5px;
   font-size: 14px;
   letter-spacing: 1px;
@@ -7165,6 +7172,23 @@ body {
 .coach-actions button:active {
   transform: translateY(3px);
   box-shadow: inset 0 3px 7px rgb(0 0 0 / 65%);
+}
+
+/* 닫기. 글자를 지우고 ✕만 남긴다 - 320px 화면에서 「그만 보기」 넉 자를 제목·
+   횟수·「다음」과 한 줄에 세우면 줄이 넘친다. 글자는 지우지 않고 자리만 감춘다
+   (aria-label로 읽는 기계에는 그대로 「그만 보기」다). */
+.coach-actions .coach-close {
+  width: 40px;
+  min-width: 40px;
+  padding-inline: 0;
+  font-size: 0;
+  line-height: 0;
+}
+
+.coach-actions .coach-close::after {
+  content: "✕";
+  font-size: 17px;
+  line-height: 1;
 }
 
 /* 폰에서는 오른쪽 구석에 붙일 자리가 없다. 아래를 가로로 다 쓴다.
@@ -7595,7 +7619,7 @@ html[lang="en"] {
   display: none;
   place-items: center;
   overflow: hidden;
-  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820m");
+  background: #0b0d08 center / cover no-repeat url("assets/video/intro-wide.jpg?v=20260820p");
   opacity: 1;
   transition: opacity 700ms ease;
 }

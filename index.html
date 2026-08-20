@@ -73,7 +73,7 @@
     <meta name="theme-color" content="#202317" />
     <meta name="apple-mobile-web-app-title" content="FRONT COMMAND" />
 
-    <link rel="stylesheet" href="styles.css?v=20260820m" />
+    <link rel="stylesheet" href="styles.css?v=20260820p" />
   </head>
   <body>
     <main class="shell">
@@ -262,15 +262,18 @@
 
     <div id="coachSpot" class="coach-spot" aria-hidden="true" hidden></div>
     <div id="coach" class="coach" role="status" hidden>
+      <!-- 단추를 제목과 같은 줄에 둔다. 제 줄을 따로 쓰면 쪽지가 48px 더 높아지고,
+           그만큼이 지도에서 깎인다. 「그만 보기」는 닫기 표시(✕)로 둔다 - 이 안내는
+           이제 「조작 안내」를 누른 사람에게만 나오므로, 여기서 할 일은 닫는 것뿐이다. -->
       <div class="coach-head">
         <strong id="coachTitle"></strong>
         <span id="coachCount" class="coach-count"></span>
+        <div class="coach-actions">
+          <button id="coachNext" type="button" class="primary" data-i18n>다음</button>
+          <button id="coachSkip" type="button" class="coach-close" aria-label="그만 보기" data-i18n-attr="aria-label">그만 보기</button>
+        </div>
       </div>
       <p id="coachBody"></p>
-      <div class="coach-actions">
-        <button id="coachSkip" type="button" data-i18n>그만 보기</button>
-        <button id="coachNext" type="button" class="primary" data-i18n>다음</button>
-      </div>
     </div>
 
     <div id="newOperationModal" class="operation-modal" hidden>
@@ -454,8 +457,8 @@
            game.js가 연다. -->
       <div class="title-intro" id="titleIntro" aria-hidden="true">
         <video id="titleIntroClip" class="title-intro-clip"
-               src="assets/video/intro.mp4?v=20260820m"
-               poster="assets/video/intro-poster.jpg?v=20260820m"
+               src="assets/video/intro.mp4?v=20260820p"
+               poster="assets/video/intro-poster.jpg?v=20260820p"
                muted playsinline autoplay preload="auto"></video>
       </div>
       <!-- 폰은 사람이 화면을 한 번 누르기 전까지 어떤 소리도 내주지 않는다.
@@ -519,7 +522,7 @@
       </svg>
     </button>
 
-    <script src="scenarios.js?v=20260820m"></script>
-    <script src="game.js?v=20260820m"></script>
+    <script src="scenarios.js?v=20260820p"></script>
+    <script src="game.js?v=20260820p"></script>
   </body>
 </html>

@@ -1584,18 +1584,41 @@ function fitBoardToPhone() {
 // 지도를 하나 더 만들 때마다 그 값을 또 정해야 하므로, 칸 크기 한 줄로 정한다.
 const MIN_TOUCH_TILE = 44;
 const PHONE_MAP_GROW_MIN = 1;
-const PHONE_MAP_GROW_MAX = 3.5;
+// 눌린 줄을 44px까지 끌어올리려면 예전보다 3할쯤 더 키워야 한다. 3.5에서
+// 멈추면 320px짜리 폰이 44px에 못 닿는다. 판은 밀어서 보는 것이라 커져도
+// 잘리지 않는다.
+const PHONE_MAP_GROW_MAX = 4.6;
 
-// offsetWidth로 잰다. getBoundingClientRect는 눕힌 각도가 섞여 들어와서 뒷줄
-// 칸이 앞줄보다 좁게 나온다 — 그 값으로 맞추면 앞줄이 필요 이상으로 커진다.
+// 손가락이 짚는 것은 눕히기 전의 칸이 아니라 화면에 그려진 칸이다. 판을 28도
+// 눕히면 세로가 눌리고, 원근 때문에 먼 줄일수록 더 눌린다 - 눕히기 전 45×45가
+// 먼 줄에서는 42×34가 된다. offsetWidth는 눕히기 전 값이라 이 눌림을 못 본다.
+// 그래서 화면에 실제로 그려진 크기(getBoundingClientRect)를 재고, 그중에서
+// 제일 작은 줄을 기준으로 삼는다. 제일 작은 줄이 44px이면 나머지는 다 그보다 크다.
 function growForTouchableTiles(grow) {
-  const tile = boardEl?.querySelector(".tile");
-  if (!tile) return;
-  const width = tile.offsetWidth;
-  if (!(width > 0) || width >= MIN_TOUCH_TILE) return;
-  const next = clamp(grow * (MIN_TOUCH_TILE / width), PHONE_MAP_GROW_MIN, PHONE_MAP_GROW_MAX);
-  if (next === grow) return;
-  battlefieldWrapEl.style.setProperty("--map-layout-width", `${(next * 100).toFixed(1)}%`);
+  if (!boardEl || !battlefieldWrapEl) return;
+  // 한 번에 못 맞춘다. 폭은 소수 첫째 자리까지만 적을 수 있어서(332.3%) 계산으로
+  // 나온 값이 그 자리에서 잘리고, 잘린 만큼 칸이 목표보다 0.5px쯤 작게 앉는다.
+  // 그래서 적고 다시 재기를 세 번까지 되풀이한다 - 두 번째 판에서 44px을 넘긴다.
+  let current = grow;
+  for (let pass = 0; pass < 3; pass += 1) {
+    const tiles = boardEl.querySelectorAll(".tile");
+    if (!tiles.length) return;
+    // 먼 줄이 가장 눌린다. 지도마다 줄 길이가 달라 앞쪽 몇 칸만 봐서는 제일
+    // 눌린 칸을 놓칠 수 있으므로 판 전체를 훑는다(큰 지도는 400칸에서 끊는다).
+    let smallest = Infinity;
+    const sample = Math.min(tiles.length, 400);
+    for (let i = 0; i < sample; i += 1) {
+      const r = tiles[i].getBoundingClientRect();
+      const side = Math.min(r.width, r.height);
+      if (side > 0 && side < smallest) smallest = side;
+    }
+    if (!(smallest > 0) || smallest >= MIN_TOUCH_TILE) return;
+    const next = clamp(current * (MIN_TOUCH_TILE / smallest), PHONE_MAP_GROW_MIN, PHONE_MAP_GROW_MAX);
+    // 더 키울 여지가 없으면(최대치에 닿았다) 그만둔다.
+    if (next <= current + 0.0005) return;
+    current = next;
+    battlefieldWrapEl.style.setProperty("--map-layout-width", `${(current * 100).toFixed(1)}%`);
+  }
 }
 
 // 빈 자리를 걷어내고도 화면보다 길면, 판을 그만큼 줄여서 스크롤을 없앤다.
@@ -3519,6 +3542,10 @@ coachNextEl?.addEventListener("click", () => {
 coachSkipEl?.addEventListener("click", coachFinish);
 
 showCoachEl?.addEventListener("click", () => {
+  // 알림 띠와 안내 쪽지는 화면 아래 같은 자리를 쓴다. 띠가 떠 있으면 안내는
+  // 안 나오는데(coachAllowed), 그러면 「조작 안내」를 눌러도 아무 일이 안 일어난다.
+  // 누른 사람이 보려는 것은 안내다. 띠는 읽고 닫으면 그만인 것이라 여기서 닫는다.
+  if (storageNoticeEl && !storageNoticeEl.hidden) dismissStorageNotice();
   // 안내를 가리지 않으려고 접는 것이다. 사람이 지휘칸을 닫은 것이 아니다.
   setCommandPanel(true, { byUser: false });
   coachStart(true);
@@ -3610,7 +3637,7 @@ function storageNoticeSync() {
   if (show) dockAboveHudActions(storageNoticeEl);
 }
 
-storageNoticeOkEl?.addEventListener("click", () => {
+function dismissStorageNotice() {
   storageNoticeDismissed = true;
   try {
     localStorage.setItem(STORAGE_NOTICE_KEY, "seen");
@@ -3620,7 +3647,9 @@ storageNoticeOkEl?.addEventListener("click", () => {
   if (storageNoticeEl) storageNoticeEl.hidden = true;
   // 띠가 비켜야 첫 판 안내가 그 자리에 들어온다.
   coachSync();
-});
+}
+
+storageNoticeOkEl?.addEventListener("click", dismissStorageNotice);
 
 // 한 번 누르면 지워지지 않는다. 여기서 지우는 것에는 하다 만 판도 들어 있어서,
 // 잘못 누른 사람은 그 판을 잃는다. 그래서 두 번 누르게 하고, 잠깐 두면 저절로
