@@ -748,6 +748,7 @@ const uiDict = {
     "포병 전개": "Unlimber",
     "트럭 견인": "Limber up",
     "사령부 포위 · 증원 불가": "HQ encircled · no reinforcements",
+    "사령부 보급 두절 · 증원 불가": "HQ supply cut · no reinforcements",
     "{tile} / 철도": "{tile} / Rail",
     "승리 조건": "How you win this one",
     "화면 맨 위 노란 줄이 이번 작전의 목표입니다. 어느 지점을 며칠 동안 지켜야 하는지 적혀 있습니다.": "The yellow bar above the map is this operation's objective. It says which tile to hold, and for how many days.",
@@ -789,6 +790,7 @@ const uiDict = {
     "증원 불가 › {unit} · 이 작전의 편성 대상 아님": "No reinforcement › {unit} · not raised in this operation",
     "증원 불가 › 배속된 대대사령부 전부 투입됨": "No reinforcement › every attached battalion HQ is already committed",
     "증원 불가 › 대대사령부 주변에 빈 칸 없음": "No reinforcement › no empty tile beside the battalion HQ",
+    "증원 불가 › 보급이 끊긴 대대사령부": "No reinforcement › the battalion HQ is cut off from supply",
     "{unit} › 전선 도착 · 편성 중, 내일부터 기동": "{unit} › reached the front · forming up, moves from tomorrow",
     "야포대 › 견인 연결 · 다음 턴 고속 이동, 포격 불가": "Artillery › hitched · fast move next turn, cannot fire",
     "야포대 › 포 전개 · 다음 턴부터 포격 가능": "Artillery › unlimbered · can fire from next turn",
@@ -807,6 +809,7 @@ const uiDict = {
     "{side} › 보급 부족 · 예비대 투입 지연": "{side} › short of supply · reserves delayed",
     "{side} › 전개 공간 없음 · 예비대 투입 지연": "{side} › no room to deploy · reserves delayed",
     "{side} › 사령부 포위 · 증원 불가": "{side} › HQ encircled · no reinforcement",
+    "{side} › 사령부 보급 두절 · 증원 불가": "{side} › HQ supply cut · no reinforcement",
     "{side} › 공병대 투입 · 후방 보급 공사": "{side} › engineers committed · building supply in the rear",
     "포격 불가 › 견인 중 · 포를 전개할 것": "Cannot fire › still hitched · unlimber the gun",
     "포격 무효 › 능선이 사선을 차단": "No effect › the ridge blocks the line of fire",
@@ -5747,7 +5750,8 @@ function operationAlerts() {
     .forEach((objective) => parts.push(t("후방 피탈 {held}/{need}", { held: objective.held, need: objectiveHoldRequirement(objective) })));
   // 사령부가 포위되면 보급품이 아무리 쌓여도 증원이 안 나온다. 이건 단추가
   // 고장 난 것이 아니라 판이 그렇게 된 것이고, 말해 주지 않으면 구별할 방법이 없다.
-  if (recruitEncircled("player")) parts.push(t("사령부 포위 · 증원 불가"));
+  if (recruitSupplyCut("player")) parts.push(t("사령부 보급 두절 · 증원 불가"));
+  else if (recruitEncircled("player")) parts.push(t("사령부 포위 · 증원 불가"));
   if (isolated) parts.push(t("고립 {n}", { n: isolated }));
   if (collapsing) parts.push(t("붕괴 {n}", { n: collapsing }));
   if (cut.length - collapsing > 0) parts.push(t("보급 두절 {n}", { n: cut.length - collapsing }));
@@ -6585,6 +6589,12 @@ function recruit(type) {
   // 남는 문은 자리다 — 사령부가 부대를 낳을 수 있는 곳은 지휘 범위 안의 빈 칸뿐이고,
   // 겹쳐 세울 수는 없다(findHQSpawn 참고). 그래서 "보급품이 있는 만큼"이라 해도
   // 한 턴에 한 사령부가 토해 낼 수 있는 양에는 여전히 끝이 있다.
+  // 보급이 끊긴 사령부에서는 못 뽑는다. 적도 같다(findSpawn 참고).
+  if (!Number.isFinite(supplyLineCost(hq))) {
+    addLog(t("증원 불가 › 보급이 끊긴 대대사령부"));
+    render();
+    return;
+  }
   const spawn = findHQSpawn(hq, type);
   if (!spawn) {
     addLog(t("증원 불가 › 대대사령부 주변에 빈 칸 없음"));
@@ -7033,6 +7043,14 @@ function recruitEncircled(owner) {
   return !recruitableTypes(owner).some((type) => findSpawn(owner, type));
 }
 
+// 증원이 막힌 이유는 둘이다 - 설 자리가 없거나, 물자가 안 들어오거나. 둘은 푸는
+// 방법이 다르다. 자리는 옆칸을 비워야 하고 보급은 길을 다시 이어야 한다.
+// 그래서 한 문장으로 뭉뚱그리지 않는다.
+function recruitSupplyCut(owner) {
+  if (!battalionHQs(owner).length) return false;
+  return !suppliedBattalionHQs(owner).length;
+}
+
 // 지금 무엇이 모자란가. 편성비에서 가장 크게 벌어진 병종을 부른다.
 // 여유가 있으면 같은 값일 때 비싼 쪽을 고른다 — 보급품 137을 깔고 앉아
 // 3원짜리 보병만 부르던 것이 후반이 무너지던 이유였다.
@@ -7106,6 +7124,7 @@ function maybeEnemyRecruit() {
   }
 
   // 막힌 이유는 한 턴에 한 줄만 적는다. 한 기마다 적으면 로그가 같은 문장으로 덮인다.
+  const supplyCut = recruitSupplyCut("enemy");
   const encircled = recruitEncircled("enemy");
   if (!encircled) state.enemyEncircleNoted = false;
   if (placed) return;
@@ -7114,6 +7133,13 @@ function maybeEnemyRecruit() {
     return;
   }
   if (!blockedBySpace) return;
+  if (supplyCut) {
+    if (!state.enemyEncircleNoted) {
+      state.enemyEncircleNoted = true;
+      addLog(t("{side} › 사령부 보급 두절 · 증원 불가", { side: sideName("enemy") }));
+    }
+    return;
+  }
   if (!encircled) {
     addLog(t("{side} › 전개 공간 없음 · 예비대 투입 지연", { side: sideName("enemy") }));
     return;
@@ -10675,7 +10701,11 @@ function opponentOwner(owner) {
 function findSpawn(owner, type) {
   // 사령부가 여럿이면 전선에서 먼 쪽에서 뽑는다. 갓 나온 부대가 나오자마자
   // 반격당하지 않게 하는 것이 후방 편성의 뜻이다.
-  const hqs = battalionHQs(owner)
+  // 보급이 끊긴 사령부는 부대를 못 낸다. 물자가 안 들어오는 곳에서 새 대대가
+  // 나올 수는 없다 - 같은 사령부가 다친 부대 체력 하나도 못 채워 주는 판에
+  // 전차대대는 통째로 뽑아 낸다면 포위를 푸는 일 자체가 급할 이유가 없어진다.
+  // replenishNearBattalionHQ와 같은 자를 쓴다.
+  const hqs = suppliedBattalionHQs(owner)
     .slice()
     .sort((a, b) => nearestOpposingDistance(owner, b.x, b.y) - nearestOpposingDistance(owner, a.x, a.y));
   for (const hq of hqs) {
