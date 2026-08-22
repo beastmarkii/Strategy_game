@@ -5634,6 +5634,16 @@ function spawnImpact(to, tile, angle, profile, event, scale) {
     // 화주. 폭발이 위로 뻗는 층이 하나는 있어야 한다 — 나머지는 전부 옆으로 퍼지는
     // 원이라, 이 세로선이 없으면 아무리 키워도 납작한 얼룩으로 보인다.
     impact.appendChild(makeLayer("fx-column"));
+    // 화염 뭉게. 회색 연기보다 먼저 노랗게 부풀어 폭발에 부피를 만든다.
+    // 화구·불길이 폭발의 "빛"이라면 이쪽은 "덩어리"다 — 이게 없으면 격파도
+    // 그저 큰 착탄으로 보인다.
+    [0, 1, 2, 3].forEach((index) => {
+      impact.appendChild(makeLayer("fx-firepuff", {
+        "--smoke-delay": `${index * 90}ms`,
+        "--smoke-x": `${((index - 1.5) * 0.2 * to.w * scale).toFixed(1)}px`,
+        "--smoke-size": `${(0.7 + Math.random() * 0.5).toFixed(2)}`,
+      }));
+    });
     // 연기는 한 덩이가 아니라 세 뭉치다. 서로 다른 시각에 다른 자리에서 피어올라야
     // 하나의 기둥으로 읽힌다. 원 하나를 키우면 그냥 커지는 원이다.
     [0, 1, 2].forEach((index) => {
@@ -7327,7 +7337,7 @@ function showTurnCard() {
   const { year, month, day } = missionDate(state.turn);
   const headline = `${year}.${month}.${day}`;
   turnCardEl.innerHTML = `
-    <p class="turn-card-eyebrow">${state.mission?.name ?? ""}</p>
+    <p class="turn-card-eyebrow">${state.mission?.name ? t(state.mission.name) : ""}</p>
     <p class="turn-card-main">${headline}</p>
     <p class="turn-card-sub">${deadline}</p>
   `;

@@ -2132,6 +2132,18 @@ h1 {
   animation-delay: var(--smoke-delay, 0ms);
 }
 
+/* 화염 뭉게 ─ 격파에만. 회색 연기보다 먼저, 노랗게 부푼다. 속에서 빛나는
+   연기다 — 화구가 폭발의 "점"이라면 이쪽이 폭발의 "부피"다. 회색 연기와 같은
+   길로 피어오르되 짧게 살고, 꺼지면서 회색 연기에 자리를 넘긴다. */
+.fx-firepuff {
+  width: calc(30px * var(--fx-scale, 1));
+  height: calc(30px * var(--fx-scale, 1));
+  background: radial-gradient(circle at 46% 60%, rgb(255 240 190 / 88%) 0 16%, rgb(255 202 90 / 78%) 30%, rgb(255 148 44 / 56%) 52%, rgb(206 84 26 / 24%) 70%, rgb(120 50 22 / 0%) 86%);
+  filter: blur(calc(0.8px * var(--fx-scale, 1)));
+  animation: fxSmoke 950ms ease-out both;
+  animation-delay: var(--smoke-delay, 0ms);
+}
+
 /* 잔해 ─ 격파된 부대는 이 시점에 이미 판에서 지워져 있어서, 무너지는 연출을
    붙일 요소가 없다. 대신 불탄 덩어리를 그 자리에 세운다. */
 .fx-wreck {
@@ -3381,6 +3393,7 @@ h1 {
   .fx-ember,
   .fx-debris,
   .fx-smoke,
+  .fx-firepuff,
   .fx-wreck,
   .fx-wreck::after,
   .tile.fx-scorched::after,
@@ -3403,6 +3416,7 @@ h1 {
   .fx-dust,
   .fx-blast,
   .fx-smoke,
+  .fx-firepuff,
   .fx-wreck,
   .fx-muzzle,
   .fx-shot {
