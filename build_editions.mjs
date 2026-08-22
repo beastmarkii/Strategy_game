@@ -106,7 +106,11 @@ for (const [edition, config] of Object.entries(editions)) {
   // 그대로 넣으면 처음 여는 사람이 두 배를 기다린다. 판에서는 뺀다.
   cpSync(join(root, "assets"), join(dir, "assets"), {
     recursive: true,
-    filter: (src) => !src.split("\\").join("/").includes("/assets/audio/raw"),
+    filter: (src) => {
+      const u = src.split("\\").join("/");
+      // units-hires 는 홍보용 고해상도 원본(22MB). 게임은 축소본만 쓴다.
+      return !u.includes("/assets/audio/raw") && !u.includes("/assets/units-hires");
+    },
   });
 
   const kept = config.scenarioIds

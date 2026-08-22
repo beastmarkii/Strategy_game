@@ -33,7 +33,11 @@ for (const name of clientDirs) {
   const out = join(dist, name);
   mkdirSync(out, { recursive: true });
   for (const file of clientFiles) cpSync(join(root, file), join(out, file));
-  cpSync(join(root, "assets"), join(out, "assets"), { recursive: true });
+  cpSync(join(root, "assets"), join(out, "assets"), {
+    recursive: true,
+    // units-hires 는 홍보용 고해상도 원본(22MB). 게임은 축소본만 쓴다.
+    filter: (src) => !src.split("\\").join("/").includes("/assets/units-hires"),
+  });
 }
 
 mkdirSync(join(dist, "server"), { recursive: true });
